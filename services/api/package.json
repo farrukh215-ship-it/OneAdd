@@ -1,0 +1,49 @@
+{
+  "name": "@aikad/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "test": "jest",
+    "db:generate": "pnpm exec prisma generate",
+    "db:migrate": "pnpm exec prisma migrate dev",
+    "db:migrate:deploy": "pnpm exec prisma migrate deploy",
+    "db:seed": "pnpm exec prisma db seed"
+  },
+  "dependencies": {
+    "@aikad/shared": "workspace:*",
+    "@nestjs/common": "latest",
+    "@nestjs/config": "latest",
+    "@nestjs/core": "latest",
+    "@nestjs/jwt": "latest",
+    "@nestjs/schedule": "latest",
+    "@nestjs/platform-express": "latest",
+    "@nestjs/swagger": "latest",
+    "@prisma/client": "^6.16.3",
+    "bcryptjs": "latest",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "helmet": "latest",
+    "reflect-metadata": "latest",
+    "redis": "latest",
+    "rxjs": "latest",
+    "swagger-ui-express": "latest"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "latest",
+    "@nestjs/schematics": "latest",
+    "@nestjs/testing": "latest",
+    "@types/express": "latest",
+    "@types/jest": "latest",
+    "@types/node": "latest",
+    "jest": "latest",
+    "prisma": "^6.16.3",
+    "ts-jest": "latest",
+    "typescript": "latest"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}

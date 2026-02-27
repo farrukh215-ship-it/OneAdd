@@ -1,0 +1,348 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  SOLD
+  EXPIRED
+  REJECTED
+  REMOVED
+}
+
+enum ListingMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum ChatMessageType {
+  TEXT
+  SYSTEM
+}
+
+enum ChatThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum AuditTargetType {
+  USER
+  LISTING
+  CHAT_THREAD
+  REPORT
+  FEATURE_FLAG
+  TRUST_SCORE
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum OtpPurpose {
+  LOGIN
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum NotificationType {
+  CHAT_MESSAGE
+  LISTING_SOLD
+  LISTING_DEACTIVATED
+}
+
+model User {
+  id                 String                      @id @default(cuid())
+  fullName           String                      @db.VarChar(160)
+  fatherName         String                      @db.VarChar(160)
+  cnic               String                      @unique @db.VarChar(32)
+  phone              String                      @unique @db.VarChar(24)
+  email              String                      @unique @db.VarChar(320)
+  passwordHash       String                      @db.VarChar(255)
+  city               String                      @db.VarChar(120)
+  dateOfBirth        DateTime
+  gender             Gender
+  profilePhotoUrl    String?                     @db.VarChar(2048)
+  phoneVerifiedAt    DateTime?
+  emailVerifiedAt    DateTime?
+  isBlocked          Boolean                     @default(false)
+  shadowBanned       Boolean                     @default(false)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  deviceFingerprints DeviceFingerprint[]
+  deviceTokens       DeviceToken[]
+  otpCodes           OtpCode[]
+  listings           Listing[]
+  categoryLocks      UserCategoryActiveListing[]
+  chatThreadsAsBuyer ChatThread[]                @relation("ThreadBuyer")
+  chatThreadsAsSeller ChatThread[]               @relation("ThreadSeller")
+  chatMessages       ChatMessage[]
+  reportsFiled       Report[]                    @relation("ReportReporter")
+  reportsAgainst     Report[]                    @relation("ReportTargetUser")
+  adminAuditLogs     AuditLog[]                  @relation("AuditAdmin")
+  notifications      Notification[]
+  trustScore         TrustScore?
+}
+
+model OtpCode {
+  id              String     @id @default(cuid())
+  userId          String?
+  phone           String     @db.VarChar(24)
+  purpose         OtpPurpose @default(LOGIN)
+  otpHash         String     @db.VarChar(128)
+  fingerprintHash String     @db.VarChar(128)
+  ip              String     @db.VarChar(64)
+  userAgent       String?    @db.VarChar(1024)
+  expiresAt       DateTime
+  attempts        Int        @default(0)
+  maxAttempts     Int        @default(5)
+  verifiedAt      DateTime?
+  consumedAt      DateTime?
+  createdAt       DateTime   @default(now())
+  user            User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([phone, createdAt], map: "idx_otp_rate_limit_phone_created")
+  @@index([ip, createdAt], map: "idx_otp_rate_limit_ip_created")
+  @@index([fingerprintHash, createdAt], map: "idx_otp_rate_limit_fingerprint_created")
+  @@index([phone, purpose, expiresAt], map: "idx_otp_verify_phone_purpose_expires")
+}
+
+model DeviceFingerprint {
+  id         String   @id @default(cuid())
+  userId     String
+  hash       String   @db.VarChar(128)
+  ip         String   @db.VarChar(64)
+  userAgent  String?  @db.VarChar(1024)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hash], map: "uq_device_fingerprint_user_hash")
+  @@index([hash, ip], map: "idx_device_fingerprint_rate_limit_hash_ip")
+  @@index([userId, lastSeenAt], map: "idx_device_fingerprint_user_last_seen")
+}
+
+model DeviceToken {
+  id         String         @id @default(cuid())
+  userId     String
+  token      String         @unique @db.VarChar(255)
+  platform   DevicePlatform
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, platform], map: "idx_device_token_user_platform")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String           @db.VarChar(160)
+  body      String           @db.VarChar(500)
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notification_user_created")
+  @@index([type, createdAt(sort: Desc)], map: "idx_notification_type_created")
+}
+
+model Category {
+  id        String                      @id @default(cuid())
+  name      String                      @db.VarChar(120)
+  slug      String                      @unique @db.VarChar(140)
+  path      String?                     @db.VarChar(512)
+  depth     Int                         @default(0)
+  parentId  String?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
+  parent    Category?                   @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[]                  @relation("CategoryTree")
+  listings  Listing[]
+  userLocks UserCategoryActiveListing[]
+
+  @@index([parentId, name], map: "idx_category_tree_parent_name")
+  @@index([path], map: "idx_category_tree_path")
+}
+
+model Listing {
+  id          String                    @id @default(cuid())
+  userId      String
+  categoryId  String
+  title       String                    @db.VarChar(220)
+  description String                    @db.Text
+  price       Decimal                   @db.Decimal(12, 2)
+  currency    String                    @default("PKR") @db.VarChar(8)
+  status      ListingStatus             @default(DRAFT)
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  rankingScore Decimal                 @default(1) @db.Decimal(10, 4)
+  showPhone   Boolean                  @default(true)
+  allowChat   Boolean                  @default(true)
+  allowCall   Boolean                  @default(true)
+  allowSMS    Boolean                  @default(true)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category                  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  media       ListingMedia[]
+  chatThreads ChatThread[]
+  reports     Report[]                  @relation("ReportTargetListing")
+  activeLock  UserCategoryActiveListing?
+
+  @@index([title], map: "idx_listing_search_title")
+  @@index([title, description], map: "idx_listing_search_title_description")
+  @@index([status, createdAt(sort: Desc)], map: "idx_listing_feed_status_created")
+  @@index([categoryId, status, createdAt(sort: Desc)], map: "idx_listing_feed_category_status_created")
+  @@index([userId, status], map: "idx_listing_user_status")
+  @@index([expiresAt], map: "idx_listing_lifecycle_expires_at")
+}
+
+model ListingMedia {
+  id          String           @id @default(cuid())
+  listingId   String
+  type        ListingMediaType
+  url         String           @db.VarChar(2048)
+  durationSec Int?
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  listing     Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder], map: "idx_listing_media_feed_order")
+  @@index([type, durationSec], map: "idx_listing_media_search_type_duration")
+}
+
+model UserCategoryActiveListing {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  listingId  String   @unique
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId], map: "uq_user_category_single_active_listing")
+  @@index([categoryId], map: "idx_user_category_active_listing_category")
+}
+
+model ChatThread {
+  id            String        @id @default(cuid())
+  listingId     String?
+  buyerId       String
+  sellerId      String
+  status        ChatThreadStatus @default(OPEN)
+  closedAt      DateTime?
+  lastMessageAt DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  listing       Listing?      @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  buyer         User          @relation("ThreadBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller        User          @relation("ThreadSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages      ChatMessage[]
+  reports       Report[]      @relation("ReportTargetThread")
+
+  @@unique([listingId, buyerId, sellerId], map: "uq_thread_listing_participants")
+  @@index([buyerId, lastMessageAt(sort: Desc)], map: "idx_chat_thread_feed_buyer_last_message")
+  @@index([sellerId, lastMessageAt(sort: Desc)], map: "idx_chat_thread_feed_seller_last_message")
+  @@index([listingId, lastMessageAt(sort: Desc)], map: "idx_chat_thread_listing_last_message")
+}
+
+model ChatMessage {
+  id         String          @id @default(cuid())
+  threadId   String
+  senderId   String
+  type       ChatMessageType @default(TEXT)
+  content    String          @db.Text
+  createdAt  DateTime        @default(now())
+  thread     ChatThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender     User            @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt], map: "idx_chat_message_feed_thread_created")
+  @@index([senderId, createdAt], map: "idx_chat_message_rate_limit_sender_created")
+}
+
+model Report {
+  id              String      @id @default(cuid())
+  reporterId      String
+  targetUserId    String?
+  targetListingId String?
+  targetThreadId  String?
+  reason          String      @db.Text
+  status          ReportStatus @default(OPEN)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  resolvedAt      DateTime?
+  reporter        User        @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetUser      User?       @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetListing   Listing?    @relation("ReportTargetListing", fields: [targetListingId], references: [id], onDelete: SetNull)
+  targetThread    ChatThread? @relation("ReportTargetThread", fields: [targetThreadId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId, createdAt], map: "idx_report_rate_limit_reporter_created")
+  @@index([status, createdAt], map: "idx_report_moderation_status_created")
+  @@index([targetListingId, status], map: "idx_report_target_listing_status")
+  @@index([targetUserId, status], map: "idx_report_target_user_status")
+  @@index([targetThreadId, status], map: "idx_report_target_thread_status")
+}
+
+model AuditLog {
+  id         String          @id @default(cuid())
+  adminId    String
+  action     String          @db.VarChar(120)
+  targetType AuditTargetType
+  targetId   String          @db.VarChar(64)
+  metadata   Json?
+  createdAt  DateTime        @default(now())
+  admin      User            @relation("AuditAdmin", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([adminId, createdAt], map: "idx_audit_log_admin_created")
+  @@index([targetType, targetId, createdAt], map: "idx_audit_log_target_created")
+  @@index([action, createdAt], map: "idx_audit_log_action_created")
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(120)
+  enabled     Boolean  @default(false)
+  description String?  @db.VarChar(240)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled], map: "idx_feature_flag_enabled")
+}
+
+model TrustScore {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  score      Int      @default(0)
+  breakdown  Json
+  computedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([score(sort: Desc), computedAt(sort: Desc)], map: "idx_trust_score_rank")
+  @@index([computedAt], map: "idx_trust_score_computed_at")
+}

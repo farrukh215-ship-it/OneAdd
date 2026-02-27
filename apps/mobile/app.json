@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Aikad Marketplace",
+    "slug": "aikad-marketplace",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.aikad.marketplace",
+      "useNextNotificationsApi": true
+    },
+    "plugins": ["expo-notifications"],
+    "extra": {
+      "apiUrl": "http://10.0.2.2:3001",
+      "demoToken": ""
+    }
+  }
+}
