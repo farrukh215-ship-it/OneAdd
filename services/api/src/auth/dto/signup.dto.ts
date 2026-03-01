@@ -21,11 +21,11 @@ export class SignupDto {
   fatherName: string;
 
   @IsString()
-  @Matches(/^[0-9-]{5,20}$/)
+  @Matches(/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/)
   cnic: string;
 
   @IsString()
-  @Matches(/^\+?[0-9]{10,15}$/)
+  @Matches(/^\+92[0-9]{10}$/)
   phone: string;
 
   @IsEmail()
@@ -36,8 +36,11 @@ export class SignupDto {
   password: string;
 
   @IsString()
-  @IsNotEmpty()
-  city: string;
+  otpVerificationToken: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
 
   @IsDateString()
   dateOfBirth: string;

@@ -26,6 +26,7 @@ export class ListingsService {
   ) {}
 
   async createListing(userId: string, dto: CreateListingDto) {
+    await this.assertPhoneVerified(userId);
     this.validateMediaConstraints(dto.media);
 
     return this.prisma.listing.create({
@@ -54,6 +55,7 @@ export class ListingsService {
   }
 
   async activateListing(userId: string, listingId: string) {
+    await this.assertPhoneVerified(userId);
     try {
       return await this.prisma.$transaction(async (tx) => {
         const listing = await tx.listing.findUnique({
@@ -434,6 +436,19 @@ export class ListingsService {
     const next = new Date(now);
     next.setDate(now.getDate() + 30);
     return next;
+  }
+
+  private async assertPhoneVerified(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phoneVerifiedAt: true }
+    });
+
+    if (!user?.phoneVerifiedAt) {
+      throw new ForbiddenException(
+        "Phone verification required. Please complete OTP verification before posting."
+      );
+    }
   }
 
   private sortByTrustWeightedRanking<T extends { rankingScore: Prisma.Decimal; user: { trustScore: { score: number } | null } }>(

@@ -12,6 +12,8 @@ export type Listing = {
   price: string | number;
   currency: string;
   status: string;
+  city?: string | null;
+  createdAt?: string;
   showPhone: boolean;
   allowChat: boolean;
   allowCall: boolean;
@@ -21,15 +23,29 @@ export type Listing = {
     id: string;
     fullName?: string;
     phone?: string;
+    trustScore?: {
+      score: number;
+    } | null;
   };
 };
 
 export type ChatThread = {
   id: string;
+  status?: "OPEN" | "CLOSED";
+  lastMessageAt?: string;
   listing?: {
     id: string;
     title: string;
+    status?: string;
   } | null;
+  buyer?: {
+    id: string;
+    fullName?: string;
+  };
+  seller?: {
+    id: string;
+    fullName?: string;
+  };
 };
 
 export type ChatMessage = {
@@ -37,4 +53,5 @@ export type ChatMessage = {
   content: string;
   senderId: string;
   createdAt: string;
+  type?: "TEXT" | "SYSTEM";
 };

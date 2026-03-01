@@ -4,7 +4,8 @@ RUN corepack enable
 
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @aikad/api build
+RUN pnpm --dir services/api exec prisma generate --schema prisma/schema.prisma
+RUN pnpm --dir services/api build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -13,7 +14,8 @@ RUN corepack enable
 RUN apk add --no-cache curl
 
 COPY . .
-RUN pnpm install --frozen-lockfile --prod --filter @aikad/api...
+RUN pnpm install --frozen-lockfile --filter @aikad/api...
+RUN pnpm --dir services/api exec prisma generate --schema prisma/schema.prisma
 COPY --from=builder /app/services/api/dist ./services/api/dist
 
 WORKDIR /app/services/api

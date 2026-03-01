@@ -1,18 +1,37 @@
 {
   "expo": {
-    "name": "Aikad Marketplace",
-    "slug": "aikad-marketplace",
+    "name": "ZaroratBazar",
+    "slug": "zaroratbazar",
     "version": "1.0.0",
     "orientation": "portrait",
-    "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/zaroratbazar-logo.jpg",
+    "splash": {
+      "image": "./assets/zaroratbazar-logo.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#eef7f2"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "package": "com.aikad.marketplace",
-      "useNextNotificationsApi": true
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/zaroratbazar-logo.jpg",
+        "backgroundColor": "#eef7f2"
+      },
+      "googleServicesFile": "./google-services.json"
     },
-    "plugins": ["expo-notifications"],
+    "plugins": [
+      "expo-notifications",
+      "expo-video"
+    ],
     "extra": {
       "apiUrl": "http://10.0.2.2:3001",
-      "demoToken": ""
+      "demoToken": "",
+      "firebaseApiKey": "AIzaSyCayPii-w6RumZ8Qjgs4NznNSQ4HatH3bs",
+      "firebaseProjectId": "aikad-13dc4",
+      "firebaseAuthDomain": "aikad-13dc4.firebaseapp.com",
+      "firebaseAppId": "1:201729412856:web:f2400591798aa5454c350d"
     }
   }
 }

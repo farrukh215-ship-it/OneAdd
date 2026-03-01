@@ -6,6 +6,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { clearToken, getToken } from "../lib/api";
 
 const links = [
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/categories", label: "Categories" },
   { href: "/listings", label: "Listings" },
   { href: "/reports", label: "Reports Queue" },
@@ -39,7 +40,13 @@ export function AdminShell({ title, children }: AdminShellProps) {
   return (
     <div className="adminLayout">
       <aside className="sidebar">
-        <h2>Aikad Admin</h2>
+        <div className="adminBrand">
+          <img src="/brand/zaroratbazar-mark.svg" alt="ZaroratBazar logo" className="adminBrandLogo" />
+          <div>
+            <h2>ZaroratBazar</h2>
+            <p className="adminBrandSub">صرف اصل لوگ، اصل چیزیں</p>
+          </div>
+        </div>
         <nav className="sidebarNav">
           {links.map((link) => (
             <Link

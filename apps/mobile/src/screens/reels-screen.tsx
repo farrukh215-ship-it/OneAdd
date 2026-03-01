@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
-  Linking,
   Pressable,
   Share,
   StyleSheet,
@@ -10,44 +10,87 @@ import {
   View,
   ViewToken
 } from "react-native";
-import { Video, ResizeMode } from "expo-av";
-import { getFeedListings } from "../services/api";
-import type { Listing } from "../types";
+import { VideoView, useVideoPlayer } from "expo-video";
+import { getVideoFeed, VideoFeedItem } from "../services/api";
 
 const { height } = Dimensions.get("window");
 
-type ReelItem = {
-  listing: Listing;
-  videoUrl: string;
+type ReelCardProps = {
+  item: VideoFeedItem;
+  isActive: boolean;
+  navigation: any;
 };
 
+function ReelCard({ item, isActive, navigation }: ReelCardProps) {
+  const player = useVideoPlayer(item.videoUrl, (p) => {
+    p.loop = true;
+    p.muted = false;
+  });
+
+  useEffect(() => {
+    if (isActive) {
+      player.play();
+      return;
+    }
+    player.pause();
+  }, [isActive, player]);
+
+  async function onShare() {
+    await Share.share({
+      message: `https://zaroratbazar.shop/listing/${item.listingId}`
+    });
+  }
+
+  return (
+    <View style={styles.reelPage}>
+      <VideoView player={player} style={styles.video} contentFit="cover" />
+
+      <View style={styles.overlay}>
+        <Text style={styles.price}>
+          {item.currency} {item.price}
+        </Text>
+        <Text style={styles.title} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <View style={styles.actions}>
+          <Pressable
+            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+            onPress={() => navigation.navigate("ListingDetail", { id: item.listingId })}
+          >
+            <Text style={styles.primaryBtnText}>View Product</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]} onPress={onShare}>
+            <Text style={styles.ghostBtnText}>Share</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function LoadingReel() {
+  return (
+    <View style={styles.reelPage}>
+      <View style={styles.shimmerBlock} />
+    </View>
+  );
+}
+
 export function ReelsScreen({ navigation }: any) {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [items, setItems] = useState<VideoFeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getFeedListings()
-      .then(setListings)
-      .catch(() => setError("Failed to load reels."));
+    getVideoFeed()
+      .then((data) => {
+        setItems(data);
+        setError("");
+      })
+      .catch(() => setError("Reels load nahi ho saki."))
+      .finally(() => setLoading(false));
   }, []);
-
-  const reels = useMemo<ReelItem[]>(
-    () =>
-      listings.reduce<ReelItem[]>((acc, listing) => {
-        const video = listing.media.find(
-          (item) => item.type === "VIDEO" && (item.durationSec ?? 0) <= 30
-        );
-        if (video?.url) {
-          acc.push({
-            listing,
-            videoUrl: video.url
-          });
-        }
-        return acc;
-      }, []),
-    [listings]
-  );
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -57,78 +100,48 @@ export function ReelsScreen({ navigation }: any) {
     }
   ).current;
 
-  async function shareToFacebook(listingId: string) {
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-      `https://aikad.app/listing/${listingId}`
-    )}`;
-    await Linking.openURL(url);
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <FlatList
+          data={[1, 2]}
+          keyExtractor={(item) => String(item)}
+          pagingEnabled
+          renderItem={() => <LoadingReel />}
+        />
+        <View style={styles.loadingBadge}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.loadingText}>Loading reels...</Text>
+        </View>
+      </View>
+    );
   }
 
-  async function shareToTikTok(listingId: string) {
-    const deeplink = `tiktok://share?url=${encodeURIComponent(
-      `https://aikad.app/listing/${listingId}`
-    )}`;
-
-    const canOpen = await Linking.canOpenURL(deeplink);
-    if (canOpen) {
-      await Linking.openURL(deeplink);
-      return;
-    }
-
-    await Share.share({
-      message: `Check this out on Aikad: https://aikad.app/listing/${listingId}`
-    });
+  if (items.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>No videos yet</Text>
+          {error ? <Text style={styles.emptySub}>{error}</Text> : null}
+        </View>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
-        data={reels}
-        keyExtractor={(item) => item.listing.id}
+        data={items}
+        keyExtractor={(item) => item.listingId}
         pagingEnabled
         snapToAlignment="start"
         decelerationRate="fast"
+        disableIntervalMomentum
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 80 }}
         renderItem={({ item, index }) => (
-          <View style={styles.reelPage}>
-            <Video
-              source={{ uri: item.videoUrl }}
-              style={styles.video}
-              resizeMode={ResizeMode.COVER}
-              isLooping
-              shouldPlay={index === activeIndex}
-              isMuted={false}
-            />
-            <View style={styles.overlay}>
-              <Text style={styles.title}>{item.listing.title}</Text>
-              <Text style={styles.meta}>
-                {item.listing.currency} {item.listing.price}
-              </Text>
-              <View style={styles.actions}>
-                <Pressable
-                  style={styles.button}
-                  onPress={() => navigation.navigate("ListingDetail", { id: item.listing.id })}
-                >
-                  <Text style={styles.buttonText}>Open Product</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.buttonSecondary}
-                  onPress={() => shareToTikTok(item.listing.id)}
-                >
-                  <Text style={styles.buttonText}>Share TikTok</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.buttonSecondary}
-                  onPress={() => shareToFacebook(item.listing.id)}
-                >
-                  <Text style={styles.buttonText}>Share Facebook</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
+          <ReelCard item={item} isActive={index === activeIndex} navigation={navigation} />
         )}
       />
     </View>
@@ -150,44 +163,91 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: "absolute",
-    left: 14,
-    right: 14,
-    bottom: 20
+    left: 12,
+    right: 12,
+    bottom: 20,
+    gap: 10
+  },
+  price: {
+    color: "#fff",
+    fontSize: 26,
+    fontWeight: "800",
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 2 }
   },
   title: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
-    marginBottom: 4
-  },
-  meta: {
-    color: "#f7d5c8",
-    marginBottom: 10
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 2 }
   },
   actions: {
+    flexDirection: "row",
     gap: 8
   },
-  button: {
-    backgroundColor: "#ff5e32",
+  primaryBtn: {
+    flex: 1.25,
     borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center"
+    backgroundColor: "rgba(255,255,255,0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12
   },
-  buttonSecondary: {
-    backgroundColor: "rgba(255,255,255,0.25)",
+  primaryBtnText: {
+    color: "#101614",
+    fontWeight: "800"
+  },
+  ghostBtn: {
+    flex: 1,
     borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center"
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+    backgroundColor: "rgba(0,0,0,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12
   },
-  buttonText: {
+  ghostBtnText: {
     color: "#fff",
     fontWeight: "700"
   },
-  error: {
-    color: "#fff",
+  shimmerBlock: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#151b19"
+  },
+  loadingBadge: {
     position: "absolute",
-    top: 60,
-    left: 12,
-    zIndex: 2
+    left: 0,
+    right: 0,
+    bottom: 24,
+    alignItems: "center",
+    gap: 8
+  },
+  loadingText: {
+    color: "#f3f6f5"
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24
+  },
+  emptyTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700"
+  },
+  emptySub: {
+    marginTop: 8,
+    color: "#b6c0bc",
+    textAlign: "center"
+  },
+  pressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.985 }]
   }
 });

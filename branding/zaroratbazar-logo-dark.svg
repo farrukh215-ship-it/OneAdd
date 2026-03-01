@@ -1,0 +1,14 @@
+<svg width="1240" height="360" viewBox="0 0 1240 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="zb_d" x1="30" y1="16" x2="224" y2="214" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9AF3D4"/>
+      <stop offset="1" stop-color="#4FC49A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1240" height="360" rx="40" fill="#0E3329"/>
+  <rect x="36" y="38" width="200" height="50" rx="25" fill="url(#zb_d)"/>
+  <rect x="36" y="166" width="200" height="50" rx="25" fill="url(#zb_d)"/>
+  <path d="M66 190L215 68H160L66 145H170L130 180H66V190Z" fill="url(#zb_d)"/>
+  <path d="M102 132L126 156L186 100" stroke="#F5FFF9" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="278" y="158" fill="#F0FFF9" font-family="Segoe UI, Arial, sans-serif" font-size="86" font-weight="800">ZaroratBazar</text>
+</svg>

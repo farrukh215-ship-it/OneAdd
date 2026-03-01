@@ -11,8 +11,18 @@ export function TabsNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#f7f9ff" },
-        tabBarStyle: { backgroundColor: "#ffffff" }
+        headerStyle: { backgroundColor: "#f3f8f5" },
+        headerTitleStyle: { color: "#153a2e", fontWeight: "700" },
+        tabBarStyle: {
+          backgroundColor: "#ffffff",
+          borderTopColor: "#dce8e2",
+          height: 62,
+          paddingBottom: 6,
+          paddingTop: 6
+        },
+        tabBarActiveTintColor: "#0f8e66",
+        tabBarInactiveTintColor: "#5f746b",
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" }
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />

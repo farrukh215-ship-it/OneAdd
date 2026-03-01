@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+.git
+.github
+.next
+**/.next
+dist
+**/dist
+coverage
+**/coverage
+apps/admin/admin-dev.log
+apps/admin/admin-dev.err.log
+apps/web/web-dev.log
+apps/web/web-dev.err.log
+services/api/api-run.log
+services/api/api-run.err.log

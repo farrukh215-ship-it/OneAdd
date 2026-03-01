@@ -42,6 +42,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+type AdminReport = {
+  id: string;
+  status: string;
+  reason?: string;
+  reporter?: { email?: string };
+  targetListing?: { id: string; title?: string } | null;
+  targetUser?: { id: string; email?: string } | null;
+  createdAt?: string;
+};
+
+type AdminActionPayload = {
+  reportId?: string;
+  action: "REVIEW" | "RESOLVE" | "REJECT" | "SUSPEND_USER" | "DEACTIVATE_LISTING";
+  userId?: string;
+  listingId?: string;
+  note?: string;
+};
+
 export async function loginAdmin(payload: { identifier: string; password: string }) {
   const result = await request<{ accessToken: string }>("/auth/login", {
     method: "POST",
@@ -68,6 +86,49 @@ export const adminApi = {
     }),
   getListings: () => request<any[]>("/admin/listings"),
   getReportsQueue: () => request<any[]>("/reports/queue"),
+  getAdminReports: async () => {
+    try {
+      return await request<AdminReport[]>("/admin/reports");
+    } catch {
+      return request<AdminReport[]>("/reports/queue");
+    }
+  },
+  applyAdminAction: async (payload: AdminActionPayload) => {
+    try {
+      return await request("/admin/actions", {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      });
+    } catch {
+      if (payload.reportId && (payload.action === "REVIEW" || payload.action === "RESOLVE" || payload.action === "REJECT")) {
+        const mappedStatus =
+          payload.action === "REVIEW"
+            ? "IN_REVIEW"
+            : payload.action === "RESOLVE"
+              ? "RESOLVED"
+              : "REJECTED";
+        return request(`/reports/${payload.reportId}/action`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: mappedStatus })
+        });
+      }
+
+      if (payload.action === "SUSPEND_USER" && payload.userId) {
+        return request(`/reports/users/${payload.userId}/suspend`, {
+          method: "PATCH",
+          body: JSON.stringify({ enabled: true })
+        });
+      }
+
+      if (payload.action === "DEACTIVATE_LISTING" && payload.listingId) {
+        return request(`/reports/listings/${payload.listingId}/deactivate`, {
+          method: "PATCH"
+        });
+      }
+
+      throw new Error("Admin action failed.");
+    }
+  },
   updateReportStatus: (id: string, status: string) =>
     request(`/reports/${id}/action`, {
       method: "PATCH",

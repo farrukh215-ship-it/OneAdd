@@ -5,6 +5,7 @@
     "dev:api": "pnpm --filter @aikad/api dev",
     "dev:web": "pnpm --filter @aikad/web dev",
     "dev:mobile": "pnpm --filter @aikad/mobile dev",
+    "dev:mobile:tunnel": "pnpm --filter @aikad/mobile dev:tunnel",
     "dev:admin": "pnpm --filter @aikad/admin dev",
     "smoke:predeploy": "powershell -ExecutionPolicy Bypass -File scripts/predeploy-smoke.ps1"
   }

@@ -6,7 +6,7 @@ export class OtpVerifyDto {
   requestId: string;
 
   @IsString()
-  @Matches(/^\+?[0-9]{10,15}$/)
+  @Matches(/^\+92[0-9]{10}$/)
   phone: string;
 
   @IsString()

@@ -1,0 +1,24 @@
+<svg width="900" height="240" viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(0,0)">
+    <rect width="200" height="200" rx="48" fill="#0E5E43"/>
+    <path d="M55 65 H145 L90 140 H145"
+          fill="none"
+          stroke="#FFFFFF"
+          stroke-width="20"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    <path d="M80 115 L100 135 L135 95"
+          fill="none"
+          stroke="#FFFFFF"
+          stroke-width="16"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+  </g>
+  <text x="240" y="135"
+        font-family="Inter, Manrope, SF Pro Display, sans-serif"
+        font-size="64"
+        font-weight="600"
+        fill="#1E1E1E">
+    ZaroratBazar
+  </text>
+</svg>

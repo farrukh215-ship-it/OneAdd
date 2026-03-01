@@ -11,6 +11,7 @@ import { Request } from "express";
 import { RateLimit } from "../rate-limit/rate-limit.decorator";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
+import { FirebaseVerifyDto } from "./dto/firebase-verify.dto";
 import { OtpRequestDto } from "./dto/otp-request.dto";
 import { OtpVerifyDto } from "./dto/otp-verify.dto";
 import { SignupDto } from "./dto/signup.dto";
@@ -43,6 +44,12 @@ export class AuthController {
   @RateLimit({ max: 10, windowSeconds: 60, failClosedOnRedisError: true })
   login(@Body() dto: LoginDto, @Req() request: Request) {
     return this.authService.login(dto, request);
+  }
+
+  @Post("firebase/verify")
+  @RateLimit({ max: 15, windowSeconds: 60, failClosedOnRedisError: true })
+  firebaseVerify(@Body() dto: FirebaseVerifyDto, @Req() request: Request) {
+    return this.authService.verifyFirebaseToken(dto, request);
   }
 
   @Get("me")

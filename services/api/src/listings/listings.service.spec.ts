@@ -22,7 +22,10 @@ describe("ListingsService", () => {
   };
 
   it("enforces max 6 images", async () => {
-    const prisma: any = { listing: { create: jest.fn() } };
+    const prisma: any = {
+      listing: { create: jest.fn() },
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneVerifiedAt: new Date() }) }
+    };
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
@@ -48,7 +51,10 @@ describe("ListingsService", () => {
   });
 
   it("enforces max video duration 30s", async () => {
-    const prisma: any = { listing: { create: jest.fn() } };
+    const prisma: any = {
+      listing: { create: jest.fn() },
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneVerifiedAt: new Date() }) }
+    };
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
@@ -88,6 +94,7 @@ describe("ListingsService", () => {
     };
 
     const prisma: any = {
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneVerifiedAt: new Date() }) },
       $transaction: jest.fn((fn: (txArg: any) => unknown) =>
         fn({
           ...tx,
@@ -120,6 +127,7 @@ describe("ListingsService", () => {
       user: { findUnique: jest.fn().mockResolvedValue({ shadowBanned: false }) }
     };
     const prisma: any = {
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneVerifiedAt: new Date() }) },
       $transaction: jest.fn((fn: (txArg: any) => unknown) => fn(tx))
     };
 
@@ -148,6 +156,7 @@ describe("ListingsService", () => {
       user: { findUnique: jest.fn().mockResolvedValue({ shadowBanned: true }) }
     };
     const prisma: any = {
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneVerifiedAt: new Date() }) },
       $transaction: jest.fn((fn: (txArg: any) => unknown) => fn(tx))
     };
 
@@ -169,6 +178,7 @@ describe("ListingsService", () => {
 
   it("throws not found for missing listing", async () => {
     const prisma: any = {
+      user: { findUnique: jest.fn().mockResolvedValue({ phoneVerifiedAt: new Date() }) },
       $transaction: jest.fn((fn: (txArg: any) => unknown) =>
         fn({
           listing: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() },

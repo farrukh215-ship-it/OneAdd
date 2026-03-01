@@ -36,12 +36,28 @@ describe("AuthService", () => {
   });
 
   it("blocks signup when CNIC already exists", async () => {
+    jwtServiceMock.verifyAsync.mockResolvedValue({
+      type: "otp_verified",
+      phone: "+923001234567",
+      otpId: "otp-1"
+    });
+
     const prisma: any = {
       user: {
         findFirst: jest
           .fn()
           .mockResolvedValue({ cnic: "12345-1234567-1", phone: "x", email: "x" }),
         create: jest.fn()
+      },
+      otpCode: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: "otp-1",
+          userId: null,
+          verifiedAt: new Date(Date.now() - 5_000),
+          consumedAt: null,
+          expiresAt: new Date(Date.now() + 60_000)
+        }),
+        update: jest.fn()
       },
       deviceFingerprint: { upsert: jest.fn() }
     };
@@ -61,6 +77,7 @@ describe("AuthService", () => {
           phone: "+923001234567",
           email: "ali@example.com",
           password: "StrongPass1!",
+          otpVerificationToken: "otp-token",
           city: "Karachi",
           dateOfBirth: "2000-01-01",
           gender: Gender.MALE
@@ -201,7 +218,8 @@ describe("AuthService", () => {
     await expect(
       service.login(
         {
-          identifier: "+923001234567",
+          email: "ali@example.com",
+          phone: "+923001234567",
           otpVerificationToken: "otp-token"
         },
         {

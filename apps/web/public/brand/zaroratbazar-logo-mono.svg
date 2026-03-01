@@ -1,0 +1,8 @@
+<svg width="1240" height="360" viewBox="0 0 1240 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1240" height="360" rx="40" fill="#FFFFFF"/>
+  <rect x="36" y="38" width="200" height="50" rx="25" fill="#111111"/>
+  <rect x="36" y="166" width="200" height="50" rx="25" fill="#111111"/>
+  <path d="M66 190L215 68H160L66 145H170L130 180H66V190Z" fill="#111111"/>
+  <path d="M102 132L126 156L186 100" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="278" y="158" fill="#111111" font-family="Segoe UI, Arial, sans-serif" font-size="86" font-weight="800">ZaroratBazar</text>
+</svg>

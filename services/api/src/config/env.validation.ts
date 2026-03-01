@@ -14,6 +14,11 @@ type EnvConfig = {
   SMS4CONNECT_BASE_URL?: string;
   SMS4CONNECT_API_KEY?: string;
   SMS4CONNECT_SENDER_ID?: string;
+  PUSH_PROVIDER?: string;
+  FIREBASE_SERVICE_ACCOUNT_PATH?: string;
+  FCM_PROJECT_ID?: string;
+  FCM_CLIENT_EMAIL?: string;
+  FCM_PRIVATE_KEY?: string;
   REDIS_URL?: string;
   ADMIN_EMAILS?: string;
   AUTO_HIDE_REPORTS_THRESHOLD?: string;
@@ -55,6 +60,23 @@ export function validateEnvironment(config: EnvConfig) {
   }
   if (!config.OTP_SECRET) {
     throw new Error("OTP_SECRET is required.");
+  }
+  if (
+    config.SMS_PROVIDER === "sms4connect" &&
+    (!config.SMS4CONNECT_API_KEY || !config.SMS4CONNECT_SENDER_ID)
+  ) {
+    throw new Error(
+      "SMS4CONNECT_API_KEY and SMS4CONNECT_SENDER_ID are required when SMS_PROVIDER=sms4connect."
+    );
+  }
+  if (
+    config.PUSH_PROVIDER === "fcm" &&
+    !config.FIREBASE_SERVICE_ACCOUNT_PATH &&
+    (!config.FCM_PROJECT_ID || !config.FCM_CLIENT_EMAIL || !config.FCM_PRIVATE_KEY)
+  ) {
+    throw new Error(
+      "Set FIREBASE_SERVICE_ACCOUNT_PATH or FCM_PROJECT_ID/FCM_CLIENT_EMAIL/FCM_PRIVATE_KEY when PUSH_PROVIDER=fcm."
+    );
   }
   if (Number.isNaN(otpExpiresMinutes) || otpExpiresMinutes <= 0) {
     throw new Error("OTP_EXPIRES_MINUTES must be a positive number.");
@@ -107,6 +129,11 @@ export function validateEnvironment(config: EnvConfig) {
     SMS4CONNECT_BASE_URL: config.SMS4CONNECT_BASE_URL ?? "https://api.sms4connect.com",
     SMS4CONNECT_API_KEY: config.SMS4CONNECT_API_KEY ?? "",
     SMS4CONNECT_SENDER_ID: config.SMS4CONNECT_SENDER_ID ?? "",
+    PUSH_PROVIDER: config.PUSH_PROVIDER ?? "noop",
+    FIREBASE_SERVICE_ACCOUNT_PATH: config.FIREBASE_SERVICE_ACCOUNT_PATH ?? "",
+    FCM_PROJECT_ID: config.FCM_PROJECT_ID ?? "",
+    FCM_CLIENT_EMAIL: config.FCM_CLIENT_EMAIL ?? "",
+    FCM_PRIVATE_KEY: config.FCM_PRIVATE_KEY ?? "",
     REDIS_URL: config.REDIS_URL ?? "redis://127.0.0.1:6379",
     ADMIN_EMAILS: config.ADMIN_EMAILS ?? "",
     AUTO_HIDE_REPORTS_THRESHOLD: autoHideReportsThreshold,

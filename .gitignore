@@ -13,5 +13,7 @@ coverage
 .env.development.local
 .env.test.local
 .env.production.local
+*firebase-adminsdk*.json
+google-services.json
 
 apps/mobile/.metro-health-check*

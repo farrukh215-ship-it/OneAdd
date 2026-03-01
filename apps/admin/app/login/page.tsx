@@ -16,7 +16,7 @@ export default function LoginPage() {
 
     try {
       await loginAdmin({ identifier, password });
-      router.push("/categories");
+      router.push("/dashboard");
     } catch {
       setError("Invalid credentials.");
     }
@@ -25,7 +25,13 @@ export default function LoginPage() {
   return (
     <main className="authWrap">
       <form className="authCard" onSubmit={onSubmit}>
-        <h1>Admin Login</h1>
+        <div className="authBrand">
+          <img src="/brand/zaroratbazar-mark.svg" alt="ZaroratBazar logo" className="authBrandLogo" />
+          <div>
+            <h1>ZaroratBazar Admin</h1>
+            <p className="panelSubtitle">صرف اصل لوگ، اصل چیزیں</p>
+          </div>
+        </div>
         <input
           className="input"
           placeholder="Email / phone / CNIC"

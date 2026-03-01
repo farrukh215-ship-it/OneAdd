@@ -33,7 +33,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/aikad_marketplace?schema=public
       REDIS_URL: redis://redis:6379
-      CORS_ORIGIN: http://localhost,http://127.0.0.1
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost,http://127.0.0.1}
     depends_on:
       - postgres
       - redis
@@ -44,6 +44,8 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api
     container_name: aikad-web
     restart: unless-stopped
     expose:
@@ -53,6 +55,8 @@ services:
     build:
       context: ..
       dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api
     container_name: aikad-admin
     restart: unless-stopped
     expose:

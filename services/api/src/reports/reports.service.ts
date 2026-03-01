@@ -274,4 +274,5 @@ export class ReportsService {
       }
     });
   }
+
 }

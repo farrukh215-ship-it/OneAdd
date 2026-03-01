@@ -25,23 +25,42 @@ export function SellScreen() {
   const [allowSMS, setAllowSMS] = useState(true);
 
   async function onSubmit() {
-    const media = [];
-    if (imageUrl) {
-      media.push({ type: "IMAGE", url: imageUrl });
+    if (!categoryId.trim() || !title.trim() || !description.trim()) {
+      Alert.alert("Missing fields", "Category, title aur description required hain.");
+      return;
     }
-    if (videoUrl) {
+    if (!price.trim() || Number(price) <= 0) {
+      Alert.alert("Invalid price", "Price valid numeric honi chahiye.");
+      return;
+    }
+
+    const media: Array<{
+      type: "IMAGE" | "VIDEO";
+      url: string;
+      durationSec?: number;
+    }> = [];
+
+    if (imageUrl.trim()) {
+      media.push({ type: "IMAGE", url: imageUrl.trim() });
+    }
+    if (videoUrl.trim()) {
+      const duration = Number(videoDurationSec || 0);
+      if (!Number.isFinite(duration) || duration <= 0 || duration > 30) {
+        Alert.alert("Invalid video", "Video duration 1 se 30 sec ke darmiyan honi chahiye.");
+        return;
+      }
       media.push({
         type: "VIDEO",
-        url: videoUrl,
-        durationSec: Number(videoDurationSec || 0)
+        url: videoUrl.trim(),
+        durationSec: duration
       });
     }
 
     try {
       await createListing({
-        categoryId,
-        title,
-        description,
+        categoryId: categoryId.trim(),
+        title: title.trim(),
+        description: description.trim(),
         price: Number(price),
         showPhone,
         allowChat,
@@ -49,6 +68,7 @@ export function SellScreen() {
         allowSMS,
         media
       });
+
       Alert.alert("Success", "Listing created.");
       setTitle("");
       setDescription("");
@@ -57,16 +77,29 @@ export function SellScreen() {
       setImageUrl("");
       setVideoUrl("");
       setVideoDurationSec("");
-    } catch {
-      Alert.alert("Error", "Could not create listing.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not create listing.";
+      Alert.alert("Error", message);
     }
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Sell Item</Text>
-      <TextInput style={styles.input} placeholder="Category ID" value={categoryId} onChangeText={setCategoryId} />
-      <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Category ID"
+        value={categoryId}
+        onChangeText={setCategoryId}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Title"
+        value={title}
+        onChangeText={setTitle}
+      />
       <TextInput
         style={[styles.input, styles.multiline]}
         placeholder="Description"
@@ -74,9 +107,25 @@ export function SellScreen() {
         multiline
         onChangeText={setDescription}
       />
-      <TextInput style={styles.input} placeholder="Price" keyboardType="numeric" value={price} onChangeText={setPrice} />
-      <TextInput style={styles.input} placeholder="Image URL" value={imageUrl} onChangeText={setImageUrl} />
-      <TextInput style={styles.input} placeholder="Video URL (optional)" value={videoUrl} onChangeText={setVideoUrl} />
+      <TextInput
+        style={styles.input}
+        placeholder="Price"
+        keyboardType="numeric"
+        value={price}
+        onChangeText={setPrice}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Image URL"
+        value={imageUrl}
+        onChangeText={setImageUrl}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Video URL (optional)"
+        value={videoUrl}
+        onChangeText={setVideoUrl}
+      />
       <TextInput
         style={styles.input}
         placeholder="Video duration <=30 sec"

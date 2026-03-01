@@ -7,11 +7,19 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { OtpPurpose, Prisma, User } from "@prisma/client";
+import {
+  Gender,
+  OtpPurpose,
+  Prisma,
+  User
+} from "@prisma/client";
 import { compare, hash } from "bcryptjs";
-import { createHash, randomInt } from "crypto";
+import { createHash, randomInt, randomUUID } from "crypto";
 import { Request } from "express";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { PrismaService } from "../prisma/prisma.service";
+import { FirebaseVerifyDto } from "./dto/firebase-verify.dto";
 import { LoginDto } from "./dto/login.dto";
 import { OtpRequestDto } from "./dto/otp-request.dto";
 import { OtpVerifyDto } from "./dto/otp-verify.dto";
@@ -42,6 +50,10 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
     const phone = dto.phone.trim();
     const cnic = dto.cnic.trim();
+    const verifiedOtp = await this.validateSignupOtpVerificationToken(
+      dto.otpVerificationToken,
+      phone
+    );
 
     const existing = await this.prisma.user.findFirst({
       where: { OR: [{ email }, { phone }, { cnic }] },
@@ -68,10 +80,19 @@ export class AuthService {
         phone,
         email,
         passwordHash,
-        city: dto.city.trim(),
+        city: dto.city?.trim() || "Unknown",
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
-        profilePhotoUrl: dto.profilePhotoUrl?.trim() || null
+        profilePhotoUrl: dto.profilePhotoUrl?.trim() || null,
+        phoneVerifiedAt: new Date()
+      }
+    });
+
+    await this.prisma.otpCode.update({
+      where: { id: verifiedOtp.id },
+      data: {
+        userId: createdUser.id,
+        consumedAt: new Date()
       }
     });
 
@@ -81,6 +102,7 @@ export class AuthService {
 
   async requestOtp(dto: OtpRequestDto, request: Request) {
     const phone = dto.phone.trim();
+    const isSignupRequest = dto.forSignup === true;
     const purpose = dto.purpose ?? OtpPurpose.LOGIN;
     const ip = getIpAddress(request);
     const userAgent = request.headers["user-agent"] ?? null;
@@ -110,7 +132,10 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (!user) {
+    if (isSignupRequest && user) {
+      throw new BadRequestException("Phone already registered. Please login.");
+    }
+    if (!isSignupRequest && !user) {
       throw new BadRequestException("No account found for this phone.");
     }
 
@@ -121,7 +146,7 @@ export class AuthService {
 
     const otpRecord = await this.prisma.otpCode.create({
       data: {
-        userId: user.id,
+        userId: user?.id ?? null,
         phone,
         purpose,
         otpHash: this.hashOtp(otp),
@@ -138,16 +163,10 @@ export class AuthService {
       message: `Your OTP is ${otp}. It will expire in ${expiresMinutes} minutes.`
     });
 
-    const response: Record<string, unknown> = {
+    return {
       requestId: otpRecord.id,
       expiresAt: otpRecord.expiresAt.toISOString()
     };
-
-    if (this.configService.get<string>("SMS_PROVIDER", "noop") === "noop") {
-      response.devOtp = otp;
-    }
-
-    return response;
   }
 
   async verifyOtp(dto: OtpVerifyDto, request: Request) {
@@ -197,6 +216,15 @@ export class AuthService {
       }
     });
 
+    if (otpRecord.userId) {
+      await this.prisma.user.update({
+        where: { id: otpRecord.userId },
+        data: {
+          phoneVerifiedAt: new Date()
+        }
+      });
+    }
+
     const verificationToken = await this.jwtService.signAsync(
       {
         sub: otpRecord.userId,
@@ -214,10 +242,17 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, request: Request): Promise<AuthPayload> {
-    const identifier = dto.identifier.trim().toLowerCase();
+    const email = dto.email?.trim().toLowerCase();
+    const phone = dto.phone?.trim();
+
+    if (!email || !phone) {
+      throw new BadRequestException("Email and phone are required for login.");
+    }
+
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: identifier }, { phone: dto.identifier.trim() }, { cnic: dto.identifier.trim() }]
+        email,
+        phone
       }
     });
 
@@ -236,6 +271,74 @@ export class AuthService {
       throw new BadRequestException(
         "Provide either password or otpVerificationToken."
       );
+    }
+
+    await this.saveDeviceFingerprint(user.id, request);
+    return this.buildAuthResponse(user);
+  }
+
+  async verifyFirebaseToken(
+    dto: FirebaseVerifyDto,
+    request: Request
+  ): Promise<AuthPayload> {
+    const firebaseAuth = this.getFirebaseAuth();
+    if (!firebaseAuth) {
+      throw new BadRequestException(
+        "Firebase auth is not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH or FCM_* credentials."
+      );
+    }
+
+    let decodedToken: { phone_number?: string };
+    try {
+      decodedToken = await firebaseAuth.verifyIdToken(dto.idToken, true);
+    } catch {
+      throw new UnauthorizedException("Invalid Firebase idToken.");
+    }
+
+    const phone = decodedToken.phone_number?.trim();
+    if (!phone) {
+      throw new UnauthorizedException("Phone number is missing in Firebase token.");
+    }
+    const normalizedEmail = dto.email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new BadRequestException("Email is required for Firebase login.");
+    }
+
+    let user = await this.prisma.user.findUnique({ where: { phone } });
+    if (user && user.email.toLowerCase() !== normalizedEmail) {
+      throw new UnauthorizedException("Email and phone do not match.");
+    }
+    if (!user) {
+      this.assertFirebaseSignupPayload(dto);
+      const email = normalizedEmail;
+      const cnic = String(dto.cnic).trim();
+      const existing = await this.prisma.user.findFirst({
+        where: { OR: [{ email }, { cnic }] },
+        select: { email: true, cnic: true }
+      });
+
+      if (existing?.cnic === cnic) {
+        throw new BadRequestException("CNIC already registered.");
+      }
+      if (existing?.email === email) {
+        throw new BadRequestException("Email already registered.");
+      }
+
+      user = await this.prisma.user.create({
+        data: {
+          fullName: String(dto.fullName).trim(),
+          fatherName: String(dto.fatherName).trim(),
+          cnic,
+          phone,
+          email,
+          passwordHash: await hash(randomUUID(), 10),
+          city: String(dto.city).trim(),
+          dateOfBirth: new Date(String(dto.dateOfBirth)),
+          gender: dto.gender as Gender,
+          profilePhotoUrl: dto.profilePhotoUrl?.trim() || null,
+          phoneVerifiedAt: new Date()
+        }
+      });
     }
 
     await this.saveDeviceFingerprint(user.id, request);
@@ -265,21 +368,13 @@ export class AuthService {
   }
 
   private async validateOtpVerificationToken(token: string, user: User) {
-    let payload: { phone?: string; otpId?: string; type?: string };
-    try {
-      payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>("JWT_ACCESS_SECRET")
-      });
-    } catch {
-      throw new UnauthorizedException("Invalid OTP verification token.");
-    }
-
-    if (payload.type !== "otp_verified" || payload.phone !== user.phone || !payload.otpId) {
+    const payload = await this.decodeOtpVerificationToken(token);
+    if (payload.phone !== user.phone) {
       throw new UnauthorizedException("Invalid OTP verification token.");
     }
 
     const otp = await this.prisma.otpCode.findUnique({
-      where: { id: payload.otpId }
+      where: { id: payload.otpId as string }
     });
     if (!otp || !otp.verifiedAt || otp.consumedAt || otp.expiresAt.getTime() < Date.now()) {
       throw new UnauthorizedException("OTP is not valid for login.");
@@ -289,6 +384,43 @@ export class AuthService {
       where: { id: otp.id },
       data: { consumedAt: new Date() }
     });
+  }
+
+  private async validateSignupOtpVerificationToken(token: string, phone: string) {
+    const payload = await this.decodeOtpVerificationToken(token);
+    if (payload.phone !== phone) {
+      throw new UnauthorizedException("OTP token does not match signup phone.");
+    }
+
+    const otp = await this.prisma.otpCode.findUnique({
+      where: { id: payload.otpId as string }
+    });
+
+    if (!otp || !otp.verifiedAt || otp.consumedAt || otp.expiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException("OTP is not valid for signup.");
+    }
+    if (otp.userId) {
+      throw new BadRequestException("Phone already registered. Please login.");
+    }
+
+    return otp;
+  }
+
+  private async decodeOtpVerificationToken(token: string) {
+    let payload: { phone?: string; otpId?: string; type?: string };
+    try {
+      payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>("JWT_ACCESS_SECRET")
+      });
+    } catch {
+      throw new UnauthorizedException("Invalid OTP verification token.");
+    }
+
+    if (payload.type !== "otp_verified" || !payload.phone || !payload.otpId) {
+      throw new UnauthorizedException("Invalid OTP verification token.");
+    }
+
+    return payload;
   }
 
   private async saveDeviceFingerprint(userId: string, request: Request) {
@@ -313,6 +445,17 @@ export class AuthService {
         ip,
         userAgent,
         lastSeenAt: new Date()
+      }
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        riskSignals: {
+          fingerprintHash,
+          ip,
+          updatedAt: new Date().toISOString()
+        } as Prisma.InputJsonValue
       }
     });
   }
@@ -351,6 +494,80 @@ export class AuthService {
 
   private generateOtp() {
     return randomInt(100000, 1000000).toString();
+  }
+
+  private getFirebaseAuth():
+    | { verifyIdToken: (idToken: string, checkRevoked?: boolean) => Promise<{ phone_number?: string }> }
+    | null {
+    const firebaseAdmin = require("firebase-admin");
+    if (firebaseAdmin.apps.length === 0) {
+      const serviceAccount = this.getFirebaseServiceAccount();
+      if (!serviceAccount) {
+        return null;
+      }
+
+      firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.cert(serviceAccount)
+      });
+    }
+
+    return firebaseAdmin.auth();
+  }
+
+  private getFirebaseServiceAccount():
+    | { projectId: string; clientEmail: string; privateKey: string }
+    | null {
+    const rawPath = this.configService.get<string>("FIREBASE_SERVICE_ACCOUNT_PATH", "");
+    if (rawPath) {
+      const resolvedPath = join(process.cwd(), rawPath);
+      if (existsSync(resolvedPath)) {
+        const parsed = JSON.parse(readFileSync(resolvedPath, "utf-8")) as {
+          project_id?: string;
+          client_email?: string;
+          private_key?: string;
+        };
+        if (parsed.project_id && parsed.client_email && parsed.private_key) {
+          return {
+            projectId: parsed.project_id,
+            clientEmail: parsed.client_email,
+            privateKey: parsed.private_key
+          };
+        }
+      }
+    }
+
+    const projectId = this.configService.get<string>("FCM_PROJECT_ID", "");
+    const clientEmail = this.configService.get<string>("FCM_CLIENT_EMAIL", "");
+    const privateKey = this.configService
+      .get<string>("FCM_PRIVATE_KEY", "")
+      .replace(/\\n/g, "\n");
+
+    if (!projectId || !clientEmail || !privateKey) {
+      return null;
+    }
+
+    return { projectId, clientEmail, privateKey };
+  }
+
+  private assertFirebaseSignupPayload(dto: FirebaseVerifyDto) {
+    const required: Array<keyof FirebaseVerifyDto> = [
+      "fullName",
+      "fatherName",
+      "cnic",
+      "email",
+      "city",
+      "dateOfBirth",
+      "gender"
+    ];
+
+    const missing = required.filter((field) => !dto[field]);
+    if (missing.length > 0) {
+      throw new BadRequestException({
+        message: "New Firebase phone requires profile fields to create account.",
+        onboardingRequired: true,
+        missingFields: missing
+      });
+    }
   }
 }
 
