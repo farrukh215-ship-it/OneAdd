@@ -17,7 +17,7 @@ export async function generateMetadata({
     const firstImage = listing.media.find((item) => item.type === "IMAGE");
 
     return {
-      title: `${listing.title} | ZaroratBazar`,
+      title: `${listing.title} | TGMG`,
       description: listing.description.slice(0, 150),
       openGraph: {
         title: listing.title,
@@ -28,7 +28,7 @@ export async function generateMetadata({
     };
   } catch {
     return {
-      title: "Listing | ZaroratBazar"
+      title: "Listing | TGMG"
     };
   }
 }

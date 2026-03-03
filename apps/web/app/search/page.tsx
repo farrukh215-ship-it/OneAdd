@@ -1,18 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
-import { SearchFilters, searchListingsWithFilters } from "../../lib/api";
-import { Listing } from "../../lib/types";
-
-const categories = [
-  "Mobiles",
-  "Vehicles",
-  "Property",
-  "Electronics",
-  "Fashion",
-  "Home"
-];
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  getCategoryCatalog,
+  SearchFilters,
+  searchListingsWithFilters
+} from "../../lib/api";
+import { Listing, MarketplaceCategory } from "../../lib/types";
 
 const conditions = ["ANY", "NEW", "USED"];
 
@@ -51,32 +46,81 @@ export default function SearchPage() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [condition, setCondition] = useState("ANY");
+  const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [results, setResults] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
+  const suggestedTags = useMemo(() => catalog.slice(0, 8), [catalog]);
+
+  useEffect(() => {
+    void getCategoryCatalog().then(setCatalog).catch(() => setCatalog([]));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const initialQ = params.get("q") ?? "";
+    const initialCategory = params.get("category") ?? "";
+    if (initialQ) {
+      setQuery(initialQ);
+    }
+    if (initialCategory) {
+      setCategory(initialCategory);
+    }
+    if (initialQ || initialCategory) {
+      void runSearchWith({
+        query: initialQ,
+        category: initialCategory,
+        city: "",
+        condition: "ANY"
+      });
+    }
+    // Only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const chips = useMemo(() => {
     const list: string[] = [];
     if (query.trim()) list.push(`"${query.trim()}"`);
-    if (category) list.push(category);
+    if (category) {
+      const matchedRoot = catalog.find((item) => item.slug === category);
+      const matchedSub = catalog
+        .flatMap((item) => item.subcategories)
+        .find((item) => item.slug === category);
+      list.push(matchedSub?.name ?? matchedRoot?.name ?? category);
+    }
     if (city.trim()) list.push(city.trim());
     if (minPrice.trim()) list.push(`Min ${minPrice}`);
     if (maxPrice.trim()) list.push(`Max ${maxPrice}`);
     if (condition !== "ANY") list.push(condition);
     return list;
-  }, [category, city, condition, maxPrice, minPrice, query]);
+  }, [catalog, category, city, condition, maxPrice, minPrice, query]);
+
+  async function runSearchWith(payload: SearchFilters) {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await searchListingsWithFilters(payload);
+      setResults(data);
+      setMobileFiltersOpen(false);
+      setHasSubmitted(true);
+    } catch {
+      setError("Search request fail ho gayi. Dobara try karein.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function runSearch(event: FormEvent) {
     event.preventDefault();
     setError("");
     setHasSubmitted(true);
-
-    if (!category) {
-      setError("Category select karna zaroori hai.");
-      return;
-    }
 
     const min = parsePositiveNumber(minPrice);
     const max = parsePositiveNumber(maxPrice);
@@ -85,13 +129,7 @@ export default function SearchPage() {
       setError("Price values numeric aur positive honi chahiye.");
       return;
     }
-    if (
-      typeof min === "number" &&
-      typeof max === "number" &&
-      Number.isFinite(min) &&
-      Number.isFinite(max) &&
-      min > max
-    ) {
+    if (typeof min === "number" && typeof max === "number" && min > max) {
       setError("Min price max price se bari nahi ho sakti.");
       return;
     }
@@ -105,23 +143,14 @@ export default function SearchPage() {
       condition
     };
 
-    setLoading(true);
-    try {
-      const data = await searchListingsWithFilters(payload);
-      setResults(data);
-      setMobileFiltersOpen(false);
-    } catch {
-      setError("Search request fail ho gayi. Dobara try karein.");
-    } finally {
-      setLoading(false);
-    }
+    await runSearchWith(payload);
   }
 
   return (
     <main className="searchScreen">
       <section className="searchHeader">
-        <h1>Search Results</h1>
-        <p>Keyword, city aur filters se refined listings dekhein.</p>
+        <h1>Dhundo</h1>
+        <p>Category, sub-category, city aur price filters ke saath targeted search karein.</p>
       </section>
 
       <div className="searchLayout">
@@ -137,17 +166,22 @@ export default function SearchPage() {
               />
             </label>
             <label className="filterLabel">
-              Category
+              Category / Subcategory
               <select
                 className="input"
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
               >
-                <option value="">Select category</option>
-                {categories.map((item) => (
-                  <option value={item} key={item}>
-                    {item}
-                  </option>
+                <option value="">All Categories</option>
+                {catalog.map((root) => (
+                  <optgroup key={root.id} label={root.name}>
+                    <option value={root.slug}>{root.name} (All)</option>
+                    {root.subcategories.map((sub) => (
+                      <option value={sub.slug} key={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </label>
@@ -211,6 +245,32 @@ export default function SearchPage() {
             </button>
           </div>
 
+          <div className="search-tags">
+            <span className="search-tag-label">Popular Categories</span>
+            {suggestedTags.map((item) => (
+              <button
+                className="search-tag"
+                key={item.id}
+                type="button"
+              onClick={() => {
+                const parsedMin = parsePositiveNumber(minPrice);
+                const parsedMax = parsePositiveNumber(maxPrice);
+                setCategory(item.slug);
+                void runSearchWith({
+                  query,
+                  category: item.slug,
+                  city,
+                  minPrice: Number.isNaN(parsedMin) ? undefined : parsedMin,
+                  maxPrice: Number.isNaN(parsedMax) ? undefined : parsedMax,
+                  condition
+                });
+              }}
+              >
+                {item.icon} {item.name}
+              </button>
+            ))}
+          </div>
+
           <div className="filterChips">
             {chips.map((chip) => (
               <span className="filterChip" key={chip}>
@@ -253,7 +313,7 @@ export default function SearchPage() {
                     </p>
                     <h3>{listing.title}</h3>
                     <p className="searchResultMeta">
-                      {listing.city || "Pakistan"} · {listing.status}
+                      {listing.city || "Pakistan"} - {listing.status}
                     </p>
                   </div>
                 </Link>
@@ -273,7 +333,11 @@ export default function SearchPage() {
             <form className="stack" onSubmit={runSearch}>
               <div className="sheetHeader">
                 <h2>Filters</h2>
-                <button type="button" className="searchSubmitBtn ghost" onClick={() => setMobileFiltersOpen(false)}>
+                <button
+                  type="button"
+                  className="searchSubmitBtn ghost"
+                  onClick={() => setMobileFiltersOpen(false)}
+                >
                   Close
                 </button>
               </div>
@@ -287,17 +351,22 @@ export default function SearchPage() {
                 />
               </label>
               <label className="filterLabel">
-                Category
+                Category / Subcategory
                 <select
                   className="input"
                   value={category}
                   onChange={(event) => setCategory(event.target.value)}
                 >
-                  <option value="">Select category</option>
-                  {categories.map((item) => (
-                    <option value={item} key={item}>
-                      {item}
-                    </option>
+                  <option value="">All Categories</option>
+                  {catalog.map((root) => (
+                    <optgroup key={root.id} label={root.name}>
+                      <option value={root.slug}>{root.name} (All)</option>
+                      {root.subcategories.map((sub) => (
+                        <option value={sub.slug} key={sub.id}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </label>

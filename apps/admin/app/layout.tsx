@@ -1,14 +1,14 @@
-import "./globals.css";
+﻿import "./globals.css";
 import type { Metadata } from "next";
 import { ReactNode } from "react";
 import { Manrope } from "next/font/google";
 
 export const metadata: Metadata = {
-  title: "ZaroratBazar Admin Panel",
-  description: "Moderation and operations panel for ZaroratBazar marketplace.",
+  title: "TGMG Admin Panel",
+  description: "Moderation and operations panel for TGMG marketplace.",
   icons: {
-    icon: "/brand/zaroratbazar-favicon.svg",
-    shortcut: "/brand/zaroratbazar-favicon.svg"
+    icon: "/brand/TGMG-favicon.svg",
+    shortcut: "/brand/TGMG-favicon.svg"
   }
 };
 
@@ -29,3 +29,4 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </html>
   );
 }
+

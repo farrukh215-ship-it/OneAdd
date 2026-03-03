@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -37,13 +37,18 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
 
   async function onShare() {
     await Share.share({
-      message: `https://zaroratbazar.shop/listing/${item.listingId}`
+      message: `https://www.teragharmeraghar.com/listing/${item.listingId}`
     });
   }
 
   return (
     <View style={styles.reelPage}>
       <VideoView player={player} style={styles.video} contentFit="cover" />
+      <View style={styles.topOverlay}>
+        <View style={styles.topBadge}>
+          <Text style={styles.topBadgeText}>TGMG REELS</Text>
+        </View>
+      </View>
 
       <View style={styles.overlay}>
         <Text style={styles.price}>
@@ -57,7 +62,7 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
             onPress={() => navigation.navigate("ListingDetail", { id: item.listingId })}
           >
-            <Text style={styles.primaryBtnText}>View Product</Text>
+            <Text style={styles.primaryBtnText}>Product Dekho</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]} onPress={onShare}>
             <Text style={styles.ghostBtnText}>Share</Text>
@@ -151,7 +156,7 @@ export function ReelsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000"
+    backgroundColor: "#1E1410"
   },
   reelPage: {
     height,
@@ -167,6 +172,27 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 20,
     gap: 10
+  },
+  topOverlay: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    right: 12,
+    alignItems: "flex-start"
+  },
+  topBadge: {
+    backgroundColor: "rgba(30,20,16,0.55)",
+    borderColor: "rgba(232,213,183,0.45)",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  topBadgeText: {
+    color: "#FDF6ED",
+    fontSize: 11,
+    letterSpacing: 1.3,
+    fontWeight: "800"
   },
   price: {
     color: "#fff",
@@ -191,20 +217,22 @@ const styles = StyleSheet.create({
   primaryBtn: {
     flex: 1.25,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#E8D5B7"
   },
   primaryBtnText: {
-    color: "#101614",
+    color: "#C8603A",
     fontWeight: "800"
   },
   ghostBtn: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
+    borderColor: "rgba(232,213,183,0.6)",
     backgroundColor: "rgba(0,0,0,0.24)",
     alignItems: "center",
     justifyContent: "center",
@@ -228,7 +256,7 @@ const styles = StyleSheet.create({
     gap: 8
   },
   loadingText: {
-    color: "#f3f6f5"
+    color: "#FDF6ED"
   },
   emptyWrap: {
     flex: 1,
@@ -243,7 +271,7 @@ const styles = StyleSheet.create({
   },
   emptySub: {
     marginTop: 8,
-    color: "#b6c0bc",
+    color: "#D4B896",
     textAlign: "center"
   },
   pressed: {
@@ -251,3 +279,4 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }]
   }
 });
+

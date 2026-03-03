@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -186,10 +186,13 @@ export function OtpLoginCard() {
   return (
     <section className="panel authPanel">
       <div className="authBrandLockup">
-        <img src="/brand/zaroratbazar-logo-light.svg" alt="ZaroratBazar" className="authBrandLockupImage" />
-        <p className="authBrandTagline">صرف اصل لوگ، اصل چیزیں</p>
+        <div className="authBrandLockupText">
+          TG<span>MG</span>
+        </div>
+        <p className="authBrandTagline">Sirf Asli Log. Sirf Ghar Ka Saaman.</p>
       </div>
-      <h2>Sign In</h2>
+      <h2>TGMG mein Khush Aamdeed</h2>
+      <p className="helperText">Apna number dalo — asli banda verify karo</p>
       <form className="stack" onSubmit={onRequestOtp}>
         <input
           className="input"
@@ -255,3 +258,5 @@ export function OtpLoginCard() {
     </section>
   );
 }
+
+

@@ -1,4 +1,10 @@
-import type { ChatMessage, ChatThread, Listing } from "../types";
+import { marketplaceCategoryCatalog } from "@aikad/shared";
+import type {
+  ChatMessage,
+  ChatThread,
+  Listing,
+  MarketplaceCategory
+} from "../types";
 import Constants from "expo-constants";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as {
@@ -71,6 +77,30 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getFeedListings() {
   return apiRequest<Listing[]>("/listings/feed");
+}
+
+export async function getCategoryCatalog() {
+  try {
+    return await apiRequest<MarketplaceCategory[]>("/listings/categories");
+  } catch {
+    return marketplaceCategoryCatalog.map((root) => ({
+      id: root.slug,
+      slug: root.slug,
+      name: root.name,
+      icon: root.icon,
+      accent: root.accent,
+      listingCount: 0,
+      subcategoryCount: root.subcategories.length,
+      subcategories: root.subcategories.map((item) => ({
+        id: item.slug,
+        slug: item.slug,
+        name: item.name,
+        parentSlug: root.slug,
+        parentName: root.name,
+        listingCount: 0
+      }))
+    }));
+  }
 }
 
 function mapListingToVideoItem(listing: Listing): VideoFeedItem | null {
@@ -166,6 +196,37 @@ export async function getListings() {
 
 export function searchListings(query: string) {
   return apiRequest<Listing[]>(`/listings/search?q=${encodeURIComponent(query)}`);
+}
+
+export type MobileSearchFilters = {
+  query?: string;
+  category?: string;
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+};
+
+export function searchListingsWithFilters(filters: MobileSearchFilters) {
+  const params = new URLSearchParams();
+  if (filters.query?.trim()) {
+    params.set("q", filters.query.trim());
+  } else {
+    params.set("q", "");
+  }
+  if (filters.category?.trim()) {
+    params.set("category", filters.category.trim());
+  }
+  if (filters.city?.trim()) {
+    params.set("city", filters.city.trim());
+  }
+  if (typeof filters.minPrice === "number") {
+    params.set("minPrice", String(filters.minPrice));
+  }
+  if (typeof filters.maxPrice === "number") {
+    params.set("maxPrice", String(filters.maxPrice));
+  }
+
+  return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
 }
 
 export function getListingById(id: string) {

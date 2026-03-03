@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,10 +26,10 @@ export default function LoginPage() {
     <main className="authWrap">
       <form className="authCard" onSubmit={onSubmit}>
         <div className="authBrand">
-          <img src="/brand/zaroratbazar-mark.svg" alt="ZaroratBazar logo" className="authBrandLogo" />
+          <img src="/brand/TGMG-mark.svg" alt="TGMG logo" className="authBrandLogo" />
           <div>
-            <h1>ZaroratBazar Admin</h1>
-            <p className="panelSubtitle">صرف اصل لوگ، اصل چیزیں</p>
+            <h1>TGMG Admin</h1>
+            <p className="panelSubtitle">Sirf Asli Log. Sirf Ghar Ka Saaman.</p>
           </div>
         </div>
         <input
@@ -53,3 +53,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

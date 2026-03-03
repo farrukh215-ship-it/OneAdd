@@ -9,42 +9,30 @@ import {
   Text,
   View
 } from "react-native";
-import { getListings } from "../services/api";
-import type { Listing } from "../types";
+import { getCategoryCatalog, getListings } from "../services/api";
+import type { Listing, MarketplaceCategory } from "../types";
+
+const urduTagline =
+  "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 
 function formatRelativeTime(input?: string) {
-  if (!input) {
-    return "Just now";
-  }
+  if (!input) return "Just now";
   const createdAt = new Date(input);
-  if (Number.isNaN(createdAt.getTime())) {
-    return "Just now";
-  }
-
+  if (Number.isNaN(createdAt.getTime())) return "Just now";
   const diffSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
-  if (diffSeconds < 60) {
-    return "Just now";
-  }
+  if (diffSeconds < 60) return "Just now";
   const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
-  }
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours}h ago`;
-  }
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays}d ago`;
 }
 
 function getTrustBadge(score: number) {
-  if (score >= 80) {
-    return "Highly Trusted";
-  }
-  if (score >= 50) {
-    return "Trusted Seller";
-  }
-  return "New Seller";
+  if (score >= 80) return "Asli Banda";
+  if (score >= 50) return "Trusted Asli Banda";
+  return "New Member";
 }
 
 function FeedSkeleton() {
@@ -80,10 +68,7 @@ type HomeCardProps = {
 };
 
 function HomeCard({ item, onPress }: HomeCardProps) {
-  const image = useMemo(
-    () => item.media.find((media) => media.type === "IMAGE")?.url,
-    [item.media]
-  );
+  const image = useMemo(() => item.media.find((media) => media.type === "IMAGE")?.url, [item.media]);
   const trustScore = item.user?.trustScore?.score ?? 0;
   const trustBadge = getTrustBadge(trustScore);
 
@@ -103,7 +88,7 @@ function HomeCard({ item, onPress }: HomeCardProps) {
         </Text>
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>{item.city || "Pakistan"}</Text>
-          <Text style={styles.metaDot}>•</Text>
+          <Text style={styles.metaDot}>|</Text>
           <Text style={styles.metaText}>{formatRelativeTime(item.createdAt)}</Text>
         </View>
         <View style={styles.trustPill}>
@@ -116,11 +101,16 @@ function HomeCard({ item, onPress }: HomeCardProps) {
 
 export function HomeScreen({ navigation }: any) {
   const [items, setItems] = useState<Listing[]>([]);
+  const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  async function loadFeed(mode: "initial" | "refresh" = "initial") {
+  const selectedCategory =
+    categories.find((item) => item.slug === selectedCategorySlug) ?? categories[0] ?? null;
+
+  async function loadAll(mode: "initial" | "refresh" = "initial") {
     if (mode === "initial") {
       setLoading(true);
     } else {
@@ -129,8 +119,12 @@ export function HomeScreen({ navigation }: any) {
     setError("");
 
     try {
-      const data = await getListings();
-      setItems(data);
+      const [listingData, categoryData] = await Promise.all([getListings(), getCategoryCatalog()]);
+      setItems(listingData);
+      setCategories(categoryData);
+      if (categoryData.length > 0) {
+        setSelectedCategorySlug((prev) => prev || categoryData[0].slug);
+      }
     } catch {
       setError("Feed load nahi hui. Dobara try karein.");
     } finally {
@@ -143,7 +137,7 @@ export function HomeScreen({ navigation }: any) {
   }
 
   useEffect(() => {
-    loadFeed("initial");
+    void loadAll("initial");
   }, []);
 
   return (
@@ -161,36 +155,88 @@ export function HomeScreen({ navigation }: any) {
           initialNumToRender={4}
           refreshing={refreshing}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadFeed("refresh")}
-              tintColor="#0f8e66"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={() => void loadAll("refresh")} tintColor="#C8603A" />
           }
           ListHeaderComponent={
             <View style={styles.header}>
-              <View style={styles.brandRow}>
-                <Image source={require("../../assets/zaroratbazar-logo.jpg")} style={styles.brandLogo} />
-                <View>
-                  <Text style={styles.kicker}>ZaroratBazar</Text>
-                  <Text style={styles.brandSub}>صرف اصل لوگ، اصل چیزیں</Text>
+              <View style={styles.heroCard}>
+                <View style={styles.heroBrandRow}>
+                  <Image
+                    source={require("../../assets/tgmg-mark.png")}
+                    style={styles.heroMarkLogo}
+                    resizeMode="cover"
+                  />
+                  <Text style={styles.heroBrandName}>TeraGharMeraGhar</Text>
                 </View>
+                <Image source={require("../../assets/tgmg-full.png")} style={styles.heroLogoFull} resizeMode="contain" />
+                <Text style={styles.heroTitle}>Tera Ghar Mera Ghar</Text>
+                <Text style={styles.heroSub}>Pakistan ka pehla real-person used marketplace</Text>
+                <Text style={styles.heroUrdu}>{urduTagline}</Text>
               </View>
+
+              <Text style={styles.kicker}>CATEGORIES</Text>
+              <View style={styles.categoryGrid}>
+                {categories.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={({ pressed }) => [
+                      styles.categoryCard,
+                      selectedCategory?.slug === item.slug ? styles.categoryCardActive : null,
+                      pressed && styles.cardPressed
+                    ]}
+                    onPress={() => setSelectedCategorySlug(item.slug)}
+                  >
+                    <Text style={styles.categoryIcon}>{item.icon}</Text>
+                    <Text style={styles.categoryName}>{item.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {selectedCategory ? (
+                <View style={styles.subcatPanel}>
+                  <Pressable
+                    style={({ pressed }) => [styles.viewAllRow, pressed && styles.cardPressed]}
+                    onPress={() =>
+                      navigation.navigate("Dhundo", {
+                        presetCategory: selectedCategory.slug,
+                        presetQuery: "",
+                        categoryLabel: selectedCategory.name
+                      })
+                    }
+                  >
+                    <Text style={styles.viewAllText}>View All in {selectedCategory.name}</Text>
+                  </Pressable>
+                  {selectedCategory.subcategories.map((sub) => (
+                    <Pressable
+                      key={sub.id}
+                      style={({ pressed }) => [styles.subcatRow, pressed && styles.cardPressed]}
+                      onPress={() =>
+                        navigation.navigate("Dhundo", {
+                          presetCategory: sub.slug,
+                          presetQuery: sub.name,
+                          categoryLabel: `${selectedCategory.name} / ${sub.name}`
+                        })
+                      }
+                    >
+                      <Text style={styles.subcatText}>{sub.name}</Text>
+                      <Text style={styles.subcatArrow}>{">"}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
               <Text style={styles.headerTitle}>Latest Listings</Text>
             </View>
           }
           ListEmptyComponent={error ? <Text style={styles.error}>{error}</Text> : <EmptyState />}
           renderItem={({ item }) => (
-            <HomeCard
-              item={item}
-              onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
-            />
+            <HomeCard item={item} onPress={() => navigation.navigate("ListingDetail", { id: item.id })} />
           )}
         />
       )}
       {!loading && refreshing ? (
         <View style={styles.refreshOverlay}>
-          <ActivityIndicator size="small" color="#0f8e66" />
+          <ActivityIndicator size="small" color="#C8603A" />
         </View>
       ) : null}
     </View>
@@ -200,7 +246,7 @@ export function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f6f8f6"
+    backgroundColor: "#FDF6ED"
   },
   listContent: {
     paddingHorizontal: 14,
@@ -208,45 +254,150 @@ const styles = StyleSheet.create({
     paddingTop: 10
   },
   header: {
+    marginBottom: 16
+  },
+  heroCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    borderRadius: 18,
+    padding: 16,
     marginBottom: 12
   },
-  brandRow: {
+  heroBrandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10
+    gap: 8,
+    marginBottom: 8
   },
-  brandLogo: {
+  heroMarkLogo: {
     width: 34,
     height: 34,
     borderRadius: 10
   },
-  kicker: {
-    color: "#0f8e66",
-    fontSize: 12,
-    letterSpacing: 0.3,
+  heroBrandName: {
+    fontSize: 18,
+    lineHeight: 22,
+    color: "#5C3D2E",
     fontWeight: "800"
   },
-  brandSub: {
-    color: "#648279",
+  heroLogoFull: {
+    width: "100%",
+    height: 120
+  },
+  heroTitle: {
+    marginTop: 4,
+    fontSize: 29,
+    lineHeight: 34,
+    color: "#5C3D2E",
+    fontWeight: "800"
+  },
+  heroSub: {
+    marginTop: 6,
+    color: "#7A5544",
+    fontSize: 14,
+    lineHeight: 20
+  },
+  heroUrdu: {
+    marginTop: 8,
+    color: "#5C3D2E",
+    fontSize: 15,
+    lineHeight: 26,
+    textAlign: "right"
+  },
+  kicker: {
+    color: "#C8603A",
     fontSize: 11,
-    marginTop: 1
+    letterSpacing: 1.6,
+    fontWeight: "800",
+    marginBottom: 8
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  categoryCard: {
+    width: "23%",
+    minWidth: 72,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 4
+  },
+  categoryCardActive: {
+    borderColor: "#C8603A",
+    backgroundColor: "#FFF7F3"
+  },
+  categoryIcon: {
+    fontSize: 22
+  },
+  categoryName: {
+    marginTop: 4,
+    textAlign: "center",
+    fontSize: 10,
+    lineHeight: 13,
+    color: "#5C3D2E",
+    fontWeight: "700"
+  },
+  subcatPanel: {
+    marginTop: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    borderRadius: 14
+  },
+  viewAllRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFE2CF",
+    paddingHorizontal: 12,
+    paddingVertical: 12
+  },
+  viewAllText: {
+    color: "#4F6FCE",
+    fontWeight: "700",
+    fontSize: 16
+  },
+  subcatRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3E7D9",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  subcatText: {
+    color: "#243233",
+    fontSize: 16
+  },
+  subcatArrow: {
+    color: "#415455",
+    fontSize: 20,
+    fontWeight: "700"
   },
   headerTitle: {
-    marginTop: 4,
-    fontSize: 30,
-    lineHeight: 34,
-    color: "#1f2422",
+    marginTop: 14,
+    fontSize: 34,
+    lineHeight: 38,
+    color: "#5C3D2E",
     fontWeight: "800"
   },
   card: {
-    borderRadius: 22,
+    borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#ffffff",
     marginBottom: 16,
-    shadowColor: "#222",
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    shadowColor: "#5C3D2E",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.09,
-    shadowRadius: 16,
+    shadowRadius: 14,
     elevation: 3
   },
   cardPressed: {
@@ -260,7 +411,7 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: "100%",
     height: 220,
-    backgroundColor: "#e8eeea"
+    backgroundColor: "#F5EAD8"
   },
   cardBody: {
     padding: 14
@@ -268,14 +419,14 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 24,
     lineHeight: 28,
-    color: "#101513",
+    color: "#C8603A",
     fontWeight: "800"
   },
   title: {
     marginTop: 6,
     fontSize: 16,
     lineHeight: 22,
-    color: "#26312c",
+    color: "#5C3D2E",
     fontWeight: "700"
   },
   metaRow: {
@@ -284,24 +435,27 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   metaText: {
-    color: "#617069",
+    color: "#9B8070",
     fontSize: 13
   },
   metaDot: {
     marginHorizontal: 8,
-    color: "#8c9792"
+    color: "#D4B896"
   },
   trustPill: {
     marginTop: 10,
     alignSelf: "flex-start",
     borderRadius: 999,
-    backgroundColor: "#e6f4ee",
+    borderWidth: 1,
+    borderColor: "rgba(61,107,79,0.3)",
+    backgroundColor: "rgba(61,107,79,0.1)",
     paddingHorizontal: 10,
-    paddingVertical: 6
+    paddingVertical: 4
   },
   trustText: {
-    color: "#0f704f",
-    fontSize: 12,
+    color: "#3D6B4F",
+    fontSize: 11,
+    letterSpacing: 1,
     fontWeight: "700"
   },
   error: {
@@ -320,7 +474,7 @@ const styles = StyleSheet.create({
   },
   skeletonMedia: {
     height: 220,
-    backgroundColor: "#e7ece8"
+    backgroundColor: "#F5EAD8"
   },
   skeletonBody: {
     padding: 14
@@ -328,7 +482,7 @@ const styles = StyleSheet.create({
   skeletonLine: {
     height: 13,
     borderRadius: 999,
-    backgroundColor: "#e7ece8",
+    backgroundColor: "#F5EAD8",
     marginBottom: 8
   },
   skeletonShort: {
@@ -349,17 +503,17 @@ const styles = StyleSheet.create({
     width: 110,
     height: 84,
     borderRadius: 16,
-    backgroundColor: "#e8eeea"
+    backgroundColor: "#F5EAD8"
   },
   emptyTitle: {
     marginTop: 16,
     fontSize: 18,
-    color: "#1f2422",
+    color: "#5C3D2E",
     fontWeight: "700"
   },
   emptySub: {
     marginTop: 6,
-    color: "#6a7670"
+    color: "#9B8070"
   },
   refreshOverlay: {
     position: "absolute",

@@ -92,7 +92,7 @@ export default function AccountPage() {
         </div>
 
         <h1 style={{ margin: 0 }}>
-          {profile?.fullName ?? "User"} - My Listings
+          {profile?.fullName ?? "User"} - Meri Listings
         </h1>
         <p className="helperText" style={{ margin: 0 }}>
           {profile
@@ -104,14 +104,14 @@ export default function AccountPage() {
         {error ? <p className="error">{error}</p> : null}
 
         {!loading && items.length === 0 ? (
-          <div className="feedStateCard">
-            <div className="emptyIllustration" aria-hidden="true" />
-            <p>No listings yet.</p>
-            <Link href="/sell" className="btn">
-              Create First Listing
-            </Link>
-          </div>
-        ) : null}
+            <div className="feedStateCard">
+              <div className="emptyIllustration" aria-hidden="true" />
+              <p>No listings yet.</p>
+              <Link href="/sell" className="btn">
+                Apna Saaman Becho
+              </Link>
+            </div>
+          ) : null}
 
         {items.length > 0 ? (
           <div className="grid">

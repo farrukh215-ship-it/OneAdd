@@ -17,7 +17,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(145deg, #e8f5ef 0%, #f6f4ed 100%)"
+          background: "#FDF6ED"
         }}
       >
         <div
@@ -25,19 +25,18 @@ export default function Icon() {
             width: 50,
             height: 50,
             borderRadius: 14,
-            background: "linear-gradient(140deg, #0f8e66 0%, #1f6f56 100%)",
-            color: "#ffffff",
+            background: "#C8603A",
+            color: "#FFFFFF",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 30,
+            fontSize: 20,
             fontWeight: 900,
-            boxShadow: "0 8px 18px rgba(15, 95, 72, 0.28)",
-            transform: "rotate(-2deg)",
-            fontFamily: "sans-serif"
+            boxShadow: "0 8px 18px rgba(200, 96, 58, 0.32)",
+            fontFamily: "'Playfair Display', serif"
           }}
         >
-          Z
+          TG
         </div>
       </div>
     ),

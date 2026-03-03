@@ -1,4 +1,5 @@
-import { ChatMessage, ChatThread, Listing } from "./types";
+import { marketplaceCategoryCatalog } from "@aikad/shared";
+import { ChatMessage, ChatThread, Listing, MarketplaceCategory } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const TOKEN_KEY = "aikad_access_token";
@@ -189,6 +190,30 @@ function listingToVideoItem(listing: Listing): VideoFeedItem | null {
 
 export async function getFeedListings() {
   return apiRequest<Listing[]>("/listings/feed");
+}
+
+export async function getCategoryCatalog() {
+  try {
+    return await apiRequest<MarketplaceCategory[]>("/listings/categories");
+  } catch {
+    return marketplaceCategoryCatalog.map((root) => ({
+      id: root.slug,
+      slug: root.slug,
+      name: root.name,
+      icon: root.icon,
+      accent: root.accent,
+      listingCount: 0,
+      subcategoryCount: root.subcategories.length,
+      subcategories: root.subcategories.map((item) => ({
+        id: item.slug,
+        slug: item.slug,
+        name: item.name,
+        parentSlug: root.slug,
+        parentName: root.name,
+        listingCount: 0
+      }))
+    }));
+  }
 }
 
 export async function getVideoFeed() {

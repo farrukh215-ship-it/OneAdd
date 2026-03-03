@@ -1,7 +1,11 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@aikad/shared": ["../../packages/shared/src/index.ts"]
+    }
   },
   "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx"]
 }

@@ -93,7 +93,30 @@ curl -fsSL https://raw.githubusercontent.com/farrukh215-ship-it/OneAdd/master/sc
 bash vps-deploy.sh
 ```
 
-If `services/api/.env` is missing, deploy script will stop and ask you to create it first.
+If `services/api/.env` or `infra/.env.production` is missing, deploy script will stop and ask you to create it first.
+
+Create from templates:
+
+```bash
+cp services/api/.env.production.example services/api/.env
+cp infra/.env.production.example infra/.env.production
+```
+
+Then run deploy:
+
+```bash
+ENV_FILE=infra/.env.production bash scripts/vps-deploy.sh
+```
+
+Enable SSL certificate:
+
+```bash
+EMAIL=you@example.com bash scripts/vps-enable-ssl.sh
+```
+
+Full rollout checklist:
+
+- `docs/PRODUCTION_ROLLOUT_TGMG.md`
 
 Nginx routes:
 
@@ -201,6 +224,8 @@ Detailed UAT sheet:
 1. Firebase Console -> Authentication -> Sign-in method -> Phone -> Enable.
 2. Firebase Console -> Authentication -> Settings -> Authorized domains:
    - add `localhost`
+   - add `teragharmeraghar.com`
+   - add `www.teragharmeraghar.com`
 3. `apps/web/.env.local` set:
 
 ```env
@@ -216,6 +241,10 @@ NEXT_PUBLIC_FIREBASE_APP_ID=<app-id>
 ```env
 FIREBASE_SERVICE_ACCOUNT_PATH=../../<your-service-account>.json
 ```
+
+5. Google Cloud API key restrictions (for web key) should allow:
+   - `https://teragharmeraghar.com/*`
+   - `https://www.teragharmeraghar.com/*`
 
 5. Restart both apps:
 

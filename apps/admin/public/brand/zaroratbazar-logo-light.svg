@@ -1,6 +1,6 @@
-<svg width="900" height="240" viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg">
+﻿<svg width="900" height="240" viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg">
   <g transform="translate(0,0)">
-    <rect width="200" height="200" rx="48" fill="#0E5E43"/>
+    <rect width="200" height="200" rx="48" fill="#5C3D2E"/>
     <path d="M55 65 H145 L90 140 H145"
           fill="none"
           stroke="#FFFFFF"
@@ -19,6 +19,7 @@
         font-size="64"
         font-weight="600"
         fill="#1E1E1E">
-    ZaroratBazar
+    TGMG
   </text>
 </svg>
+

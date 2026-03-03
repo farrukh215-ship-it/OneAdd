@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException
 } from "@nestjs/common";
+import { marketplaceCategoryCatalog } from "@aikad/shared";
 import {
   ChatThreadStatus,
   ListingMediaType,
@@ -28,11 +29,12 @@ export class ListingsService {
   async createListing(userId: string, dto: CreateListingDto) {
     await this.assertPhoneVerified(userId);
     this.validateMediaConstraints(dto.media);
+    const resolvedCategoryId = await this.resolveCategoryReference(dto.categoryId);
 
     return this.prisma.listing.create({
       data: {
         userId,
-        categoryId: dto.categoryId,
+        categoryId: resolvedCategoryId,
         title: dto.title.trim(),
         description: dto.description.trim(),
         price: new Prisma.Decimal(dto.price),
@@ -339,19 +341,127 @@ export class ListingsService {
     return this.sortByTrustWeightedRanking(listings);
   }
 
-  async search(query: string, limit = 20) {
+  async getCategoryCatalog() {
+    const [dbCategories, listingCounts] = await Promise.all([
+      this.prisma.category.findMany({
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          parentId: true
+        }
+      }),
+      this.prisma.listing.groupBy({
+        by: ["categoryId"],
+        where: { status: ListingStatus.ACTIVE },
+        _count: { _all: true }
+      })
+    ]);
+
+    const bySlug = new Map(dbCategories.map((item) => [item.slug, item]));
+    const countByCategoryId = new Map(
+      listingCounts.map((item) => [item.categoryId, item._count._all])
+    );
+
+    return marketplaceCategoryCatalog.map((root) => {
+      const rootRecord = bySlug.get(root.slug);
+      const subcategories = root.subcategories.map((sub) => {
+        const subRecord = bySlug.get(sub.slug);
+        const subId = subRecord?.id ?? sub.slug;
+        return {
+          id: subId,
+          slug: sub.slug,
+          name: sub.name,
+          parentSlug: root.slug,
+          parentName: root.name,
+          listingCount: countByCategoryId.get(subId) ?? 0
+        };
+      });
+
+      const rootId = rootRecord?.id ?? root.slug;
+      const rootDirectCount = countByCategoryId.get(rootId) ?? 0;
+      const childCount = subcategories.reduce(
+        (total, item) => total + item.listingCount,
+        0
+      );
+
+      return {
+        id: rootId,
+        slug: root.slug,
+        name: root.name,
+        icon: root.icon,
+        accent: root.accent,
+        listingCount: rootDirectCount + childCount,
+        subcategoryCount: subcategories.length,
+        subcategories
+      };
+    });
+  }
+
+  async search(
+    query: string,
+    limit = 20,
+    filters?: {
+      category?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      city?: string;
+    }
+  ) {
     const q = query.trim();
-    if (!q) {
+    const city = filters?.city?.trim() ?? "";
+    const hasPriceFilter =
+      typeof filters?.minPrice === "number" || typeof filters?.maxPrice === "number";
+    const hasCategoryFilter = Boolean(filters?.category?.trim());
+
+    if (!q && !city && !hasPriceFilter && !hasCategoryFilter) {
       return [];
+    }
+
+    const andFilters: Prisma.ListingWhereInput[] = [];
+
+    if (q) {
+      andFilters.push({
+        OR: [
+          { title: { contains: q, mode: "insensitive" } },
+          { description: { contains: q, mode: "insensitive" } }
+        ]
+      });
+    }
+
+    if (city) {
+      andFilters.push({
+        OR: [
+          { title: { contains: city, mode: "insensitive" } },
+          { description: { contains: city, mode: "insensitive" } }
+        ]
+      });
+    }
+
+    if (hasPriceFilter) {
+      const priceFilter: Prisma.DecimalFilter = {};
+      if (typeof filters?.minPrice === "number") {
+        priceFilter.gte = new Prisma.Decimal(filters.minPrice);
+      }
+      if (typeof filters?.maxPrice === "number") {
+        priceFilter.lte = new Prisma.Decimal(filters.maxPrice);
+      }
+      andFilters.push({ price: priceFilter });
+    }
+
+    if (hasCategoryFilter) {
+      const categoryIds = await this.resolveCategoryIds(filters?.category ?? "");
+      if (categoryIds.length > 0) {
+        andFilters.push({
+          categoryId: { in: categoryIds }
+        });
+      }
     }
 
     const listings = await this.prisma.listing.findMany({
       where: {
         status: ListingStatus.ACTIVE,
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } }
-        ]
+        ...(andFilters.length > 0 ? { AND: andFilters } : {})
       },
       include: {
         media: true,
@@ -420,6 +530,51 @@ export class ListingsService {
         "Video duration must be 30 seconds or less."
       );
     }
+  }
+
+  private async resolveCategoryIds(categoryFilter: string) {
+    const value = categoryFilter.trim();
+    if (!value) {
+      return [];
+    }
+
+    const selected = await this.prisma.category.findFirst({
+      where: {
+        OR: [{ id: value }, { slug: value }]
+      },
+      select: { id: true }
+    });
+
+    if (!selected) {
+      return [];
+    }
+
+    const children = await this.prisma.category.findMany({
+      where: { parentId: selected.id },
+      select: { id: true }
+    });
+
+    return [selected.id, ...children.map((item) => item.id)];
+  }
+
+  private async resolveCategoryReference(categoryRef: string) {
+    const value = categoryRef.trim();
+    if (!value) {
+      throw new BadRequestException("Category is required.");
+    }
+
+    const category = await this.prisma.category.findFirst({
+      where: {
+        OR: [{ id: value }, { slug: value }]
+      },
+      select: { id: true }
+    });
+
+    if (!category) {
+      throw new BadRequestException("Invalid category.");
+    }
+
+    return category.id;
   }
 
   private isUniqueConstraintError(error: unknown) {

@@ -1,0 +1,288 @@
+[
+  {
+    "slug": "mobiles",
+    "name": "Mobiles",
+    "icon": "\ud83d\udcf1",
+    "accent": "#4F86F7",
+    "subcategories": [
+      { "slug": "mobiles-smartphones", "name": "Mobile Phones" },
+      { "slug": "mobiles-accessories", "name": "Accessories" },
+      { "slug": "mobiles-tablets", "name": "Tablets" },
+      { "slug": "mobiles-smart-watches", "name": "Smart Watches" },
+      { "slug": "mobiles-feature-phones", "name": "Feature Phones" },
+      { "slug": "mobiles-landline", "name": "Landline Phones" },
+      { "slug": "mobiles-power-banks", "name": "Power Banks" },
+      { "slug": "mobiles-repair-parts", "name": "Repair Parts" }
+    ]
+  },
+  {
+    "slug": "vehicles",
+    "name": "Vehicles",
+    "icon": "\ud83d\ude97",
+    "accent": "#3D6B4F",
+    "subcategories": [
+      { "slug": "vehicles-cars", "name": "Cars" },
+      { "slug": "vehicles-car-accessories", "name": "Cars Accessories" },
+      { "slug": "vehicles-spare-parts", "name": "Spare Parts" },
+      { "slug": "vehicles-car-care", "name": "Car Care" },
+      { "slug": "vehicles-vans-trucks", "name": "Buses, Vans & Trucks" },
+      { "slug": "vehicles-rickshaw", "name": "Rickshaw & Chingchi" },
+      { "slug": "vehicles-tractors-trailers", "name": "Tractors & Trailers" },
+      { "slug": "vehicles-oils-lubricants", "name": "Oil & Lubricants" },
+      { "slug": "vehicles-installments", "name": "Cars on Installments" },
+      { "slug": "vehicles-other", "name": "Other Vehicles" },
+      { "slug": "vehicles-boats", "name": "Boats" }
+    ]
+  },
+  {
+    "slug": "property-sale",
+    "name": "Property for Sale",
+    "icon": "\ud83c\udfe1",
+    "accent": "#C8603A",
+    "subcategories": [
+      { "slug": "property-sale-land-plots", "name": "Land & Plots" },
+      { "slug": "property-sale-houses", "name": "Houses" },
+      { "slug": "property-sale-apartments", "name": "Apartments & Flats" },
+      { "slug": "property-sale-commercial", "name": "Shops, Offices & Commercial Space" },
+      { "slug": "property-sale-portions", "name": "Portions & Floors" }
+    ]
+  },
+  {
+    "slug": "property-rent",
+    "name": "Property for Rent",
+    "icon": "\ud83c\udfe2",
+    "accent": "#8A6BEA",
+    "subcategories": [
+      { "slug": "property-rent-houses", "name": "Houses" },
+      { "slug": "property-rent-apartments", "name": "Apartments & Flats" },
+      { "slug": "property-rent-portions", "name": "Portions & Floors" },
+      { "slug": "property-rent-commercial", "name": "Shops, Offices & Commercial Space" },
+      { "slug": "property-rent-rooms", "name": "Rooms" },
+      { "slug": "property-rent-roommates", "name": "Roommates & Paying Guests" },
+      { "slug": "property-rent-vacation", "name": "Vacation Rentals & Guest Houses" },
+      { "slug": "property-rent-land", "name": "Land & Plots" }
+    ]
+  },
+  {
+    "slug": "electronics-home",
+    "name": "Electronics & Home Appliances",
+    "icon": "\ud83d\udcbb",
+    "accent": "#2A9D8F",
+    "subcategories": [
+      { "slug": "electronics-home-computers", "name": "Computers & Accessories" },
+      { "slug": "electronics-home-tv-audio", "name": "Televisions & Accessories" },
+      { "slug": "electronics-home-generators", "name": "Generators, UPS & Power Solutions" },
+      { "slug": "electronics-home-gaming", "name": "Games & Entertainment" },
+      { "slug": "electronics-home-cameras", "name": "Cameras & Accessories" },
+      { "slug": "electronics-home-fridges", "name": "Refrigerators & Freezers" },
+      { "slug": "electronics-home-kitchen", "name": "Kitchen Appliances" },
+      { "slug": "electronics-home-video-audio", "name": "Video-Audios" },
+      { "slug": "electronics-home-ac-coolers", "name": "AC & Coolers" },
+      { "slug": "electronics-home-heaters", "name": "Heaters & Geysers" },
+      { "slug": "electronics-home-other", "name": "Other Home Appliances" },
+      { "slug": "electronics-home-washing", "name": "Washing Machines & Dryers" },
+      { "slug": "electronics-home-tools-diy", "name": "Tools & DIY Equipment" },
+      { "slug": "electronics-home-fans", "name": "Fans" },
+      { "slug": "electronics-home-microwave-oven", "name": "Microwaves & Ovens" },
+      { "slug": "electronics-home-sewing", "name": "Sewing Machines" },
+      { "slug": "electronics-home-irons", "name": "Irons & Steamers" },
+      { "slug": "electronics-home-water", "name": "Water Dispensers" },
+      { "slug": "electronics-home-air-purifiers", "name": "Air Purifiers & Humidifiers" }
+    ]
+  },
+  {
+    "slug": "bikes",
+    "name": "Bikes",
+    "icon": "\ud83c\udfcd\ufe0f",
+    "accent": "#FF8A3D",
+    "subcategories": [
+      { "slug": "bikes-motorcycles", "name": "Bikes & Motorcycles" },
+      { "slug": "bikes-bicycles", "name": "Bicycles" },
+      { "slug": "bikes-spare-parts", "name": "Spare Parts" },
+      { "slug": "bikes-scooters", "name": "Scooty & Scooters" },
+      { "slug": "bikes-accessories", "name": "Bikes Accessories" },
+      { "slug": "bikes-atv-quads", "name": "ATV & Quads" },
+      { "slug": "bikes-care", "name": "Bike Care" }
+    ]
+  },
+  {
+    "slug": "business-industrial",
+    "name": "Business, Industrial & Agriculture",
+    "icon": "\ud83c\udfed",
+    "accent": "#6C5B7B",
+    "subcategories": [
+      { "slug": "business-industrial-other", "name": "Other Business & Industry" },
+      { "slug": "business-industrial-food", "name": "Food & Restaurants" },
+      { "slug": "business-industrial-medical", "name": "Medical & Pharma" },
+      { "slug": "business-industrial-machinery", "name": "Trade & Industrial Machinery" },
+      { "slug": "business-industrial-construction", "name": "Construction & Heavy Machinery" },
+      { "slug": "business-industrial-business-sale", "name": "Business for Sale" },
+      { "slug": "business-industrial-agriculture", "name": "Agriculture" }
+    ]
+  },
+  {
+    "slug": "kids",
+    "name": "Kids",
+    "icon": "\ud83e\uddf8",
+    "accent": "#FF7AA2",
+    "subcategories": [
+      { "slug": "kids-toys", "name": "Toys" },
+      { "slug": "kids-vehicles", "name": "Kids Vehicles" },
+      { "slug": "kids-baby-gear", "name": "Baby Gear" },
+      { "slug": "kids-swings-slides", "name": "Swings & Slides" },
+      { "slug": "kids-accessories", "name": "Kids Accessories" },
+      { "slug": "kids-furniture", "name": "Kids Furniture" },
+      { "slug": "kids-clothing", "name": "Kids Clothing" },
+      { "slug": "kids-bath-diapers", "name": "Bath & Diapers" }
+    ]
+  },
+  {
+    "slug": "books-sports-hobbies",
+    "name": "Books, Sports & Hobbies",
+    "icon": "\ud83d\udcda",
+    "accent": "#2F7ED8",
+    "subcategories": [
+      { "slug": "books-sports-hobbies-books", "name": "Books & Magazines" },
+      { "slug": "books-sports-hobbies-gym", "name": "Gym & Fitness" },
+      { "slug": "books-sports-hobbies-sports", "name": "Sports Equipment" },
+      { "slug": "books-sports-hobbies-arts", "name": "Arts & Crafts" },
+      { "slug": "books-sports-hobbies-other", "name": "Other Hobbies" },
+      { "slug": "books-sports-hobbies-music", "name": "Musical Instruments" },
+      { "slug": "books-sports-hobbies-camping", "name": "Camping & Hiking" },
+      { "slug": "books-sports-hobbies-collectibles", "name": "Collectables" },
+      { "slug": "books-sports-hobbies-diy", "name": "Crafts & DIY Supplies" },
+      { "slug": "books-sports-hobbies-calendars", "name": "Calendars" }
+    ]
+  },
+  {
+    "slug": "fashion-beauty",
+    "name": "Fashion & Beauty",
+    "icon": "\ud83d\udc57",
+    "accent": "#D35C8A",
+    "subcategories": [
+      { "slug": "fashion-beauty-clothes", "name": "Clothes" },
+      { "slug": "fashion-beauty-watches", "name": "Watches" },
+      { "slug": "fashion-beauty-skin-hair", "name": "Skin & Hair" },
+      { "slug": "fashion-beauty-wedding", "name": "Wedding" },
+      { "slug": "fashion-beauty-footwear", "name": "Footwear" },
+      { "slug": "fashion-beauty-jewellery", "name": "Jewellery" },
+      { "slug": "fashion-beauty-bags", "name": "Bags" },
+      { "slug": "fashion-beauty-fragrance", "name": "Fragrance" },
+      { "slug": "fashion-beauty-bath-body", "name": "Bath & Body" },
+      { "slug": "fashion-beauty-makeup", "name": "Makeup" },
+      { "slug": "fashion-beauty-accessories", "name": "Fashion Accessories" },
+      { "slug": "fashion-beauty-other", "name": "Other Fashion" },
+      { "slug": "fashion-beauty-diy-jewellery", "name": "DIY Jewellery" }
+    ]
+  },
+  {
+    "slug": "furniture-home-decor",
+    "name": "Furniture & Home Decor",
+    "icon": "\ud83d\udecb\ufe0f",
+    "accent": "#A56B46",
+    "subcategories": [
+      { "slug": "furniture-home-decor-beds", "name": "Beds & Wardrobes" },
+      { "slug": "furniture-home-decor-sofas", "name": "Sofa & Chairs" },
+      { "slug": "furniture-home-decor-other-household", "name": "Other Household Items" },
+      { "slug": "furniture-home-decor-tables", "name": "Tables & Dining" },
+      { "slug": "furniture-home-decor-decoration", "name": "Home Decoration" },
+      { "slug": "furniture-home-decor-office", "name": "Office Furniture" },
+      { "slug": "furniture-home-decor-garden", "name": "Garden & Outdoor" },
+      { "slug": "furniture-home-decor-diy-renovation", "name": "Home DIY & Renovations" },
+      { "slug": "furniture-home-decor-kitchen", "name": "Kitchen Essentials" },
+      { "slug": "furniture-home-decor-bathroom", "name": "Bathroom Accessories" },
+      { "slug": "furniture-home-decor-lighting", "name": "Lighting" },
+      { "slug": "furniture-home-decor-painting-mirrors", "name": "Painting & Mirrors" },
+      { "slug": "furniture-home-decor-curtains", "name": "Curtains & Blinds" },
+      { "slug": "furniture-home-decor-rugs", "name": "Rugs & Carpets" },
+      { "slug": "furniture-home-decor-essentials", "name": "Home Essentials" }
+    ]
+  },
+  {
+    "slug": "animals",
+    "name": "Animals",
+    "icon": "\ud83d\udc3e",
+    "accent": "#4D8F63",
+    "subcategories": [
+      { "slug": "animals-hens", "name": "Hens" },
+      { "slug": "animals-cats", "name": "Cats" },
+      { "slug": "animals-parrots", "name": "Parrots" },
+      { "slug": "animals-pet-food", "name": "Pet Food & Accessories" },
+      { "slug": "animals-dogs", "name": "Dogs" },
+      { "slug": "animals-livestock", "name": "Livestock" },
+      { "slug": "animals-pigeons", "name": "Pigeons" },
+      { "slug": "animals-finches", "name": "Finches" },
+      { "slug": "animals-fish", "name": "Fish" },
+      { "slug": "animals-rabbits", "name": "Rabbits" },
+      { "slug": "animals-fertile-eggs", "name": "Fertile Eggs" },
+      { "slug": "animals-other-birds", "name": "Other Birds" },
+      { "slug": "animals-ducks", "name": "Ducks" },
+      { "slug": "animals-other", "name": "Other Animals" },
+      { "slug": "animals-doves", "name": "Doves" }
+    ]
+  },
+  {
+    "slug": "jobs",
+    "name": "Jobs",
+    "icon": "\ud83d\udcbc",
+    "accent": "#2F5DA8",
+    "subcategories": [
+      { "slug": "jobs-other", "name": "Other Jobs" },
+      { "slug": "jobs-online", "name": "Online Jobs" },
+      { "slug": "jobs-sales", "name": "Sales Jobs" },
+      { "slug": "jobs-part-time", "name": "Part Time Jobs" },
+      { "slug": "jobs-hospitality", "name": "Restaurants & Hospitality Jobs" },
+      { "slug": "jobs-marketing", "name": "Marketing Jobs" },
+      { "slug": "jobs-customer-service", "name": "Customer Service Jobs" },
+      { "slug": "jobs-domestic-staff", "name": "Domestic Staff Jobs" },
+      { "slug": "jobs-education", "name": "Education Jobs" },
+      { "slug": "jobs-medical", "name": "Medical Jobs" },
+      { "slug": "jobs-delivery", "name": "Delivery Riders Jobs" },
+      { "slug": "jobs-accounting-finance", "name": "Accounting & Finance Jobs" },
+      { "slug": "jobs-it", "name": "IT & Networking Jobs" },
+      { "slug": "jobs-design", "name": "Graphic Design Jobs" },
+      { "slug": "jobs-admin", "name": "Clerical & Administration Jobs" },
+      { "slug": "jobs-manufacturing", "name": "Manufacturing" },
+      { "slug": "jobs-engineering", "name": "Engineering Jobs" },
+      { "slug": "jobs-hotels-tourism", "name": "Hotels & Tourism Jobs" },
+      { "slug": "jobs-content-writing", "name": "Content Writing Jobs" },
+      { "slug": "jobs-human-resources", "name": "Human Resources Jobs" },
+      { "slug": "jobs-security", "name": "Security Jobs" },
+      { "slug": "jobs-real-estate", "name": "Real Estate Jobs" },
+      { "slug": "jobs-internships", "name": "Internships Jobs" },
+      { "slug": "jobs-advertising-pr", "name": "Advertising & PR Jobs" },
+      { "slug": "jobs-architecture", "name": "Architecture & Interior Design Jobs" }
+    ]
+  },
+  {
+    "slug": "services",
+    "name": "Services",
+    "icon": "\ud83d\udee0\ufe0f",
+    "accent": "#5E7D4A",
+    "subcategories": [
+      { "slug": "services-other", "name": "Other Services" },
+      { "slug": "services-car-rental", "name": "Car Rental" },
+      { "slug": "services-tuition", "name": "Tuitions & Academies" },
+      { "slug": "services-home-repair", "name": "Home & Office Repair" },
+      { "slug": "services-domestic-help", "name": "Domestic Help" },
+      { "slug": "services-web-development", "name": "Web Development" },
+      { "slug": "services-electronics-repair", "name": "Electronics & Computer Repair" },
+      { "slug": "services-travel-visa", "name": "Travel & Visa" },
+      { "slug": "services-drivers-taxi", "name": "Drivers & Taxi" },
+      { "slug": "services-construction", "name": "Construction Services" },
+      { "slug": "services-events", "name": "Event Services" },
+      { "slug": "services-farm-food", "name": "Farm & Fresh Food" },
+      { "slug": "services-consultancy", "name": "Consultancy Services" },
+      { "slug": "services-movers-packers", "name": "Movers & Packers" },
+      { "slug": "services-architecture", "name": "Architecture & Interior Design" },
+      { "slug": "services-health-beauty", "name": "Health & Beauty" },
+      { "slug": "services-photography", "name": "Video & Photography" },
+      { "slug": "services-renting", "name": "Renting Services" },
+      { "slug": "services-camera-installation", "name": "Camera Installation" },
+      { "slug": "services-car-services", "name": "Car Services" },
+      { "slug": "services-tailor", "name": "Tailor Services" },
+      { "slug": "services-catering", "name": "Catering & Restaurant" },
+      { "slug": "services-insurance", "name": "Insurance Services" }
+    ]
+  }
+]

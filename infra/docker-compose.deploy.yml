@@ -33,7 +33,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/aikad_marketplace?schema=public
       REDIS_URL: redis://redis:6379
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost,http://127.0.0.1}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://teragharmeraghar.com,https://www.teragharmeraghar.com}
     depends_on:
       - postgres
       - redis
@@ -46,6 +46,10 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:-AIzaSyCayPii-w6RumZ8Qjgs4NznNSQ4HatH3bs}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-aikad-13dc4.firebaseapp.com}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-aikad-13dc4}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:-1:201729412856:web:f2400591798aa5454c350d}
     container_name: aikad-web
     restart: unless-stopped
     expose:

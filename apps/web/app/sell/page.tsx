@@ -1,13 +1,15 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { OtpLoginCard } from "../../components/otp-login-card";
 import {
   activateListing,
   ApiError,
   createListing,
+  getCategoryCatalog,
   uploadListingMedia
 } from "../../lib/api";
+import { MarketplaceCategory } from "../../lib/types";
 import { useAuthToken } from "../../lib/use-auth-token";
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -48,15 +50,6 @@ const initialState: SellFormState = {
   allowSMS: true
 };
 
-const categories = [
-  { id: "mobiles", label: "Mobiles" },
-  { id: "vehicles", label: "Vehicles" },
-  { id: "property", label: "Property" },
-  { id: "electronics", label: "Electronics" },
-  { id: "fashion", label: "Fashion" },
-  { id: "home", label: "Home" }
-];
-
 const stepLabels = ["Category", "Details", "Media", "Review"];
 
 function uid() {
@@ -76,6 +69,7 @@ export default function SellPage() {
   const { mounted, token } = useAuthToken();
   const [step, setStep] = useState<WizardStep>(1);
   const [form, setForm] = useState<SellFormState>(initialState);
+  const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [imageInput, setImageInput] = useState("");
   const [videoInput, setVideoInput] = useState("");
   const [videoDuration, setVideoDuration] = useState("");
@@ -84,27 +78,28 @@ export default function SellPage() {
   const [stepLoading, setStepLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
+  useEffect(() => {
+    void getCategoryCatalog().then(setCatalog).catch(() => setCatalog([]));
+  }, []);
+
   const images = form.media.filter((item) => item.type === "IMAGE");
   const video = form.media.find((item) => item.type === "VIDEO");
   const progress = (step / 4) * 100;
+  const selectedCategory = useMemo(
+    () =>
+      catalog
+        .flatMap((root) => root.subcategories)
+        .find((subcategory) => subcategory.id === form.categoryId),
+    [catalog, form.categoryId]
+  );
 
   const validationErrors = useMemo(() => {
     const errs: string[] = [];
-    if (!form.categoryId.trim()) {
-      errs.push("Category required hai.");
-    }
-    if (!form.title.trim()) {
-      errs.push("Title required hai.");
-    }
-    if (!form.price.trim() || Number(form.price) <= 0) {
-      errs.push("Price valid numeric honi chahiye.");
-    }
-    if (images.length > 6) {
-      errs.push("Max 6 images allow hain.");
-    }
-    if (video && (video.durationSec ?? 0) > 30) {
-      errs.push("Video duration 30 sec se kam honi chahiye.");
-    }
+    if (!form.categoryId.trim()) errs.push("Category required hai.");
+    if (!form.title.trim()) errs.push("Title required hai.");
+    if (!form.price.trim() || Number(form.price) <= 0) errs.push("Price valid numeric honi chahiye.");
+    if (images.length > 6) errs.push("Max 6 images allow hain.");
+    if (video && (video.durationSec ?? 0) > 30) errs.push("Video duration 30 sec se kam honi chahiye.");
     return errs;
   }, [form.categoryId, form.price, form.title, images.length, video]);
 
@@ -245,7 +240,6 @@ export default function SellPage() {
         );
       } catch {
         // Older API variants may not expose /listings/:id/media.
-        // Listing is already created with media in POST /listings payload.
       }
 
       await activateListing(created.id);
@@ -281,9 +275,13 @@ export default function SellPage() {
     <main className="sellWizardScreen">
       <form className="sellWizardCard" onSubmit={onPublish}>
         <header className="sellWizardHeader">
-          <p className="feedKicker">Sell Wizard</p>
-          <h1>List your product with confidence</h1>
-          <p>Step {step} of 4: {stepLabels[step - 1]}</p>
+          <p className="feedKicker">TGMG Sell Wizard</p>
+          <h1>Apna Saaman Becho</h1>
+          <p>Ek ad - seedha asli kharedaar tak</p>
+          <p className="helperText">TGMG pe ek active listing policy apply hoti hai.</p>
+          <p>
+            Step {step} of 4: {stepLabels[step - 1]}
+          </p>
           <div className="wizardProgressTrack" aria-hidden="true">
             <div className="wizardProgressBar" style={{ width: `${progress}%` }} />
           </div>
@@ -301,19 +299,21 @@ export default function SellPage() {
           {!stepLoading && step === 1 ? (
             <div className="stack">
               <label className="filterLabel">
-                Category
+                Kis cheez ka hai? (subcategory select karein)
                 <select
                   className="input"
                   value={form.categoryId}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, categoryId: event.target.value }))
-                  }
+                  onChange={(event) => setForm((prev) => ({ ...prev, categoryId: event.target.value }))}
                 >
-                  <option value="">Select category</option>
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
+                  <option value="">Subcategory select karo</option>
+                  {catalog.map((root) => (
+                    <optgroup key={root.id} label={root.name}>
+                      {root.subcategories.map((sub) => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </label>
@@ -323,24 +323,20 @@ export default function SellPage() {
           {!stepLoading && step === 2 ? (
             <div className="stack">
               <label className="filterLabel">
-                Title
+                Kya bech rahe ho?
                 <input
                   className="input"
                   value={form.title}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, title: event.target.value }))
-                  }
+                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
                 />
               </label>
               <label className="filterLabel">
-                Price
+                Daam (PKR)
                 <input
                   className="input"
                   inputMode="numeric"
                   value={form.price}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, price: event.target.value }))
-                  }
+                  onChange={(event) => setForm((prev) => ({ ...prev, price: event.target.value }))}
                 />
               </label>
               <label className="filterLabel">
@@ -358,24 +354,20 @@ export default function SellPage() {
                 </select>
               </label>
               <label className="filterLabel">
-                City
+                Aap kahan hain?
                 <input
                   className="input"
                   value={form.city}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, city: event.target.value }))
-                  }
+                  onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
                 />
               </label>
               <label className="filterLabel">
-                Description
+                Apni cheez ke baare mein batao
                 <textarea
                   className="input"
                   rows={5}
                   value={form.description}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, description: event.target.value }))
-                  }
+                  onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
                 />
               </label>
             </div>
@@ -446,20 +438,31 @@ export default function SellPage() {
           {!stepLoading && step === 4 ? (
             <div className="stack">
               <div className="reviewCard">
-                <p><strong>Category:</strong> {form.categoryId || "-"}</p>
-                <p><strong>Title:</strong> {form.title || "-"}</p>
-                <p><strong>Price:</strong> {form.price || "-"}</p>
-                <p><strong>Condition:</strong> {form.condition}</p>
-                <p><strong>Media:</strong> {images.length} images, {video ? "1 video" : "0 video"}</p>
+                <p>
+                  <strong>Category:</strong>{" "}
+                  {selectedCategory
+                    ? `${selectedCategory.parentName} / ${selectedCategory.name}`
+                    : "-"}
+                </p>
+                <p>
+                  <strong>Title:</strong> {form.title || "-"}
+                </p>
+                <p>
+                  <strong>Price:</strong> {form.price || "-"}
+                </p>
+                <p>
+                  <strong>Condition:</strong> {form.condition}
+                </p>
+                <p>
+                  <strong>Media:</strong> {images.length} images, {video ? "1 video" : "0 video"}
+                </p>
               </div>
               <div className="toggleRow">
                 <label className="toggle">
                   <input
                     type="checkbox"
                     checked={form.showPhone}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, showPhone: event.target.checked }))
-                    }
+                    onChange={(event) => setForm((prev) => ({ ...prev, showPhone: event.target.checked }))}
                   />
                   Show Phone
                 </label>
@@ -467,9 +470,7 @@ export default function SellPage() {
                   <input
                     type="checkbox"
                     checked={form.allowChat}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, allowChat: event.target.checked }))
-                    }
+                    onChange={(event) => setForm((prev) => ({ ...prev, allowChat: event.target.checked }))}
                   />
                   Allow Chat
                 </label>
@@ -477,9 +478,7 @@ export default function SellPage() {
                   <input
                     type="checkbox"
                     checked={form.allowCall}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, allowCall: event.target.checked }))
-                    }
+                    onChange={(event) => setForm((prev) => ({ ...prev, allowCall: event.target.checked }))}
                   />
                   Allow Call
                 </label>
@@ -487,9 +486,7 @@ export default function SellPage() {
                   <input
                     type="checkbox"
                     checked={form.allowSMS}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, allowSMS: event.target.checked }))
-                    }
+                    onChange={(event) => setForm((prev) => ({ ...prev, allowSMS: event.target.checked }))}
                   />
                   Allow SMS
                 </label>
@@ -512,7 +509,7 @@ export default function SellPage() {
             </button>
           ) : (
             <button className="searchSubmitBtn" disabled={publishing} type="submit">
-              {publishing ? "Publishing..." : "Publish Listing"}
+              {publishing ? "Posting..." : "Post Karo"}
             </button>
           )}
         </footer>
@@ -522,7 +519,11 @@ export default function SellPage() {
             {validationErrors[0]}
           </div>
         ) : null}
-        {error ? <div className="searchErrorBanner" role="alert">{error}</div> : null}
+        {error ? (
+          <div className="searchErrorBanner" role="alert">
+            {error}
+          </div>
+        ) : null}
         {success ? <p className="success">{success}</p> : null}
       </form>
     </main>

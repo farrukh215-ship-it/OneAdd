@@ -1,4 +1,4 @@
-import { ValidationPipe } from "@nestjs/common";
+﻿import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
@@ -26,8 +26,8 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("Aikad Marketplace API")
-    .setDescription("Backend service for the Aikad marketplace.")
+    .setTitle("TGMG Marketplace API")
+    .setDescription("Backend service for the TeraGharMeraGhar marketplace.")
     .setVersion("1.0.0")
     .build();
 
@@ -53,3 +53,5 @@ function getCorsOrigins(corsOrigin: string | undefined, nodeEnv: string) {
 }
 
 bootstrap();
+
+

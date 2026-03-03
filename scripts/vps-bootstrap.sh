@@ -6,7 +6,7 @@ apt update
 apt upgrade -y
 
 echo "[2/4] Base packages"
-apt install -y git curl ca-certificates gnupg
+apt install -y git curl ca-certificates gnupg jq dnsutils certbot
 
 echo "[3/4] Docker install"
 if ! command -v docker >/dev/null 2>&1; then

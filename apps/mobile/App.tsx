@@ -1,4 +1,4 @@
-import "react-native-gesture-handler";
+﻿import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -18,13 +18,14 @@ export default function App() {
       <RootStack.Navigator
         screenOptions={{
           headerBackTitle: "Back",
-          headerStyle: { backgroundColor: "#f4f8f5" },
-          headerTitleStyle: { color: "#153a2e", fontWeight: "700" },
-          contentStyle: { backgroundColor: "#eef4f1" }
+          headerStyle: { backgroundColor: "#FDF6ED" },
+          headerTitleStyle: { color: "#5C3D2E", fontWeight: "700" },
+          headerTintColor: "#5C3D2E",
+          contentStyle: { backgroundColor: "#FDF6ED" }
         }}
       >
         {!isAuthenticated ? (
-          <RootStack.Screen name="Login" options={{ title: "ZaroratBazar Sign in" }}>
+          <RootStack.Screen name="Login" options={{ title: "TGMG mein Khush Aamdeed" }}>
             {() => (
               <FirebaseAuthScreen onAuthenticated={() => setIsAuthenticated(true)} />
             )}
@@ -38,9 +39,10 @@ export default function App() {
         <RootStack.Screen
           name="ListingDetail"
           component={ListingDetailScreen}
-          options={{ title: "ZaroratBazar Listing" }}
+          options={{ title: "Listing Detail" }}
         />
       </RootStack.Navigator>
     </NavigationContainer>
   );
 }
+

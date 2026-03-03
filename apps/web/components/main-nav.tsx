@@ -1,60 +1,71 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clearToken } from "../lib/api";
 import { useAuthToken } from "../lib/use-auth-token";
 
 const links = [
-  { href: "/", label: "Home" },
-  { href: "/search", label: "Search" },
-  { href: "/sell", label: "Sell" },
-  { href: "/my-listings", label: "My Listings" },
-  { href: "/chat", label: "Chat" },
-  { href: "/reels", label: "Reels" }
+  { href: "/", label: "Home", icon: "\ud83c\udfe0" },
+  { href: "/search", label: "Dhundo", icon: "\ud83d\udd0d" },
+  { href: "/reels", label: "Reels", icon: "\ud83c\udfac" },
+  { href: "/chat", label: "Chat", icon: "\ud83d\udcac" },
+  { href: "/my-listings", label: "Meri Listings", icon: "\ud83d\udccb" }
 ];
+
+function isLinkActive(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/";
+  }
+  if (href === "/my-listings") {
+    return pathname === "/my-listings" || pathname === "/account";
+  }
+  return pathname === href;
+}
 
 export function MainNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { mounted, token } = useAuthToken();
-  const isLoggedIn = Boolean(token);
+  const isLoggedIn = mounted && Boolean(token);
 
   return (
-    <header className="topbar">
-      <div className="topbarInner">
-        <Link href="/" className="brand" aria-label="ZaroratBazar Home">
-          <span className="brandMarkWrap">
-            <img src="/brand/zaroratbazar-mark.svg" alt="ZaroratBazar logo" className="brandMarkImage" />
-          </span>
-          <span className="brandText">
-            <strong>ZaroratBazar</strong>
-            <small>صرف اصل لوگ، اصل چیزیں</small>
-          </span>
+    <>
+      <div className="announce-bar">
+        <span className="announce-text">
+          {"\ud83c\uddf5\ud83c\uddf0"} Pakistan ka pehla real-person marketplace -
+          <span> Ek Banda | Ek Ad | Koi Agent Nahi</span>
+        </span>
+      </div>
+
+      <nav className="navbar">
+        <Link href="/" className="nav-logo" aria-label="TGMG Home">
+          <div className="nav-logo-icon nav-logo-image">
+            <Image src="/brand/tgmg-mark.png" alt="TGMG logo" width={38} height={38} priority />
+          </div>
+          <div>
+            <div className="nav-logo-name">TeraGharMeraGhar</div>
+            <div className="nav-logo-domain">teragharmeraghar.com</div>
+          </div>
         </Link>
-        <nav className="navLinks">
-          {links.map((link) => {
-            const isMyListingsLink = link.href === "/my-listings";
-            const isActive = isMyListingsLink
-              ? pathname === "/my-listings" || pathname === "/account"
-              : pathname === link.href;
-            return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={isActive ? "navLink active" : "navLink"}
-            >
-              {link.label}
-            </Link>
-            );
-          })}
-        </nav>
-        <div className="navActions">
+
+        <ul className="nav-links">
+          {links.map((link) => (
+            <li key={link.href}>
+              <Link href={link.href} className={isLinkActive(pathname, link.href) ? "active" : ""}>
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <div className="nav-actions">
           {!mounted ? (
-            <span className="pill">OTP Login</span>
+            <span className="btn-ghost">Login</span>
           ) : isLoggedIn ? (
             <button
-              className="btn secondary"
+              className="btn-ghost"
               onClick={() => {
                 clearToken();
                 router.refresh();
@@ -64,12 +75,54 @@ export function MainNav() {
               Logout
             </button>
           ) : (
-            <Link href="/account" className="pill">
-              OTP Login
+            <Link href="/account" className="btn-ghost">
+              Login
             </Link>
           )}
+
+          <Link href="/sell" className="btn-primary">
+            <span aria-hidden="true">{"\ud83c\udfe0"}</span>
+            Apna Saaman Becho
+          </Link>
         </div>
-      </div>
-    </header>
+      </nav>
+
+      <nav className="mobile-nav" aria-label="Primary">
+        <div className="mobile-nav-inner">
+          {links.slice(0, 2).map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`mnav-item ${isLinkActive(pathname, link.href) ? "active" : ""}`}
+            >
+              <span className="mnav-icon" aria-hidden="true">
+                {link.icon}
+              </span>
+              <span className="mnav-label">{link.label}</span>
+            </Link>
+          ))}
+
+          <Link href="/sell" className="mnav-item mnav-sell">
+            <span className="mnav-icon" aria-hidden="true">
+              {"\u2795"}
+            </span>
+            <span className="mnav-label">Becho</span>
+          </Link>
+
+          {links.slice(2).map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`mnav-item ${isLinkActive(pathname, link.href) ? "active" : ""}`}
+            >
+              <span className="mnav-icon" aria-hidden="true">
+                {link.icon}
+              </span>
+              <span className="mnav-label">{link.label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
+    </>
   );
 }

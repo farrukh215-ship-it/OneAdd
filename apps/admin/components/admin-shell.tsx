@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -41,10 +41,10 @@ export function AdminShell({ title, children }: AdminShellProps) {
     <div className="adminLayout">
       <aside className="sidebar">
         <div className="adminBrand">
-          <img src="/brand/zaroratbazar-mark.svg" alt="ZaroratBazar logo" className="adminBrandLogo" />
+          <img src="/brand/TGMG-mark.svg" alt="TGMG logo" className="adminBrandLogo" />
           <div>
-            <h2>ZaroratBazar</h2>
-            <p className="adminBrandSub">صرف اصل لوگ، اصل چیزیں</p>
+            <h2>TGMG</h2>
+            <p className="adminBrandSub">Sirf Asli Log. Sirf Ghar Ka Saaman.</p>
           </div>
         </div>
         <nav className="sidebarNav">
@@ -78,3 +78,4 @@ export function AdminShell({ title, children }: AdminShellProps) {
     </div>
   );
 }
+

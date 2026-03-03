@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -252,10 +252,13 @@ export function SignupCard() {
   return (
     <section className="panel authPanel">
       <div className="authBrandLockup">
-        <img src="/brand/zaroratbazar-logo-light.svg" alt="ZaroratBazar" className="authBrandLockupImage" />
-        <p className="authBrandTagline">صرف اصل لوگ، اصل چیزیں</p>
+        <div className="authBrandLockupText">
+          TG<span>MG</span>
+        </div>
+        <p className="authBrandTagline">Tera Dil Ka Saaman — Mere Ghar Ka Hissa</p>
       </div>
       <h2>Create Account</h2>
+      <p className="helperText">Sirf Asli Log. Sirf Ghar Ka Saaman.</p>
 
       <form className="stack" onSubmit={onCreateAccount}>
         <input
@@ -422,3 +425,5 @@ export function SignupCard() {
     </section>
   );
 }
+
+

@@ -55,3 +55,23 @@ export type ChatMessage = {
   createdAt: string;
   type?: "TEXT" | "SYSTEM";
 };
+
+export type MarketplaceSubcategory = {
+  id: string;
+  slug: string;
+  name: string;
+  parentSlug: string;
+  parentName: string;
+  listingCount: number;
+};
+
+export type MarketplaceCategory = {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string;
+  accent: string;
+  listingCount: number;
+  subcategoryCount: number;
+  subcategories: MarketplaceSubcategory[];
+};

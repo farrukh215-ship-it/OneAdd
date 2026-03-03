@@ -1,4 +1,4 @@
-pluginManagement {
+﻿pluginManagement {
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
@@ -31,9 +31,10 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'ZaroratBazar'
+rootProject.name = 'TGMG'
 
 expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
+

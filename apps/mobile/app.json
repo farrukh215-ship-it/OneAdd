@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "ZaroratBazar",
-    "slug": "zaroratbazar",
+    "name": "TGMG",
+    "slug": "TGMG",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/zaroratbazar-logo.jpg",
+    "icon": "./assets/TGMG-logo.jpg",
     "splash": {
-      "image": "./assets/zaroratbazar-logo.jpg",
+      "image": "./assets/TGMG-logo.jpg",
       "resizeMode": "contain",
-      "backgroundColor": "#eef7f2"
+      "backgroundColor": "#FDF6ED"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -16,8 +16,8 @@
     "android": {
       "package": "com.aikad.marketplace",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/zaroratbazar-logo.jpg",
-        "backgroundColor": "#eef7f2"
+        "foregroundImage": "./assets/TGMG-logo.jpg",
+        "backgroundColor": "#FDF6ED"
       },
       "googleServicesFile": "./google-services.json"
     },
@@ -35,3 +35,4 @@
     }
   }
 }
+

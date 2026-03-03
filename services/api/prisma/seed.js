@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const categoryCatalog = require("../../../packages/shared/src/category-catalog.json");
 
 const prisma = new PrismaClient();
 
@@ -57,7 +58,62 @@ async function main() {
     });
   }
 
+  await syncCategories();
+
   console.log(`Seeded ${defaultFeatureFlags.length} feature flags.`);
+}
+
+async function syncCategories() {
+  const rootIdBySlug = new Map();
+
+  for (const root of categoryCatalog) {
+    const saved = await prisma.category.upsert({
+      where: { slug: root.slug },
+      update: {
+        name: root.name,
+        parentId: null,
+        depth: 0,
+        path: `/${root.slug}`
+      },
+      create: {
+        name: root.name,
+        slug: root.slug,
+        parentId: null,
+        depth: 0,
+        path: `/${root.slug}`
+      }
+    });
+
+    rootIdBySlug.set(root.slug, saved.id);
+  }
+
+  for (const root of categoryCatalog) {
+    const parentId = rootIdBySlug.get(root.slug);
+    if (!parentId) {
+      continue;
+    }
+
+    for (const sub of root.subcategories) {
+      await prisma.category.upsert({
+        where: { slug: sub.slug },
+        update: {
+          name: sub.name,
+          parentId,
+          depth: 1,
+          path: `/${root.slug}/${sub.slug}`
+        },
+        create: {
+          name: sub.name,
+          slug: sub.slug,
+          parentId,
+          depth: 1,
+          path: `/${root.slug}/${sub.slug}`
+        }
+      });
+    }
+  }
+
+  console.log(`Seeded ${categoryCatalog.length} root categories.`);
 }
 
 main()

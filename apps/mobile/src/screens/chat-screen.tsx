@@ -137,13 +137,14 @@ export function ChatScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chats</Text>
+        <Text style={styles.headerTitle}>TGMG Chats</Text>
+        <Text style={styles.headerSub}>Asli buyers aur sellers ke sath direct baat karein.</Text>
       </View>
 
       <View style={styles.threadRail}>
         {threadsLoading ? (
           <View style={styles.threadLoadingRow}>
-            <ActivityIndicator size="small" color="#0f8e66" />
+            <ActivityIndicator size="small" color="#C8603A" />
             <Text style={styles.threadLoadingText}>Loading threads...</Text>
           </View>
         ) : null}
@@ -171,7 +172,7 @@ export function ChatScreen() {
                   {item.listing?.title ?? "Conversation"}
                 </Text>
                 <Text style={styles.threadSub} numberOfLines={1}>
-                  {item.status === "CLOSED" ? "Closed" : "Open"}
+                  {item.status === "CLOSED" ? "Closed" : "Active"}
                 </Text>
               </Pressable>
             )}
@@ -216,7 +217,7 @@ export function ChatScreen() {
       <View style={styles.chatBox}>
         <TextInput
           style={styles.input}
-          placeholder={isClosed ? "Chat closed" : "Type message"}
+          placeholder={isClosed ? "Chat closed" : "Message likho..."}
           value={text}
           onChangeText={setText}
           editable={!isClosed && !sending && Boolean(activeThreadId)}
@@ -230,7 +231,7 @@ export function ChatScreen() {
           onPress={onSend}
           disabled={!activeThreadId || isClosed || sending}
         >
-          <Text style={styles.sendText}>{sending ? "..." : "Send"}</Text>
+          <Text style={styles.sendText}>{sending ? "..." : "Bhejo"}</Text>
         </Pressable>
       </View>
       {sendError ? <Text style={styles.error}>{sendError}</Text> : null}
@@ -241,18 +242,23 @@ export function ChatScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#eef3f0"
+    backgroundColor: "#FDF6ED"
   },
   header: {
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 8
+    paddingBottom: 8,
+    gap: 4
   },
   headerTitle: {
     fontSize: 26,
     lineHeight: 30,
-    color: "#1b2420",
+    color: "#5C3D2E",
     fontWeight: "800"
+  },
+  headerSub: {
+    color: "#9B8070",
+    fontSize: 13
   },
   threadRail: {
     minHeight: 78
@@ -262,32 +268,32 @@ const styles = StyleSheet.create({
     paddingBottom: 8
   },
   thread: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
     marginHorizontal: 4,
     minWidth: 132,
     borderWidth: 1,
-    borderColor: "#dde6e1"
+    borderColor: "#E8D5B7"
   },
   threadActive: {
-    backgroundColor: "#e7f4ee",
+    backgroundColor: "#F5EAD8",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 14,
     marginHorizontal: 4,
     minWidth: 132,
     borderWidth: 1,
-    borderColor: "#8fcfb6"
+    borderColor: "#D4B896"
   },
   threadTitle: {
-    color: "#1f2b26",
+    color: "#5C3D2E",
     fontWeight: "700"
   },
   threadSub: {
     marginTop: 2,
-    color: "#67736e",
+    color: "#9B8070",
     fontSize: 12
   },
   threadLoadingRow: {
@@ -298,7 +304,7 @@ const styles = StyleSheet.create({
     gap: 8
   },
   threadLoadingText: {
-    color: "#5f6b66"
+    color: "#9B8070"
   },
   messages: {
     flex: 1
@@ -311,7 +317,7 @@ const styles = StyleSheet.create({
   bubbleMine: {
     alignSelf: "flex-end",
     maxWidth: "82%",
-    backgroundColor: "#0f8e66",
+    backgroundColor: "#C8603A",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingTop: 8,
@@ -320,13 +326,13 @@ const styles = StyleSheet.create({
   bubbleOther: {
     alignSelf: "flex-start",
     maxWidth: "82%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 6,
     borderWidth: 1,
-    borderColor: "#dfe8e3"
+    borderColor: "#E8D5B7"
   },
   bubbleTextMine: {
     color: "#ffffff",
@@ -334,7 +340,7 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   bubbleTextOther: {
-    color: "#1f2b26",
+    color: "#5C3D2E",
     fontSize: 15,
     lineHeight: 20
   },
@@ -346,7 +352,7 @@ const styles = StyleSheet.create({
   },
   timeOther: {
     marginTop: 4,
-    color: "#7b8781",
+    color: "#9B8070",
     fontSize: 11,
     alignSelf: "flex-end"
   },
@@ -356,19 +362,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "#dce5e0",
-    backgroundColor: "rgba(255,255,255,0.95)"
+    borderTopColor: "#E8D5B7",
+    backgroundColor: "rgba(253,246,237,0.95)"
   },
   input: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#d7e2dd"
+    borderColor: "#E8D5B7",
+    color: "#5C3D2E"
   },
   sendButton: {
-    backgroundColor: "#0f8e66",
+    backgroundColor: "#C8603A",
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
@@ -385,23 +392,23 @@ const styles = StyleSheet.create({
   systemBanner: {
     marginHorizontal: 10,
     marginBottom: 8,
-    backgroundColor: "#f0f2f1",
+    backgroundColor: "#F5EAD8",
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 12,
     alignSelf: "center"
   },
   systemText: {
-    color: "#607069",
+    color: "#7A5544",
     fontSize: 12
   },
   emptyText: {
-    color: "#68756f",
+    color: "#9B8070",
     textAlign: "center",
     marginTop: 8
   },
   error: {
-    color: "#b42040",
+    color: "#B83A2A",
     marginTop: 4,
     marginHorizontal: 12
   },

@@ -326,27 +326,27 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
         >
           <View style={styles.heroCard}>
             <Image
-              source={require("../../assets/zaroratbazar-logo.jpg")}
+              source={require("../../assets/TGMG-logo.jpg")}
               style={styles.heroLogo}
               resizeMode="cover"
             />
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>ZARORATBAZAR VERIFIED ACCESS</Text>
+              <Text style={styles.heroBadgeText}>TGMG VERIFIED ACCESS</Text>
             </View>
-            <Text style={styles.heroTitle}>Premium Identity</Text>
+            <Text style={styles.heroTitle}>TGMG mein Khush Aamdeed</Text>
             <Text style={styles.heroSubtitle}>
-              Web jaisa same flow: signup details, OTP verify, phir account create ya login.
+              Apna number dalo, asli banda verify karo, phir secure login ya account create.
             </Text>
-            <Text style={styles.heroSubtitle}>صرف اصل لوگ، اصل چیزیں</Text>
+            <Text style={styles.heroSubtitle}>Tera Dil Ka Saaman - Mere Ghar Ka Hissa</Text>
             <View style={styles.trustRow}>
               <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>CNIC Lock</Text>
+                <Text style={styles.trustChipText}>Asli Login</Text>
               </View>
               <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>Device Trust</Text>
+                <Text style={styles.trustChipText}>OTP Secure</Text>
               </View>
               <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>OTP Shield</Text>
+                <Text style={styles.trustChipText}>No Agent</Text>
               </View>
             </View>
           </View>
@@ -415,7 +415,7 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 <Switch
                   value={staySignedIn}
                   onValueChange={setStaySignedIn}
-                  trackColor={{ false: "#c7d7cf", true: "#0f8c63" }}
+                  trackColor={{ false: "#E8D5B7", true: "#C8603A" }}
                   thumbColor="#ffffff"
                 />
               </View>
@@ -563,7 +563,7 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {message ? <Text style={styles.successText}>{message}</Text> : null}
-          {loading ? <ActivityIndicator style={styles.loader} color="#0f8c63" /> : null}
+          {loading ? <ActivityIndicator style={styles.loader} color="#C8603A" /> : null}
         </ScrollView>
 
         <Modal transparent visible={otpModalVisible} animationType="fade">
@@ -618,11 +618,11 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#eaf1ee"
+    backgroundColor: "#FDF6ED"
   },
   screen: {
     flex: 1,
-    backgroundColor: "#eaf1ee"
+    backgroundColor: "#FDF6ED"
   },
   scrollContent: {
     padding: 18,
@@ -630,9 +630,11 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     borderRadius: 24,
-    backgroundColor: "#0f221b",
+    backgroundColor: "#5C3D2E",
     padding: 18,
-    shadowColor: "#000",
+    borderWidth: 1,
+    borderColor: "#3D2518",
+    shadowColor: "#3D2518",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.22,
     shadowRadius: 22,
@@ -646,26 +648,26 @@ const styles = StyleSheet.create({
   },
   heroBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#194335",
+    backgroundColor: "#3D2518",
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6
   },
   heroBadgeText: {
-    color: "#9fd8c1",
+    color: "#F5EAD8",
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.8
   },
   heroTitle: {
     marginTop: 6,
-    color: "#f3fdf8",
-    fontSize: 30,
+    color: "#FDF6ED",
+    fontSize: 28,
     fontWeight: "800"
   },
   heroSubtitle: {
     marginTop: 8,
-    color: "#c9e5da",
+    color: "#E8D5B7",
     fontSize: 14,
     lineHeight: 20
   },
@@ -679,12 +681,12 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: "#2a5949",
-    backgroundColor: "rgba(33, 80, 64, 0.42)"
+    borderColor: "#7A5544",
+    backgroundColor: "rgba(245, 234, 216, 0.14)"
   },
   trustChipText: {
     fontSize: 12,
-    color: "#d8efe6",
+    color: "#FDF6ED",
     fontWeight: "700"
   },
   tabRow: {
@@ -696,15 +698,15 @@ const styles = StyleSheet.create({
   tabChip: {
     flex: 1,
     borderRadius: 999,
-    backgroundColor: "#dde9e3",
+    backgroundColor: "#F5EAD8",
     paddingVertical: 11,
     alignItems: "center"
   },
   tabChipActive: {
-    backgroundColor: "#0f8c63"
+    backgroundColor: "#C8603A"
   },
   tabChipText: {
-    color: "#335147",
+    color: "#7A5544",
     fontWeight: "700",
     fontSize: 13
   },
@@ -712,13 +714,13 @@ const styles = StyleSheet.create({
     color: "#ffffff"
   },
   panel: {
-    backgroundColor: "#fdfefe",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#d6e4de",
+    borderColor: "#E8D5B7",
     padding: 16,
     gap: 10,
-    shadowColor: "#10241d",
+    shadowColor: "#5C3D2E",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.09,
     shadowRadius: 16,
@@ -727,11 +729,11 @@ const styles = StyleSheet.create({
   panelTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#1a2f27",
+    color: "#5C3D2E",
     marginBottom: 2
   },
   panelSubtitle: {
-    color: "#5b6e66",
+    color: "#9B8070",
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 6
@@ -744,32 +746,32 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#e7efeb",
+    backgroundColor: "#F5EAD8",
     overflow: "hidden"
   },
   progressFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#0f8c63"
+    backgroundColor: "#C8603A"
   },
   progressLabel: {
-    color: "#5f746b",
+    color: "#9B8070",
     fontSize: 12,
     fontWeight: "700"
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d0ddd7",
+    borderColor: "#E8D5B7",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 11,
     fontSize: 15,
-    color: "#193129",
-    backgroundColor: "#fbfdfc"
+    color: "#5C3D2E",
+    backgroundColor: "#FFFFFF"
   },
   inputError: {
-    borderColor: "#d64565",
-    backgroundColor: "#fff5f7"
+    borderColor: "#B83A2A",
+    backgroundColor: "#FFF7F3"
   },
   strengthWrap: {
     gap: 5
@@ -778,23 +780,23 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#e7efeb",
+    backgroundColor: "#F5EAD8",
     overflow: "hidden"
   },
   strengthFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#0f8c63"
+    backgroundColor: "#C8603A"
   },
   helperText: {
-    color: "#62746c",
+    color: "#9B8070",
     fontSize: 12,
     fontWeight: "600"
   },
   switchRow: {
     borderWidth: 1,
-    borderColor: "#d4e3dd",
-    backgroundColor: "#f4faf7",
+    borderColor: "#E8D5B7",
+    backgroundColor: "#FDF6ED",
     borderRadius: 12,
     padding: 10,
     flexDirection: "row",
@@ -807,12 +809,12 @@ const styles = StyleSheet.create({
     gap: 2
   },
   switchTitle: {
-    color: "#1a2f27",
+    color: "#5C3D2E",
     fontWeight: "700",
     fontSize: 14
   },
   switchHint: {
-    color: "#5f746b",
+    color: "#9B8070",
     fontSize: 12
   },
   genderRow: {
@@ -823,28 +825,28 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#cfe0d8",
+    borderColor: "#E8D5B7",
     paddingVertical: 10,
     alignItems: "center",
-    backgroundColor: "#f6fbf8"
+    backgroundColor: "#FDF6ED"
   },
   genderChipActive: {
-    borderColor: "#0f8c63",
-    backgroundColor: "#e6f5ef"
+    borderColor: "#C8603A",
+    backgroundColor: "#FFF7F3"
   },
   genderChipText: {
-    color: "#36564b",
+    color: "#7A5544",
     fontWeight: "700",
     fontSize: 12
   },
   genderChipTextActive: {
-    color: "#0f6f50"
+    color: "#C8603A"
   },
   primaryButton: {
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
-    backgroundColor: "#0f8c63"
+    backgroundColor: "#C8603A"
   },
   primaryButtonText: {
     color: "#ffffff",
@@ -856,12 +858,12 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 12,
     alignItems: "center",
-    backgroundColor: "#edf5f1",
+    backgroundColor: "#FDF6ED",
     borderWidth: 1,
-    borderColor: "#d5e5de"
+    borderColor: "#E8D5B7"
   },
   secondaryButtonText: {
-    color: "#275748",
+    color: "#7A5544",
     fontWeight: "700",
     fontSize: 13
   },
@@ -869,12 +871,12 @@ const styles = StyleSheet.create({
     opacity: 0.6
   },
   errorText: {
-    color: "#c03653",
+    color: "#B83A2A",
     fontWeight: "700",
     fontSize: 13
   },
   successText: {
-    color: "#0f7f58",
+    color: "#3D6B4F",
     fontWeight: "700",
     fontSize: 13,
     marginTop: 12
@@ -886,25 +888,25 @@ const styles = StyleSheet.create({
     marginTop: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#d5e4de",
-    backgroundColor: "#f8fcfa",
+    borderColor: "#E8D5B7",
+    backgroundColor: "#FFFFFF",
     padding: 14,
     gap: 6
   },
   featureTitle: {
     fontSize: 16,
-    color: "#1b3028",
+    color: "#5C3D2E",
     fontWeight: "800"
   },
   featureItem: {
-    color: "#36584d",
+    color: "#7A5544",
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "600"
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(14, 20, 18, 0.45)",
+    backgroundColor: "rgba(30,20,16,0.4)",
     alignItems: "center",
     justifyContent: "center",
     padding: 20
@@ -912,20 +914,20 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 16,
     gap: 10,
     borderWidth: 1,
-    borderColor: "#dbe7e2"
+    borderColor: "#E8D5B7"
   },
   modalTitle: {
     fontSize: 21,
     fontWeight: "800",
-    color: "#1b3028"
+    color: "#5C3D2E"
   },
   modalSubtitle: {
-    color: "#5a6d65",
+    color: "#9B8070",
     fontSize: 13,
     lineHeight: 19
   },
@@ -937,7 +939,8 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   closeLinkText: {
-    color: "#476d60",
+    color: "#7A5544",
     fontWeight: "700"
   }
 });
+
