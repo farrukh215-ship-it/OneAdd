@@ -35,7 +35,7 @@ export function MainNav() {
       <div className="announce-bar">
         <span className="announce-text">
           {"\ud83c\uddf5\ud83c\uddf0"} Pakistan ka pehla real-person marketplace -
-          <span> Ek Banda | Ek Ad | Koi Agent Nahi</span>
+          <span> Shopkeeper Spam Blocked | Ek Banda | Ek Add</span>
         </span>
       </div>
 

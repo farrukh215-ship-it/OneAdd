@@ -73,10 +73,10 @@ export function SiteFooter() {
               <a href="#">CNIC Verified</a>
             </li>
             <li>
-              <a href="#">Zero Agents</a>
+              <a href="#">Shopkeeper Spam Blocked</a>
             </li>
             <li>
-              <a href="#">Ek Banda Ek Ad</a>
+              <a href="#">Ek Banda Ek Add</a>
             </li>
           </ul>
         </div>

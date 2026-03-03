@@ -7,7 +7,7 @@ import { SiteFooter } from "../components/site-footer";
 export const metadata: Metadata = {
   title: "TGMG - Tera Ghar Mera Ghar | Pakistan ka Asli Used Marketplace",
   description:
-    "Pakistan ka pehla real-person used marketplace. Ek banda, ek ad, koi agent nahi. Apna ghar ka saaman seedha asli kharedaar tak.",
+    "Pakistan ka pehla real-person used marketplace. Ek banda, ek add, duplicate shopkeeper spam block. Apna ghar ka saaman seedha asli kharedaar tak.",
   metadataBase: new URL("https://www.teragharmeraghar.com"),
   openGraph: {
     title: "TGMG - Tera Ghar Mera Ghar",

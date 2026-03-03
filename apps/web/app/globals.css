@@ -122,6 +122,9 @@ textarea {
   text-transform: uppercase;
   position: relative;
   z-index: 1;
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
 }
 
 .announce-text span {
@@ -337,7 +340,7 @@ textarea {
   min-height: 92vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  align-items: center;
+  align-items: flex-start;
   position: relative;
   overflow: hidden;
 }
@@ -363,13 +366,13 @@ textarea {
 }
 
 .hero-left {
-  padding: 80px 60px 80px 80px;
+  padding: 42px 60px 48px 80px;
   position: relative;
   z-index: 2;
 }
 
 .hero-right {
-  padding: 60px 80px 60px 40px;
+  padding: 34px 80px 48px 40px;
   position: relative;
   z-index: 2;
   display: flex;
@@ -400,7 +403,7 @@ textarea {
   border: 1px solid var(--sand);
   border-radius: var(--radius-full);
   padding: 7px 16px 7px 10px;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   box-shadow: var(--shadow-sm);
   opacity: 0;
   animation: fadeSlideUp 0.8s ease forwards;
@@ -2724,11 +2727,11 @@ textarea {
   }
 
   .hero-left {
-    padding: 60px 32px 32px;
+    padding: 28px 32px 24px;
   }
 
   .hero-right {
-    padding: 24px 32px 60px;
+    padding: 8px 32px 48px;
   }
 
   .subcat-grid {
@@ -2803,7 +2806,7 @@ textarea {
   }
 
   .cats-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
 
@@ -2813,11 +2816,11 @@ textarea {
   }
 
   .hero-left {
-    padding: 40px 20px 24px;
+    padding: 18px 20px 16px;
   }
 
   .hero-right {
-    padding: 16px 20px 80px;
+    padding: 8px 20px 80px;
   }
 
   .subcat-grid {
@@ -2935,6 +2938,11 @@ textarea {
   .reelsLoadingCard {
     height: min(88vh, 820px);
   }
+}
+
+/* Final override for UTF-safe checkmark in all environments. */
+.badge-verified.badge-verified::before {
+  content: "\2713" !important;
 }
 
 /* Hard override to avoid mojibake glyph in older blocks above. */

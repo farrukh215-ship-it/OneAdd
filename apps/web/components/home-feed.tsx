@@ -287,8 +287,8 @@ export function HomeFeed() {
 
           <p className="hero-urdu urdu-text">{urduTagline}</p>
           <p className="hero-desc">
-            Pakistan ka pehla real-person used marketplace. <strong>Ek banda, ek ad,</strong>{" "}
-            koi agent nahi.
+            Pakistan ka pehla real-person used marketplace. <strong>Shopkeepers aur showroom
+            owners ki duplicate adds block,</strong> sirf real household seller ko priority.
           </p>
 
           <div className="hero-actions">
@@ -306,7 +306,7 @@ export function HomeFeed() {
               <div className="stat-label">Real Users</div>
             </div>
             <div className="stat-item">
-              <div className="stat-num">1 Ad</div>
+              <div className="stat-num">1 Add</div>
               <div className="stat-label">Per Person</div>
             </div>
             <div className="stat-item">
@@ -357,12 +357,12 @@ export function HomeFeed() {
         <div className="trust-sep" />
         <div className="trust-item">
           <span className="trust-icon">{"\ud83d\udeab"}</span>
-          <span className="trust-text">Zero Agents Allowed</span>
+          <span className="trust-text">Shopkeeper Spam Blocked</span>
         </div>
         <div className="trust-sep" />
         <div className="trust-item">
           <span className="trust-icon">{"1\ufe0f\u20e3"}</span>
-          <span className="trust-text">Ek Banda Ek Ad</span>
+          <span className="trust-text">Ek Banda Ek Add</span>
         </div>
         <div className="trust-sep" />
         <div className="trust-item">
@@ -429,7 +429,7 @@ export function HomeFeed() {
                 {category.icon}
               </span>
               <div className="cat-name">{category.name}</div>
-              <div className="cat-count">{category.listingCount} Ads</div>
+              <div className="cat-count">{category.listingCount} Adds</div>
             </button>
           ))}
         </div>
@@ -446,7 +446,7 @@ export function HomeFeed() {
               {selectedCategory.subcategories.map((subcategory) => (
                 <Link href={categoryHref(subcategory.slug)} key={subcategory.id} className="subcat-item">
                   <span>{subcategory.name}</span>
-                  <small>{subcategory.listingCount} ads</small>
+                  <small>{subcategory.listingCount} adds</small>
                 </Link>
               ))}
             </div>

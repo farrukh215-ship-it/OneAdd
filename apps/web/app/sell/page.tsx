@@ -277,8 +277,10 @@ export default function SellPage() {
         <header className="sellWizardHeader">
           <p className="feedKicker">TGMG Sell Wizard</p>
           <h1>Apna Saaman Becho</h1>
-          <p>Ek ad - seedha asli kharedaar tak</p>
-          <p className="helperText">TGMG pe ek active listing policy apply hoti hai.</p>
+          <p>Ek add - seedha asli kharedaar tak</p>
+          <p className="helperText">
+            Shopkeepers aur showroom owners ki duplicate adds auto-block hoti hain.
+          </p>
           <p>
             Step {step} of 4: {stepLabels[step - 1]}
           </p>

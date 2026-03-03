@@ -346,7 +346,7 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 <Text style={styles.trustChipText}>OTP Secure</Text>
               </View>
               <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>No Agent</Text>
+                <Text style={styles.trustChipText}>No Bulk Seller</Text>
               </View>
             </View>
           </View>

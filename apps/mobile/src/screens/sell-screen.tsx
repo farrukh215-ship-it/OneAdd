@@ -128,8 +128,8 @@ export function SellScreen() {
       <View style={styles.heroCard}>
         <Text style={styles.kicker}>TGMG SELL STUDIO</Text>
         <Text style={styles.heading}>Apna Saaman Becho</Text>
-        <Text style={styles.sub}>Ek ad - seedha asli kharedaar tak</Text>
-        <Text style={styles.note}>Ek banda, ek listing, verified audience.</Text>
+        <Text style={styles.sub}>Ek add - seedha asli kharedaar tak</Text>
+        <Text style={styles.note}>Shopkeepers ki duplicate adds block, real sellers first.</Text>
       </View>
 
       <View style={styles.panel}>
