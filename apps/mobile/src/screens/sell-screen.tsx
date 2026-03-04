@@ -12,11 +12,13 @@ import {
   TextInput,
   View
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { AuthRequiredCard } from "../components/auth-required-card";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import { firebaseAppForRecaptcha, firebaseAuth } from "../services/firebase";
+import { pakistanCities } from "@aikad/shared";
 import {
   activateListing,
   createListing,
@@ -24,11 +26,21 @@ import {
   getCategoryCatalog,
   requestListingPublishOtp,
   subscribeAuthToken,
+  uploadMediaFile,
   verifyListingPublishOtp
 } from "../services/api";
 import type { MarketplaceCategory } from "../types";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
 
 export function SellScreen({ navigation }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 16, duration: 320 });
@@ -42,6 +54,9 @@ export function SellScreen({ navigation }: any) {
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoDurationSec, setVideoDurationSec] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [aiHint, setAiHint] = useState("");
   const [showPhone, setShowPhone] = useState(true);
   const [allowChat, setAllowChat] = useState(true);
   const [allowCall, setAllowCall] = useState(true);
@@ -66,6 +81,15 @@ export function SellScreen({ navigation }: any) {
   );
   const subcategories = selectedRoot?.subcategories ?? [];
   const selectedSubcategory = subcategories.find((item) => item.id === categoryId) ?? null;
+  const citySuggestions = useMemo(() => {
+    const query = city.trim().toLowerCase();
+    if (!query) {
+      return pakistanCities.slice(0, 12);
+    }
+    return pakistanCities
+      .filter((item) => item.toLowerCase().includes(query))
+      .slice(0, 12);
+  }, [city]);
 
   useEffect(() => {
     return subscribeAuthToken((nextToken) => {
@@ -153,9 +177,15 @@ export function SellScreen({ navigation }: any) {
     }> = [];
 
     if (imageUrl.trim()) {
+      if (!isValidHttpUrl(imageUrl.trim())) {
+        throw new Error("Image URL valid http/https honi chahiye.");
+      }
       media.push({ type: "IMAGE", url: imageUrl.trim() });
     }
     if (videoUrl.trim()) {
+      if (!isValidHttpUrl(videoUrl.trim())) {
+        throw new Error("Video URL valid http/https honi chahiye.");
+      }
       const duration = Number(videoDurationSec || 0);
       if (!Number.isFinite(duration) || duration <= 0 || duration > 30) {
         throw new Error("Video duration 1 se 30 sec ke darmiyan honi chahiye.");
@@ -166,7 +196,141 @@ export function SellScreen({ navigation }: any) {
         durationSec: duration
       });
     }
+    if (media.filter((item) => item.type === "IMAGE").length < 1) {
+      throw new Error("Kam az kam 1 image upload karni zaroori hai.");
+    }
     return media;
+  }
+
+  function runAiAssist(action: "TITLE" | "DESCRIPTION" | "PRICE" | "CATEGORY" | "SAFETY") {
+    if (action === "TITLE") {
+      const nextTitle = title.trim() || `${selectedSubcategory?.name ?? "Used Item"} - Asli Condition`;
+      setTitle(nextTitle);
+      setAiHint("AI Title Assist apply ho gaya.");
+      return;
+    }
+    if (action === "DESCRIPTION") {
+      const base = description.trim() || "Asli condition item, carefully used.";
+      setDescription(
+        `${base}\n\nAI Note:\n- Original photos attached\n- Demo available for serious buyer\n- No spam offers please`
+      );
+      setAiHint("AI Description Assist apply ho gaya.");
+      return;
+    }
+    if (action === "PRICE") {
+      const text = `${title} ${description}`.toLowerCase();
+      const estimated = text.includes("iphone")
+        ? 85000
+        : text.includes("laptop")
+          ? 95000
+          : text.includes("bike")
+            ? 180000
+            : 12000;
+      setPrice(String(estimated));
+      setAiHint(`AI Price Assist: PKR ${estimated.toLocaleString()} suggested.`);
+      return;
+    }
+    if (action === "CATEGORY") {
+      const terms = `${title} ${description}`.toLowerCase();
+      const suggestion = catalog
+        .flatMap((root) => root.subcategories)
+        .find((item) => terms.includes(item.name.toLowerCase().split(" ")[0]));
+      if (suggestion) {
+        setCategoryId(suggestion.id);
+        setAiHint(`AI Category Assist: ${suggestion.parentName} / ${suggestion.name}`);
+      } else {
+        setAiHint("AI Category Assist: manual selection better hai.");
+      }
+      return;
+    }
+
+    const suspicious = /(advance payment|only bank|gift card|urgent deal)/i.test(
+      `${title} ${description}`
+    );
+    setAiHint(
+      suspicious
+        ? "AI Safety Scan: listing wording risky lag rahi hai."
+        : "AI Safety Scan: wording clean lag rahi hai."
+    );
+  }
+
+  async function pickAndUploadImage() {
+    setImageUploading(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        throw new Error("Media permission required hai.");
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.85,
+        allowsMultipleSelection: false
+      });
+
+      if (result.canceled || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const upload = await uploadMediaFile({
+        uri: asset.uri,
+        name: asset.fileName ?? `image-${Date.now()}.jpg`,
+        mimeType: asset.mimeType ?? "image/jpeg",
+        mediaType: "IMAGE"
+      });
+
+      setImageUrl(upload.url);
+      Alert.alert("Uploaded", "Image upload ho gayi.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Image upload fail ho gayi.";
+      Alert.alert("Error", message);
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  async function pickAndUploadVideo() {
+    setVideoUploading(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        throw new Error("Media permission required hai.");
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        quality: 0.8,
+        allowsMultipleSelection: false
+      });
+
+      if (result.canceled || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const durationSec = Math.round((asset.duration ?? 0) / 1000);
+      if (!durationSec || durationSec > 30) {
+        throw new Error("Video duration 30 sec se kam honi chahiye.");
+      }
+
+      const upload = await uploadMediaFile({
+        uri: asset.uri,
+        name: asset.fileName ?? `video-${Date.now()}.mp4`,
+        mimeType: asset.mimeType ?? "video/mp4",
+        mediaType: "VIDEO",
+        durationSec
+      });
+
+      setVideoDurationSec(String(durationSec));
+      setVideoUrl(upload.url);
+      Alert.alert("Uploaded", "Video upload ho gayi.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Video upload fail ho gayi.";
+      Alert.alert("Error", message);
+    } finally {
+      setVideoUploading(false);
+    }
   }
 
   async function requestPublishOtp() {
@@ -189,6 +353,10 @@ export function SellScreen({ navigation }: any) {
     }
     if (!price.trim() || Number(price) <= 0) {
       Alert.alert("Invalid price", "Price valid numeric honi chahiye.");
+      return;
+    }
+    if (!city.trim()) {
+      Alert.alert("Missing city", "Pakistan city select karna zaroori hai.");
       return;
     }
 
@@ -357,7 +525,7 @@ export function SellScreen({ navigation }: any) {
 
         <TextInput
           style={styles.input}
-          placeholder="Kya bech rahe ho?"
+          placeholder="Kya bech rahe ho? (Title)"
           value={title}
           onChangeText={setTitle}
         />
@@ -368,6 +536,24 @@ export function SellScreen({ navigation }: any) {
           multiline
           onChangeText={setDescription}
         />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.aiActionRow}>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => runAiAssist("TITLE")}>
+            <Text style={styles.secondaryButtonText}>AI Title</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => runAiAssist("DESCRIPTION")}>
+            <Text style={styles.secondaryButtonText}>AI Description</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => runAiAssist("PRICE")}>
+            <Text style={styles.secondaryButtonText}>AI Price</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => runAiAssist("CATEGORY")}>
+            <Text style={styles.secondaryButtonText}>AI Category</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => runAiAssist("SAFETY")}>
+            <Text style={styles.secondaryButtonText}>AI Safety</Text>
+          </Pressable>
+        </ScrollView>
+        {aiHint ? <Text style={styles.aiHintText}>{aiHint}</Text> : null}
         <TextInput
           style={styles.input}
           placeholder="Daam (PKR)"
@@ -377,19 +563,66 @@ export function SellScreen({ navigation }: any) {
         />
         <TextInput
           style={styles.input}
-          placeholder="Aap kahan hain?"
+          placeholder="Aap kahan hain? (Pakistan City)"
           value={city}
           onChangeText={setCity}
         />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.citySuggestionRow}>
+          {citySuggestions.map((cityName) => (
+            <Pressable
+              key={cityName}
+              style={({ pressed }) => [
+                styles.citySuggestionChip,
+                city.trim().toLowerCase() === cityName.toLowerCase() ? styles.citySuggestionChipActive : null,
+                pressed ? styles.pressed : null
+              ]}
+              onPress={() => setCity(cityName)}
+            >
+              <Text style={styles.citySuggestionText}>{cityName}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            (imageUploading || publishing) ? styles.buttonDisabled : null,
+            pressed ? styles.pressed : null
+          ]}
+          onPress={() => {
+            void pickAndUploadImage();
+          }}
+          disabled={imageUploading || publishing}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {imageUploading ? "Uploading image..." : "Image Upload (Gallery)"}
+          </Text>
+        </Pressable>
+
         <TextInput
           style={styles.input}
-          placeholder="Image URL"
+          placeholder="Image URL (fallback)"
           value={imageUrl}
           onChangeText={setImageUrl}
         />
+        <Pressable
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            (videoUploading || publishing) ? styles.buttonDisabled : null,
+            pressed ? styles.pressed : null
+          ]}
+          onPress={() => {
+            void pickAndUploadVideo();
+          }}
+          disabled={videoUploading || publishing}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {videoUploading ? "Uploading video..." : "Video Upload (Gallery, <=30s)"}
+          </Text>
+        </Pressable>
         <TextInput
           style={styles.input}
-          placeholder="Video URL (optional)"
+          placeholder="Video URL (manual fallback)"
           value={videoUrl}
           onChangeText={setVideoUrl}
         />
@@ -631,6 +864,36 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E8D5B7"
+  },
+  citySuggestionRow: {
+    gap: 8,
+    paddingBottom: 10
+  },
+  citySuggestionChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 7
+  },
+  citySuggestionChipActive: {
+    borderColor: "#C8603A",
+    backgroundColor: "#FFF4EE"
+  },
+  citySuggestionText: {
+    color: "#5C3D2E",
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  aiActionRow: {
+    gap: 8,
+    paddingBottom: 10
+  },
+  aiHintText: {
+    marginBottom: 10,
+    color: "#7A5544",
+    fontSize: 12
   },
   multiline: {
     minHeight: 90,

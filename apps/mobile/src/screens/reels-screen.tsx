@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { getVideoFeed, VideoFeedItem } from "../services/api";
+import { isListingSaved, toggleSavedListingId } from "../services/listing-preferences";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 
 const { height } = Dimensions.get("window");
@@ -27,19 +28,51 @@ type ReelCardProps = {
 function ReelCard({ item, isActive, navigation }: ReelCardProps) {
   const player = useVideoPlayer(item.videoUrl, (p) => {
     p.loop = true;
-    p.muted = false;
+    p.muted = true;
   });
+
+  const [muted, setMuted] = useState(true);
+  const [pausedByUser, setPausedByUser] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [saved, setSaved] = useState(false);
+
   const ctaOpacity = useRef(new Animated.Value(isActive ? 1 : 0.72)).current;
   const ctaLift = useRef(new Animated.Value(isActive ? 0 : 14)).current;
   const primaryPulse = useRef(new Animated.Value(1)).current;
   const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    if (isActive) {
+    void isListingSaved(item.listingId)
+      .then(setSaved)
+      .catch(() => setSaved(false));
+  }, [item.listingId]);
+
+  useEffect(() => {
+    player.muted = muted;
+    if (isActive && !pausedByUser) {
       player.play();
     } else {
       player.pause();
     }
+  }, [isActive, muted, pausedByUser, player]);
+
+  useEffect(() => {
+    if (!isActive) {
+      setProgress(0);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const duration = Number(player.duration ?? 0);
+      const currentTime = Number(player.currentTime ?? 0);
+      if (!duration || !Number.isFinite(duration)) {
+        setProgress(0);
+        return;
+      }
+      setProgress(Math.max(0, Math.min(1, currentTime / duration)));
+    }, 250);
+
+    return () => clearInterval(timer);
   }, [isActive, player]);
 
   useEffect(() => {
@@ -91,13 +124,31 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
     });
   }
 
+  async function onToggleSaved() {
+    const next = await toggleSavedListingId(item.listingId);
+    setSaved(next);
+  }
+
   return (
     <View style={styles.reelPage}>
-      <VideoView player={player} style={styles.video} contentFit="cover" />
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => setPausedByUser((prev) => !prev)}>
+        <VideoView player={player} style={styles.video} contentFit="cover" />
+      </Pressable>
+
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+      </View>
+
       <View style={styles.topOverlay}>
         <View style={styles.topBadge}>
           <Text style={styles.topBadgeText}>TGMG REELS</Text>
         </View>
+        <Pressable
+          style={({ pressed }) => [styles.uploadBadge, pressed && styles.pressed]}
+          onPress={() => navigation.navigate("Tabs", { screen: "Becho" })}
+        >
+          <Text style={styles.uploadBadgeText}>Upload Reel</Text>
+        </Pressable>
       </View>
 
       <Animated.View
@@ -126,6 +177,23 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
           </Animated.View>
           <Pressable style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]} onPress={onShare}>
             <Text style={styles.ghostBtnText}>Share</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}
+            onPress={() => {
+              void onToggleSaved();
+            }}
+          >
+            <Text style={styles.ghostBtnText}>{saved ? "Saved" : "Save"}</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]} onPress={() => setMuted((prev) => !prev)}>
+            <Text style={styles.ghostBtnText}>{muted ? "Unmute" : "Mute"}</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}
+            onPress={() => setPausedByUser((prev) => !prev)}
+          >
+            <Text style={styles.ghostBtnText}>{pausedByUser ? "Play" : "Pause"}</Text>
           </Pressable>
         </View>
       </Animated.View>
@@ -189,6 +257,9 @@ export function ReelsScreen({ navigation }: any) {
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyTitle}>No videos yet</Text>
           {error ? <Text style={styles.emptySub}>{error}</Text> : null}
+          <Pressable style={({ pressed }) => [styles.uploadBadge, pressed && styles.pressed]} onPress={() => navigation.navigate("Tabs", { screen: "Becho" })}>
+            <Text style={styles.uploadBadgeText}>Upload First Reel</Text>
+          </Pressable>
         </View>
       </Animated.View>
     );
@@ -227,6 +298,22 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%"
   },
+  progressTrack: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: 8,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.28)",
+    overflow: "hidden"
+  },
+  progressBar: {
+    width: "0%",
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#E07A52"
+  },
   overlay: {
     position: "absolute",
     left: 12,
@@ -239,7 +326,9 @@ const styles = StyleSheet.create({
     top: 12,
     left: 12,
     right: 12,
-    alignItems: "flex-start"
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
   },
   topBadge: {
     backgroundColor: "rgba(30,20,16,0.55)",
@@ -253,6 +342,19 @@ const styles = StyleSheet.create({
     color: "#FDF6ED",
     fontSize: 11,
     letterSpacing: 1.3,
+    fontWeight: "800"
+  },
+  uploadBadge: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderColor: "#E8D5B7",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  uploadBadgeText: {
+    color: "#5C3D2E",
+    fontSize: 11,
     fontWeight: "800"
   },
   price: {
@@ -273,7 +375,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    gap: 8
+    gap: 8,
+    flexWrap: "wrap"
   },
   primaryBtn: {
     flex: 1.25,
@@ -283,21 +386,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: "#E8D5B7"
+    borderColor: "#E8D5B7",
+    minWidth: 130
   },
   primaryBtnText: {
     color: "#C8603A",
     fontWeight: "800"
   },
   ghostBtn: {
-    flex: 1,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(232,213,183,0.6)",
     backgroundColor: "rgba(0,0,0,0.24)",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12
+    paddingVertical: 12,
+    paddingHorizontal: 12
   },
   ghostBtnText: {
     color: "#fff",
@@ -323,7 +427,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24
+    padding: 24,
+    gap: 10
   },
   emptyTitle: {
     color: "#fff",
@@ -340,4 +445,3 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.985 }]
   }
 });
-

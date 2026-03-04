@@ -57,6 +57,30 @@ export type ChatMessage = {
   type?: "TEXT" | "SYSTEM";
 };
 
+export type ListingOffer = {
+  id: string;
+  createdAt: string;
+  senderName: string;
+  amount: number | null;
+  content: string;
+};
+
+export type ListingPublicMessage = {
+  id: string;
+  createdAt: string;
+  senderName: string;
+  content: string;
+  amount: number | null;
+};
+
+export type ListingOffersResponse = {
+  listingId: string;
+  listingTitle: string;
+  totalMessages: number;
+  offers: ListingOffer[];
+  recentMessages: ListingPublicMessage[];
+};
+
 export type MarketplaceSubcategory = {
   id: string;
   slug: string;

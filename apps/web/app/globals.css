@@ -298,6 +298,13 @@ textarea {
   gap: 10px;
 }
 
+.nav-account-chip {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .btn-ghost {
   font-size: 14px;
   font-weight: 500;
@@ -2321,6 +2328,19 @@ textarea {
   transition: width 0.22s ease;
 }
 
+.wizardHelperActions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.draftStatusText {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 .wizardBody {
   min-height: 260px;
   display: grid;
@@ -2364,6 +2384,12 @@ textarea {
 
 .reviewCard p {
   margin: 0 0 6px;
+}
+
+.priceSuggestionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .toggleRow {
@@ -2539,6 +2565,13 @@ textarea {
   background: #1b130f;
 }
 
+.reelsTopActions {
+  max-width: 520px;
+  margin: 0 auto 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .reelsFeedColumn {
   max-width: 520px;
   margin: 0 auto;
@@ -2566,6 +2599,26 @@ textarea {
   height: 100%;
   object-fit: cover;
   display: block;
+  cursor: pointer;
+}
+
+.reelProgressTrack {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  overflow: hidden;
+}
+
+.reelProgressBar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c8603a, #e07a52);
+  transition: width 0.16s linear;
 }
 
 .reelUnitOverlay {

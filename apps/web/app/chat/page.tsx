@@ -55,6 +55,16 @@ export default function ChatPage() {
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
     [threads, activeThreadId]
   );
+  const activePeerName = useMemo(() => {
+    if (!activeThread) {
+      return "Buyer/Seller";
+    }
+    return (
+      (activeThread.buyer?.id === currentUserId
+        ? activeThread.seller?.fullName
+        : activeThread.buyer?.fullName) || "Buyer/Seller"
+    );
+  }, [activeThread, currentUserId]);
   const isClosedThread =
     activeThread?.status === "CLOSED" || activeThread?.listing?.status === "SOLD";
 
@@ -185,7 +195,10 @@ export default function ChatPage() {
                     type="button"
                   >
                     <p className="chatThreadTitle">{thread.listing?.title || "Direct Chat"}</p>
-                    <p className="chatThreadMeta">{peerName}</p>
+                    <p className="chatThreadMeta">
+                      Uploaded by {(thread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
+                      {peerName.split(" ")[0]}
+                    </p>
                     <p className="chatThreadTime">{formatTime(thread.lastMessageAt)}</p>
                   </button>
                 );
@@ -200,6 +213,10 @@ export default function ChatPage() {
           {activeThread ? (
             <header className="chatPanelHeader">
               <h2>{activeThread.listing?.title || "Conversation"}</h2>
+              <p className="chatThreadMeta">
+                Uploaded by {(activeThread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
+                {activePeerName.split(" ")[0]}
+              </p>
             </header>
           ) : null}
 
@@ -220,7 +237,7 @@ export default function ChatPage() {
                     key={message.id}
                     className={`chatBubble ${mine ? "mine" : "theirs"}`}
                   >
-                    <p className="chatBubbleSender">{mine ? "You" : "Seller"}</p>
+                    <p className="chatBubbleSender">{mine ? "You" : activePeerName.split(" ")[0]}</p>
                     <p className="chatBubbleText">{message.content}</p>
                     <time className="chatBubbleTime">{formatTime(message.createdAt)}</time>
                   </article>
@@ -239,7 +256,7 @@ export default function ChatPage() {
             <input
               className="input"
               value={text}
-              placeholder={isClosedThread ? "Chat closed" : "Type a message"}
+              placeholder={isClosedThread ? "Chat closed" : "Type a message (Offer: 120000)"}
               onChange={(event) => setText(event.target.value)}
               disabled={!activeThreadId || isClosedThread || sending}
             />

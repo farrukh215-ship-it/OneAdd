@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   ChatThread,
   Listing,
+  ListingOffersResponse,
   MarketplaceCategory
 } from "../types";
 import Constants from "expo-constants";
@@ -268,11 +269,70 @@ export function getListingById(id: string) {
   return apiRequest<Listing>(`/listings/${id}`);
 }
 
+export function getListingOffers(id: string, limit = 15) {
+  return apiRequest<ListingOffersResponse>(`/listings/${id}/offers?limit=${limit}`);
+}
+
 export function createListing(payload: Record<string, unknown>) {
   return apiRequest<Listing>("/listings", {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export async function uploadMediaFile(params: {
+  uri: string;
+  name: string;
+  mimeType: string;
+  mediaType: "IMAGE" | "VIDEO";
+  durationSec?: number;
+}) {
+  const form = new FormData();
+  form.append("mediaType", params.mediaType);
+  if (typeof params.durationSec === "number" && Number.isFinite(params.durationSec)) {
+    form.append("durationSec", String(params.durationSec));
+  }
+  form.append("file", {
+    uri: params.uri,
+    name: params.name,
+    type: params.mimeType
+  } as any);
+
+  const headers: Record<string, string> = {};
+  if (AUTH_TOKEN) {
+    headers.Authorization = `Bearer ${AUTH_TOKEN}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/media/upload`, {
+    method: "POST",
+    headers,
+    body: form
+  });
+
+  if (!response.ok) {
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "message" in payload &&
+      typeof (payload as { message?: unknown }).message === "string"
+        ? (payload as { message: string }).message
+        : `Upload failed: ${response.status}`;
+    throw new Error(message);
+  }
+
+  return (await response.json()) as {
+    mediaType: "IMAGE" | "VIDEO";
+    durationSec: number | null;
+    url: string;
+    filename: string;
+  };
 }
 
 export function activateListing(listingId: string) {

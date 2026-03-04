@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ConfirmationResult,
   RecaptchaVerifier,
@@ -8,12 +8,15 @@ import {
 } from "firebase/auth";
 import { OtpLoginCard } from "../../components/otp-login-card";
 import { SignupCard } from "../../components/signup-card";
+import { pakistanCities } from "@aikad/shared";
 import {
   activateListing,
   ApiError,
   createListing,
   getCategoryCatalog,
+  getMyListings,
   requestListingPublishOtp,
+  uploadMediaFile,
   uploadListingMedia,
   verifyListingPublishOtp
 } from "../../lib/api";
@@ -62,9 +65,19 @@ const initialState: SellFormState = {
 };
 
 const stepLabels = ["Category", "Details", "Media", "Review"];
+const SELL_DRAFT_KEY = "tgmg_sell_draft_v1";
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function suggestPriceFromText(text: string) {
+  const normalized = text.toLowerCase();
+  if (normalized.includes("iphone") || normalized.includes("samsung")) return 85000;
+  if (normalized.includes("sofa") || normalized.includes("bed")) return 30000;
+  if (normalized.includes("laptop")) return 95000;
+  if (normalized.includes("bike") || normalized.includes("motorcycle")) return 180000;
+  return 12000;
 }
 
 function isValidHttpUrl(value: string) {
@@ -76,30 +89,104 @@ function isValidHttpUrl(value: string) {
   }
 }
 
+function countWords(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 export default function SellPage() {
   const { mounted, token } = useAuthToken();
   const [step, setStep] = useState<WizardStep>(1);
   const [form, setForm] = useState<SellFormState>(initialState);
+  const [mainCategoryId, setMainCategoryId] = useState("");
   const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
+  const [activeCategoryIds, setActiveCategoryIds] = useState<string[]>([]);
   const [imageInput, setImageInput] = useState("");
   const [videoInput, setVideoInput] = useState("");
   const [videoDuration, setVideoDuration] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [aiHint, setAiHint] = useState("");
   const [stepLoading, setStepLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishOtpModalOpen, setPublishOtpModalOpen] = useState(false);
   const [publishOtpCode, setPublishOtpCode] = useState("");
   const [publishOtpPhone, setPublishOtpPhone] = useState("");
   const [publishOtpResendIn, setPublishOtpResendIn] = useState(0);
+  const [draftStatus, setDraftStatus] = useState("");
 
   const recaptchaElementRef = useRef<HTMLDivElement | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const publishConfirmationRef = useRef<ConfirmationResult | null>(null);
+  const draftHydratedRef = useRef(false);
 
   useEffect(() => {
     void getCategoryCatalog().then(setCatalog).catch(() => setCatalog([]));
   }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setActiveCategoryIds([]);
+      return;
+    }
+    getMyListings()
+      .then((listings) => {
+        const ids = listings
+          .filter((listing) => listing.status === "ACTIVE" && listing.categoryId)
+          .map((listing) => String(listing.categoryId));
+        setActiveCategoryIds(Array.from(new Set(ids)));
+      })
+      .catch(() => setActiveCategoryIds([]));
+  }, [token]);
+
+  useEffect(() => {
+    if (!mounted || draftHydratedRef.current) {
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(SELL_DRAFT_KEY);
+      if (!raw) {
+        draftHydratedRef.current = true;
+        return;
+      }
+      const parsed = JSON.parse(raw) as {
+        step?: WizardStep;
+        form?: SellFormState;
+        mainCategoryId?: string;
+      };
+      if (parsed.form) {
+        setForm(parsed.form);
+      }
+      if (parsed.step && parsed.step >= 1 && parsed.step <= 4) {
+        setStep(parsed.step);
+      }
+      if (parsed.mainCategoryId) {
+        setMainCategoryId(parsed.mainCategoryId);
+      }
+      setDraftStatus("Draft restore ho gaya.");
+    } catch {
+      // Ignore corrupt draft.
+    } finally {
+      draftHydratedRef.current = true;
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted || !draftHydratedRef.current) {
+      return;
+    }
+    const payload = JSON.stringify({
+      step,
+      form,
+      mainCategoryId
+    });
+    localStorage.setItem(SELL_DRAFT_KEY, payload);
+    setDraftStatus("Draft auto-saved");
+  }, [form, mainCategoryId, mounted, step]);
 
   useEffect(() => {
     if (!isFirebaseConfigured() || !recaptchaElementRef.current) {
@@ -137,23 +224,66 @@ export default function SellPage() {
         .find((subcategory) => subcategory.id === form.categoryId),
     [catalog, form.categoryId]
   );
+  const selectedMainCategory = useMemo(
+    () => catalog.find((root) => root.id === mainCategoryId) ?? null,
+    [catalog, mainCategoryId]
+  );
+  const selectedSubcategories = useMemo(
+    () => selectedMainCategory?.subcategories ?? [],
+    [selectedMainCategory]
+  );
+  const hasActiveCategoryLock = useMemo(
+    () => Boolean(form.categoryId && activeCategoryIds.includes(form.categoryId)),
+    [activeCategoryIds, form.categoryId]
+  );
+  const descriptionWordCount = useMemo(() => countWords(form.description), [form.description]);
+  const priceSuggestions = useMemo(() => {
+    const base = suggestPriceFromText(`${form.title} ${form.description}`);
+    return [Math.max(500, Math.floor(base * 0.9)), base, Math.floor(base * 1.1)];
+  }, [form.description, form.title]);
+
+  useEffect(() => {
+    if (!form.categoryId || catalog.length === 0) {
+      return;
+    }
+    const parent = catalog.find((root) =>
+      root.subcategories.some((subcategory) => subcategory.id === form.categoryId)
+    );
+    if (parent && parent.id !== mainCategoryId) {
+      setMainCategoryId(parent.id);
+    }
+  }, [catalog, form.categoryId, mainCategoryId]);
 
   const validationErrors = useMemo(() => {
     const errs: string[] = [];
+    if (!mainCategoryId.trim()) errs.push("Main category required hai.");
     if (!form.categoryId.trim()) errs.push("Category required hai.");
     if (!form.title.trim()) errs.push("Title required hai.");
     if (!form.price.trim() || Number(form.price) <= 0) errs.push("Price valid numeric honi chahiye.");
+    if (!form.city.trim()) errs.push("Location select karna zaroori hai.");
+    if (countWords(form.description) < 50) errs.push("Description minimum 50 words hona zaroori hai.");
+    if (images.length < 2) errs.push("Kam az kam 2 images upload karni zaroori hain.");
     if (images.length > 6) errs.push("Max 6 images allow hain.");
     if (video && (video.durationSec ?? 0) > 30) errs.push("Video duration 30 sec se kam honi chahiye.");
     return errs;
-  }, [form.categoryId, form.price, form.title, images.length, video]);
+  }, [form.categoryId, form.city, form.description, form.price, form.title, images.length, mainCategoryId, video]);
 
   function goNextStep() {
     setError("");
     setSuccess("");
-    if (step === 1 && !form.categoryId.trim()) {
-      setError("Category select karna zaroori hai.");
-      return;
+    if (step === 1) {
+      if (!mainCategoryId.trim()) {
+        setError("Main category select karna zaroori hai.");
+        return;
+      }
+      if (!form.categoryId.trim()) {
+        setError("Subcategory select karna zaroori hai.");
+        return;
+      }
+      if (hasActiveCategoryLock) {
+        setError("Is subcategory me aap ka ek active ADD already mojood hai.");
+        return;
+      }
     }
     if (step === 2) {
       if (!form.title.trim()) {
@@ -164,8 +294,20 @@ export default function SellPage() {
         setError("Price valid numeric honi chahiye.");
         return;
       }
+      if (!form.city.trim()) {
+        setError("Location select karna zaroori hai.");
+        return;
+      }
+      if (countWords(form.description) < 50) {
+        setError("Description minimum 50 words hona zaroori hai.");
+        return;
+      }
     }
     if (step === 3) {
+      if (images.length < 2) {
+        setError("Kam az kam 2 images upload karni zaroori hain.");
+        return;
+      }
       if (images.length > 6) {
         setError("Max 6 images allow hain.");
         return;
@@ -187,6 +329,22 @@ export default function SellPage() {
     setError("");
     setSuccess("");
     setStep((prev) => (prev > 1 ? ((prev - 1) as WizardStep) : prev));
+  }
+
+  function saveDraftManually() {
+    const payload = JSON.stringify({ step, form, mainCategoryId });
+    localStorage.setItem(SELL_DRAFT_KEY, payload);
+    setDraftStatus("Draft save ho gaya.");
+  }
+
+  function clearDraftAndReset() {
+    localStorage.removeItem(SELL_DRAFT_KEY);
+    setForm(initialState);
+    setMainCategoryId("");
+    setStep(1);
+    setDraftStatus("Draft clear ho gaya.");
+    setError("");
+    setSuccess("");
   }
 
   function addImage() {
@@ -239,11 +397,154 @@ export default function SellPage() {
     setVideoDuration("");
   }
 
+  async function onImageFilesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+
+    setError("");
+    if (images.length + files.length > 6) {
+      setError("Max 6 images allow hain.");
+      event.target.value = "";
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      for (const file of files) {
+        const uploaded = await uploadMediaFile({
+          file,
+          mediaType: "IMAGE"
+        });
+        setForm((prev) => ({
+          ...prev,
+          media: [...prev.media, { id: uid(), type: "IMAGE", url: uploaded.url }]
+        }));
+      }
+      setSuccess("Images upload ho gayin.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Image upload fail ho gayi.");
+      }
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
+  }
+
+  async function onVideoFileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setError("");
+    const duration = Number(videoDuration || 0);
+    if (!Number.isFinite(duration) || duration <= 0 || duration > 30) {
+      setError("Video duration 1 se 30 sec ke darmiyan honi chahiye.");
+      event.target.value = "";
+      return;
+    }
+
+    setUploadingVideo(true);
+    try {
+      const uploaded = await uploadMediaFile({
+        file,
+        mediaType: "VIDEO",
+        durationSec: duration
+      });
+      setForm((prev) => {
+        const withoutVideo = prev.media.filter((item) => item.type !== "VIDEO");
+        return {
+          ...prev,
+          media: [
+            ...withoutVideo,
+            {
+              id: uid(),
+              type: "VIDEO",
+              url: uploaded.url,
+              durationSec: uploaded.durationSec ?? duration
+            }
+          ]
+        };
+      });
+      setVideoInput("");
+      setSuccess("Video upload ho gayi.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Video upload fail ho gayi.");
+      }
+    } finally {
+      setUploadingVideo(false);
+      event.target.value = "";
+    }
+  }
+
   function removeMedia(id: string) {
     setForm((prev) => ({
       ...prev,
       media: prev.media.filter((item) => item.id !== id)
     }));
+  }
+
+  function runAiAssist(
+    action: "TITLE" | "DESCRIPTION" | "PRICE" | "CATEGORY" | "SAFETY"
+  ) {
+    if (action === "TITLE") {
+      const nextTitle = form.title.trim() || `${selectedCategory?.name ?? "Used Item"} - Asli Condition`;
+      setForm((prev) => ({ ...prev, title: nextTitle }));
+      setAiHint("AI Title Assist: clean title set ho gaya.");
+      return;
+    }
+    if (action === "DESCRIPTION") {
+      const base = form.description.trim() || "Asli condition item, carefully used.";
+      const enriched = `${base}\n\nAI Note:\n- Original photos attached\n- Demo available for serious buyer\n- No spam offers please`;
+      setForm((prev) => ({ ...prev, description: enriched }));
+      setAiHint("AI Description Assist: detailed copy generate ho gayi.");
+      return;
+    }
+    if (action === "PRICE") {
+      const computed = suggestPriceFromText(`${form.title} ${form.description}`);
+      setForm((prev) => ({ ...prev, price: String(computed) }));
+      setAiHint(`AI Price Assist: suggested price PKR ${computed.toLocaleString()}`);
+      return;
+    }
+    if (action === "CATEGORY") {
+      const terms = `${form.title} ${form.description}`.toLowerCase();
+      const match = catalog.find((root) =>
+        root.subcategories.some((item) =>
+          terms.includes(item.name.toLowerCase().split(" ")[0])
+        )
+      );
+      const sub = match?.subcategories.find((item) =>
+        terms.includes(item.name.toLowerCase().split(" ")[0])
+      );
+      if (sub && match) {
+        setMainCategoryId(match.id);
+        setForm((prev) => ({ ...prev, categoryId: sub.id }));
+        setAiHint(`AI Category Assist: ${sub.parentName} / ${sub.name} suggest kiya gaya.`);
+      } else {
+        setAiHint("AI Category Assist: clear match nahi mila, manual selection better hai.");
+      }
+      return;
+    }
+    const suspicious = /(advance payment|only bank|urgent deal|gift card)/i.test(
+      `${form.title} ${form.description}`
+    );
+    setAiHint(
+      suspicious
+        ? "AI Safety Scan: wording me risk signals hain. Description ko transparent banayein."
+        : "AI Safety Scan: listing wording clean lag rahi hai."
+    );
   }
 
   async function requestPublishOtp() {
@@ -306,9 +607,12 @@ export default function SellPage() {
       await activateListing(created.id);
       setSuccess("Listing successfully publish ho gayi.");
       setForm(initialState);
+      setMainCategoryId("");
       setStep(1);
       setPublishOtpModalOpen(false);
       setPublishOtpCode("");
+      localStorage.removeItem(SELL_DRAFT_KEY);
+      setDraftStatus("Draft clear ho gaya.");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("Fairness rule block: is category me pehle se active listing hai.");
@@ -431,6 +735,15 @@ export default function SellPage() {
           <div className="wizardProgressTrack" aria-hidden="true">
             <div className="wizardProgressBar" style={{ width: `${progress}%` }} />
           </div>
+          <div className="wizardHelperActions">
+            <button type="button" className="searchSubmitBtn ghost" onClick={saveDraftManually}>
+              Save Draft
+            </button>
+            <button type="button" className="searchSubmitBtn ghost" onClick={clearDraftAndReset}>
+              Clear Draft
+            </button>
+            {draftStatus ? <span className="draftStatusText">{draftStatus}</span> : null}
+          </div>
         </header>
 
         <section className="wizardBody">
@@ -445,31 +758,58 @@ export default function SellPage() {
           {!stepLoading && step === 1 ? (
             <div className="stack">
               <label className="filterLabel">
-                Kis cheez ka hai? (subcategory select karein)
+                Main Category
+                <select
+                  className="input"
+                  value={mainCategoryId}
+                  onChange={(event) => {
+                    const nextRootId = event.target.value;
+                    setMainCategoryId(nextRootId);
+                    setForm((prev) => ({ ...prev, categoryId: "" }));
+                  }}
+                >
+                  <option value="">Main category select karo</option>
+                  {catalog.map((root) => (
+                    <option key={root.id} value={root.id}>
+                      {root.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filterLabel">
+                Sub Category
                 <select
                   className="input"
                   value={form.categoryId}
                   onChange={(event) => setForm((prev) => ({ ...prev, categoryId: event.target.value }))}
+                  disabled={!mainCategoryId}
                 >
                   <option value="">Subcategory select karo</option>
-                  {catalog.map((root) => (
-                    <optgroup key={root.id} label={root.name}>
-                      {root.subcategories.map((sub) => (
-                        <option key={sub.id} value={sub.id}>
-                          {sub.name}
-                        </option>
-                      ))}
-                    </optgroup>
+                  {selectedSubcategories.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
                   ))}
                 </select>
               </label>
+              {selectedMainCategory ? (
+                <p className="shareHint">
+                  Live demand: {selectedMainCategory.listingCount} active listings in this main category.
+                </p>
+              ) : null}
+              {hasActiveCategoryLock ? (
+                <div className="searchErrorBanner" role="alert">
+                  Is subcategory me aap ka ek active ADD already mojood hai. Pehle purana ADD sold/deactivate karein.
+                </div>
+              ) : null}
             </div>
           ) : null}
 
           {!stepLoading && step === 2 ? (
             <div className="stack">
               <label className="filterLabel">
-                Kya bech rahe ho?
+                Kya bech rahe ho? (Tittle)
                 <input
                   className="input"
                   value={form.title}
@@ -500,15 +840,22 @@ export default function SellPage() {
                 </select>
               </label>
               <label className="filterLabel">
-                Aap kahan hain?
+                Aap kahan hain? (Location)
                 <input
                   className="input"
+                  list="pakistan-city-options"
+                  placeholder="City select ya search karein"
                   value={form.city}
                   onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
                 />
+                <datalist id="pakistan-city-options">
+                  {pakistanCities.map((city) => (
+                    <option key={city} value={city} />
+                  ))}
+                </datalist>
               </label>
               <label className="filterLabel">
-                Apni cheez ke baare mein batao
+                Apni cheez ke baare mein batao (Minimum 50 words)
                 <textarea
                   className="input"
                   rows={5}
@@ -516,6 +863,37 @@ export default function SellPage() {
                   onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
                 />
               </label>
+              <p className="shareHint">Word count: {descriptionWordCount}/50</p>
+              <div className="priceSuggestionRow">
+                {priceSuggestions.map((price) => (
+                  <button
+                    key={price}
+                    type="button"
+                    className="searchSubmitBtn ghost"
+                    onClick={() => setForm((prev) => ({ ...prev, price: String(price) }))}
+                  >
+                    PKR {price.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+              <div className="toggleRow">
+                <button className="searchSubmitBtn ghost" type="button" onClick={() => runAiAssist("TITLE")}>
+                  AI Title
+                </button>
+                <button className="searchSubmitBtn ghost" type="button" onClick={() => runAiAssist("DESCRIPTION")}>
+                  AI Description
+                </button>
+                <button className="searchSubmitBtn ghost" type="button" onClick={() => runAiAssist("PRICE")}>
+                  AI Price
+                </button>
+                <button className="searchSubmitBtn ghost" type="button" onClick={() => runAiAssist("CATEGORY")}>
+                  AI Category
+                </button>
+                <button className="searchSubmitBtn ghost" type="button" onClick={() => runAiAssist("SAFETY")}>
+                  AI Safety
+                </button>
+              </div>
+              {aiHint ? <p className="shareHint">{aiHint}</p> : null}
             </div>
           ) : null}
 
@@ -523,7 +901,24 @@ export default function SellPage() {
             <div className="stack">
               <div className="mediaComposer">
                 <label className="filterLabel">
-                  Image URL (max 6)
+                  Upload Images (minimum 2, max 6)
+                  <input
+                    className="input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={onImageFilesSelected}
+                    disabled={uploadingImage || publishing}
+                  />
+                </label>
+                <button type="button" className="searchSubmitBtn ghost" disabled>
+                  {uploadingImage ? "Uploading..." : "Auto Upload Enabled"}
+                </button>
+              </div>
+
+              <div className="mediaComposer">
+                <label className="filterLabel">
+                  Image URL (optional manual)
                   <input
                     className="input"
                     value={imageInput}
@@ -535,24 +930,41 @@ export default function SellPage() {
                   Add Image
                 </button>
               </div>
+              <p className="shareHint">Required: kam az kam 2 images upload karna zaroori hai.</p>
 
               <div className="mediaComposer">
                 <label className="filterLabel">
-                  Video URL (optional)
-                  <input
-                    className="input"
-                    value={videoInput}
-                    onChange={(event) => setVideoInput(event.target.value)}
-                    placeholder="https://cdn.example.com/video.mp4"
-                  />
-                </label>
-                <label className="filterLabel">
-                  Duration (sec max 30)
+                  Video Duration (sec max 30)
                   <input
                     className="input"
                     inputMode="numeric"
                     value={videoDuration}
                     onChange={(event) => setVideoDuration(event.target.value)}
+                  />
+                </label>
+                <label className="filterLabel">
+                  Upload Video (optional, &lt;=30 sec)
+                  <input
+                    className="input"
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    onChange={onVideoFileSelected}
+                    disabled={uploadingVideo || publishing}
+                  />
+                </label>
+                <button type="button" className="searchSubmitBtn ghost" disabled>
+                  {uploadingVideo ? "Uploading..." : "Video Upload Ready"}
+                </button>
+              </div>
+
+              <div className="mediaComposer">
+                <label className="filterLabel">
+                  Video URL (manual fallback)
+                  <input
+                    className="input"
+                    value={videoInput}
+                    onChange={(event) => setVideoInput(event.target.value)}
+                    placeholder="https://cdn.example.com/video.mp4"
                   />
                 </label>
                 <button type="button" className="searchSubmitBtn" onClick={setOrReplaceVideo}>
@@ -604,6 +1016,9 @@ export default function SellPage() {
                 </p>
                 <p>
                   <strong>Media:</strong> {images.length} images, {video ? "1 video" : "0 video"}
+                </p>
+                <p>
+                  <strong>Description words:</strong> {descriptionWordCount}
                 </p>
               </div>
               <div className="toggleRow">

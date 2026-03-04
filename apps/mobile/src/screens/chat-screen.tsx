@@ -61,6 +61,16 @@ export function ChatScreen({ navigation }: any) {
     () => threads.find((item) => item.id === activeThreadId) ?? null,
     [threads, activeThreadId]
   );
+  const activePeerName = useMemo(() => {
+    if (!activeThread) {
+      return "Buyer/Seller";
+    }
+    return (
+      (activeThread.buyer?.id === currentUserId
+        ? activeThread.seller?.fullName
+        : activeThread.buyer?.fullName) || "Buyer/Seller"
+    );
+  }, [activeThread, currentUserId]);
   const isClosed = activeThread?.status === "CLOSED" || activeThread?.listing?.status === "SOLD";
 
   useEffect(() => {
@@ -167,7 +177,13 @@ export function ChatScreen({ navigation }: any) {
     <Animated.View style={[styles.screen, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>TGMG Chats</Text>
-        <Text style={styles.headerSub}>Asli buyers aur sellers ke sath direct baat karein.</Text>
+        <Text style={styles.headerSub}>
+          {activeThread?.listing?.title
+            ? `Product: ${activeThread.listing.title} | Uploaded by ${(
+                activeThread.seller?.fullName || "Seller"
+              ).split(" ")[0]}`
+            : "Asli buyers aur sellers ke sath direct baat karein."}
+        </Text>
       </View>
 
       <View style={styles.threadRail}>
@@ -201,6 +217,7 @@ export function ChatScreen({ navigation }: any) {
                   {item.listing?.title ?? "Conversation"}
                 </Text>
                 <Text style={styles.threadSub} numberOfLines={1}>
+                  Uploaded by {(item.seller?.fullName || "Seller").split(" ")[0]} |{" "}
                   {item.status === "CLOSED" ? "Closed" : "Active"}
                 </Text>
               </Pressable>
@@ -226,6 +243,9 @@ export function ChatScreen({ navigation }: any) {
           const mine = item.senderId === currentUserId;
           return (
             <View style={mine ? styles.bubbleMine : styles.bubbleOther}>
+              <Text style={mine ? styles.timeMine : styles.timeOther}>
+                {mine ? "You" : activePeerName.split(" ")[0]}
+              </Text>
               <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>
                 {item.content}
               </Text>
@@ -246,7 +266,7 @@ export function ChatScreen({ navigation }: any) {
       <View style={styles.chatBox}>
         <TextInput
           style={styles.input}
-          placeholder={isClosed ? "Chat closed" : "Message likho..."}
+          placeholder={isClosed ? "Chat closed" : "Message likho... (Offer: 120000)"}
           value={text}
           onChangeText={setText}
           editable={!isClosed && !sending && Boolean(activeThreadId)}

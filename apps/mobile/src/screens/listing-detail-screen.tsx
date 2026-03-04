@@ -15,13 +15,18 @@ import {
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEffect } from "react";
-import { getListingById, upsertThread } from "../services/api";
+import { getListingById, getListingOffers, upsertThread } from "../services/api";
 import {
   addRecentlyViewedListingId,
   isListingSaved,
   toggleSavedListingId
 } from "../services/listing-preferences";
-import type { Listing, ListingMedia } from "../types";
+import type {
+  Listing,
+  ListingMedia,
+  ListingOffer,
+  ListingPublicMessage
+} from "../types";
 
 const { width } = Dimensions.get("window");
 const GALLERY_HEIGHT = 300;
@@ -63,6 +68,8 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [chatLoading, setChatLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [offers, setOffers] = useState<ListingOffer[]>([]);
+  const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const listingId = String(route.params?.id ?? "");
 
   useEffect(() => {
@@ -74,6 +81,16 @@ export function ListingDetailScreen({ route, navigation }: any) {
       })
       .catch(() => setError("Listing load nahi ho saki."))
       .finally(() => setLoading(false));
+
+    getListingOffers(listingId, 12)
+      .then((result) => {
+        setOffers(result.offers);
+        setRecentMessages(result.recentMessages ?? []);
+      })
+      .catch(() => {
+        setOffers([]);
+        setRecentMessages([]);
+      });
   }, [listingId]);
 
   useEffect(() => {
@@ -199,6 +216,32 @@ export function ListingDetailScreen({ route, navigation }: any) {
           <View style={styles.trustCard}>
             <Text style={styles.sellerName}>{listing.user?.fullName || "Asli Seller"}</Text>
             <Text style={styles.trustText}>{trustBadge}</Text>
+          </View>
+
+          <View style={styles.trustCard}>
+            <Text style={styles.sellerName}>Live Buyer Offers</Text>
+            {offers.length === 0 ? (
+              <Text style={styles.trustText}>Chat me likhein: Offer: 120000</Text>
+            ) : (
+              offers.slice(0, 6).map((offer) => (
+                <Text key={offer.id} style={styles.trustText}>
+                  {offer.senderName}: {offer.amount ? `PKR ${offer.amount.toLocaleString()}` : offer.content}
+                </Text>
+              ))
+            )}
+          </View>
+
+          <View style={styles.trustCard}>
+            <Text style={styles.sellerName}>Public Chat on this Product</Text>
+            {recentMessages.length === 0 ? (
+              <Text style={styles.trustText}>Abhi public chat visible nahi hai.</Text>
+            ) : (
+              recentMessages.map((message) => (
+                <Text key={message.id} style={styles.trustText}>
+                  {message.senderName}: {message.content}
+                </Text>
+              ))
+            )}
           </View>
 
           <View style={styles.quickActionsRow}>

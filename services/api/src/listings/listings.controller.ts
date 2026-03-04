@@ -77,6 +77,14 @@ export class ListingsController {
     return this.listingsService.getListingById(listingId);
   }
 
+  @Get(":id/offers")
+  offers(
+    @Param("id") listingId: string,
+    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number
+  ) {
+    return this.listingsService.getListingOffers(listingId, limit ?? 20);
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

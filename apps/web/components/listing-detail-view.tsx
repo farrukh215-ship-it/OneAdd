@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShareActions } from "./share-actions";
-import { Listing } from "../lib/types";
-import { upsertChatThread } from "../lib/api";
+import { Listing, ListingOffer, ListingPublicMessage } from "../lib/types";
+import { fetchListingOffers, upsertChatThread } from "../lib/api";
 import { useAuthToken } from "../lib/use-auth-token";
 
 type ListingDetailViewProps = {
@@ -18,6 +18,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [offers, setOffers] = useState<ListingOffer[]>([]);
+  const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const isLoggedIn = mounted && Boolean(token);
 
   const images = useMemo(
@@ -49,6 +51,18 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
     const recentIds = recentRaw ? (JSON.parse(recentRaw) as string[]) : [];
     const nextRecent = [listing.id, ...recentIds.filter((item) => item !== listing.id)].slice(0, 20);
     localStorage.setItem("tgmg_recently_viewed", JSON.stringify(nextRecent));
+  }, [listing.id]);
+
+  useEffect(() => {
+    fetchListingOffers(listing.id, 12)
+      .then((result) => {
+        setOffers(result.offers);
+        setRecentMessages(result.recentMessages ?? []);
+      })
+      .catch(() => {
+        setOffers([]);
+        setRecentMessages([]);
+      });
   }, [listing.id]);
 
   function toggleSaved() {
@@ -166,6 +180,44 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               </Link>
             ) : null}
             {chatError ? <p className="error">{chatError}</p> : null}
+          </section>
+
+          <section className="sellerTrustCard">
+            <p className="sellerName">Live Buyer Offers</p>
+            {offers.length === 0 ? (
+              <p className="listingDescription">
+                Abhi public offers nahi aaye. Chat me likhein: <strong>Offer: 120000</strong>
+              </p>
+            ) : (
+              <div className="stack">
+                {offers.slice(0, 6).map((offer) => (
+                  <div key={offer.id} className="sellerTrustRow">
+                    <span className="pill">{offer.senderName}</span>
+                    <span className="sellerTrustScore">
+                      {offer.amount ? `PKR ${offer.amount.toLocaleString()}` : offer.content}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="sellerTrustCard">
+            <p className="sellerName">Public Chat on this Product</p>
+            {recentMessages.length === 0 ? (
+              <p className="listingDescription">
+                Abhi public chat visible nahi hai. Buyers chat start karte hi yahan preview aayega.
+              </p>
+            ) : (
+              <div className="stack">
+                {recentMessages.map((message) => (
+                  <div key={message.id} className="sellerTrustRow">
+                    <span className="pill">{message.senderName}</span>
+                    <span className="sellerTrustScore">{message.content}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <ShareActions listingId={listing.id} title={listing.title} />

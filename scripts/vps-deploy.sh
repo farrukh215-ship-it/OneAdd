@@ -64,6 +64,7 @@ fi
 
 chmod 700 "$APP_DIR/keys"
 chmod 600 "$FIREBASE_KEY_FILE"
+mkdir -p "$APP_DIR/uploads"
 
 set_kv "services/api/.env" "PUSH_PROVIDER" "fcm"
 set_kv "services/api/.env" "FIREBASE_SERVICE_ACCOUNT_PATH" "/app/keys/firebase-admin.json"

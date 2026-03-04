@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearToken } from "../lib/api";
+import { useEffect, useState } from "react";
+import { clearToken, getMe } from "../lib/api";
 import { useAuthToken } from "../lib/use-auth-token";
 
 const links = [
@@ -29,6 +30,19 @@ export function MainNav() {
   const router = useRouter();
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
+  const [accountName, setAccountName] = useState("");
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setAccountName("");
+      return;
+    }
+    getMe()
+      .then((profile) => {
+        setAccountName(profile.fullName || profile.email || "Account");
+      })
+      .catch(() => setAccountName("Account"));
+  }, [isLoggedIn]);
 
   return (
     <>
@@ -64,16 +78,21 @@ export function MainNav() {
           {!mounted ? (
             <span className="btn-ghost">Login</span>
           ) : isLoggedIn ? (
-            <button
-              className="btn-ghost"
-              onClick={() => {
-                clearToken();
-                router.refresh();
-              }}
-              type="button"
-            >
-              Logout
-            </button>
+            <>
+              <Link href="/account" className="btn-ghost nav-account-chip" title={accountName}>
+                {accountName}
+              </Link>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  clearToken();
+                  router.refresh();
+                }}
+                type="button"
+              >
+                Logout
+              </button>
+            </>
           ) : (
             <Link href="/account" className="btn-ghost">
               Login

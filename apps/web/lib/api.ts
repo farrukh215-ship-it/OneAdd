@@ -1,7 +1,15 @@
 import { marketplaceCategoryCatalog } from "@aikad/shared";
-import { ChatMessage, ChatThread, Listing, MarketplaceCategory } from "./types";
+import {
+  ChatMessage,
+  ChatThread,
+  Listing,
+  ListingOffersResponse,
+  MarketplaceCategory
+} from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== "undefined" ? `${window.location.origin}/api` : "http://localhost:3001");
 const TOKEN_KEY = "aikad_access_token";
 const SESSION_TOKEN_KEY = "aikad_access_token_session";
 export const AUTH_TOKEN_CHANGED_EVENT = "aikad-auth-changed";
@@ -288,6 +296,10 @@ export async function fetchListingById(id: string) {
   return apiRequest<Listing>(`/listings/${id}`);
 }
 
+export async function fetchListingOffers(id: string, limit = 15) {
+  return apiRequest<ListingOffersResponse>(`/listings/${id}/offers?limit=${limit}`);
+}
+
 export async function requestOtp(phone: string, options?: { forSignup?: boolean }) {
   return apiRequest<{ requestId: string; expiresAt: string; devOtp?: string }>(
     "/auth/otp/request",
@@ -455,6 +467,57 @@ export async function uploadListingMedia(
     auth: true,
     body: JSON.stringify({ media })
   });
+}
+
+export async function uploadMediaFile(params: {
+  file: File;
+  mediaType: "IMAGE" | "VIDEO";
+  durationSec?: number;
+}) {
+  const token = getToken();
+  if (!token) {
+    throw new ApiError("Login required.", 401);
+  }
+
+  const form = new FormData();
+  form.append("file", params.file);
+  form.append("mediaType", params.mediaType);
+  if (typeof params.durationSec === "number" && Number.isFinite(params.durationSec)) {
+    form.append("durationSec", String(params.durationSec));
+  }
+
+  const response = await fetch(`${API_BASE_URL}/media/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: form,
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "message" in payload &&
+      typeof (payload as { message?: unknown }).message === "string"
+        ? (payload as { message: string }).message
+        : `Upload failed: ${response.status}`;
+    throw new ApiError(message, response.status, payload);
+  }
+
+  return (await response.json()) as {
+    mediaType: "IMAGE" | "VIDEO";
+    durationSec: number | null;
+    url: string;
+    filename: string;
+  };
 }
 
 export async function activateListing(listingId: string) {

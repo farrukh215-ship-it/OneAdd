@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { marketplaceCategoryCatalog } from "@aikad/shared";
 import {
+  ChatMessageType,
   ChatThreadStatus,
   ListingMediaType,
   ListingStatus,
@@ -521,6 +522,75 @@ export class ListingsService {
     }
 
     return listing;
+  }
+
+  async getListingOffers(listingId: string, limit = 20) {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, title: true }
+    });
+    if (!listing) {
+      throw new NotFoundException("Listing not found.");
+    }
+
+    const messages = await this.prisma.chatMessage.findMany({
+      where: {
+        type: ChatMessageType.TEXT,
+        thread: {
+          listingId
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: Math.min(Math.max(limit * 4, 1), 100),
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        sender: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    const normalizedMessages = messages
+      .map((message) => {
+        const clean = message.content.trim();
+        if (!clean) {
+          return null;
+        }
+
+        const senderName = message.sender.fullName.split(" ")[0] || "Buyer";
+        const match =
+          clean.match(/(?:offer|bid|pkr|rs\.?)\s*[:\-]?\s*([\d,]{4,})/i) ??
+          clean.match(/\b([\d,]{5,})\b/);
+        const amount = match?.[1] ? Number(match[1].replace(/,/g, "")) : null;
+
+        return {
+          id: message.id,
+          createdAt: message.createdAt,
+          senderName,
+          amount: Number.isFinite(amount) ? amount : null,
+          content: clean.slice(0, 180)
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+      .slice(0, Math.min(Math.max(limit, 1), 20));
+
+    const offers = normalizedMessages
+      .filter((entry) => entry.amount !== null)
+      .slice(0, Math.min(Math.max(limit, 1), 20));
+
+    const recentMessages = normalizedMessages.slice(0, 8);
+
+    return {
+      listingId,
+      listingTitle: listing.title,
+      totalMessages: messages.length,
+      offers,
+      recentMessages
+    };
   }
 
   async getMyListings(userId: string) {

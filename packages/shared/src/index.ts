@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from "./categories";
+export * from "./pakistan-cities";
 
 export const sharedPackageName = "@aikad/shared";
 

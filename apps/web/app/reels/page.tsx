@@ -18,6 +18,19 @@ function ReelsLoadingState() {
 
 function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [pausedByUser, setPausedByUser] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
+    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
+    setSaved(savedIds.includes(item.listingId));
+  }, [item.listingId]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -25,15 +38,50 @@ function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }
       return;
     }
 
-    if (isActive) {
-      video
-        .play()
-        .catch(() => undefined);
+    video.muted = muted;
+    if (isActive && !pausedByUser) {
+      video.play().catch(() => undefined);
+      return;
+    }
+    video.pause();
+  }, [isActive, muted, pausedByUser]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
       return;
     }
 
-    video.pause();
-  }, [isActive]);
+    const onTimeUpdate = () => {
+      if (!video.duration || Number.isNaN(video.duration)) {
+        setProgress(0);
+        return;
+      }
+      setProgress(Math.min(1, Math.max(0, video.currentTime / video.duration)));
+    };
+
+    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("loadedmetadata", onTimeUpdate);
+    return () => {
+      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("loadedmetadata", onTimeUpdate);
+    };
+  }, []);
+
+  function toggleSave() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
+    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
+    const nextSaved = saved
+      ? savedIds.filter((entry) => entry !== item.listingId)
+      : [item.listingId, ...savedIds.filter((entry) => entry !== item.listingId)];
+
+    localStorage.setItem("tgmg_saved_listing_ids", JSON.stringify(nextSaved.slice(0, 200)));
+    setSaved(!saved);
+  }
 
   async function shareListing() {
     const url = `${window.location.origin}/listing/${item.listingId}`;
@@ -42,10 +90,14 @@ function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }
         await navigator.share({ title: item.title, url });
         return;
       } catch {
-        // Fall back to clipboard.
+        // fallback to clipboard
       }
     }
     await navigator.clipboard.writeText(url);
+  }
+
+  function togglePause() {
+    setPausedByUser((prev) => !prev);
   }
 
   return (
@@ -55,10 +107,14 @@ function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }
         className="reelVideoSurface"
         src={item.videoUrl}
         loop
-        muted
+        muted={muted}
         playsInline
         preload="metadata"
+        onClick={togglePause}
       />
+      <div className="reelProgressTrack" aria-hidden="true">
+        <div className="reelProgressBar" style={{ width: `${progress * 100}%` }} />
+      </div>
       <div className="reelUnitOverlay">
         <p className="reelUnitPrice">
           {item.currency} {item.price}
@@ -70,6 +126,15 @@ function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }
           </Link>
           <button className="reelActionBtn ghost" type="button" onClick={shareListing}>
             Share
+          </button>
+          <button className="reelActionBtn ghost" type="button" onClick={toggleSave}>
+            {saved ? "Saved" : "Save"}
+          </button>
+          <button className="reelActionBtn ghost" type="button" onClick={() => setMuted((prev) => !prev)}>
+            {muted ? "Unmute" : "Mute"}
+          </button>
+          <button className="reelActionBtn ghost" type="button" onClick={togglePause}>
+            {pausedByUser ? "Play" : "Pause"}
           </button>
         </div>
       </div>
@@ -140,6 +205,9 @@ export default function ReelsPage() {
         <div className="reelsEmptyState">
           <div className="emptyIllustration" aria-hidden="true" />
           <p>No videos yet</p>
+          <Link href="/sell" className="reelActionBtn">
+            Upload First Reel
+          </Link>
         </div>
       );
     }
@@ -162,6 +230,14 @@ export default function ReelsPage() {
     );
   }, [activeIndex, error, items, loading]);
 
-  return <main className="premiumReelsScreen">{body}</main>;
+  return (
+    <main className="premiumReelsScreen">
+      <div className="reelsTopActions">
+        <Link href="/sell" className="reelActionBtn">
+          Upload Reel
+        </Link>
+      </div>
+      {body}
+    </main>
+  );
 }
-
