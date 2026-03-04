@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
   Pressable,
@@ -10,6 +11,7 @@ import {
   View
 } from "react-native";
 import { getCategoryCatalog, getListings } from "../services/api";
+import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
   getRecentlyViewedListingIds,
   getSavedListingIds,
@@ -119,6 +121,7 @@ function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
 }
 
 export function HomeScreen({ navigation }: any) {
+  const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [items, setItems] = useState<Listing[]>([]);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
@@ -192,7 +195,7 @@ export function HomeScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, enterStyle]}>
       {loading ? (
         <FeedSkeleton />
       ) : (
@@ -347,7 +350,7 @@ export function HomeScreen({ navigation }: any) {
           <ActivityIndicator size="small" color="#C8603A" />
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

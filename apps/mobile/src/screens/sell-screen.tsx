@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   Alert,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -13,6 +15,7 @@ import {
 import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { AuthRequiredCard } from "../components/auth-required-card";
+import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import { firebaseAppForRecaptcha, firebaseAuth } from "../services/firebase";
 import {
   activateListing,
@@ -25,7 +28,10 @@ import {
 } from "../services/api";
 import type { MarketplaceCategory } from "../types";
 
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
 export function SellScreen({ navigation }: any) {
+  const enterStyle = useScreenEnterAnimation({ distance: 16, duration: 320 });
   const [token, setToken] = useState(getAuthToken());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -48,6 +54,9 @@ export function SellScreen({ navigation }: any) {
   const [publishPhone, setPublishPhone] = useState("");
   const [publishOtpCode, setPublishOtpCode] = useState("");
   const [verificationId, setVerificationId] = useState("");
+  const heroAnim = useRef(new Animated.Value(0)).current;
+  const detailsAnim = useRef(new Animated.Value(0)).current;
+  const controlsAnim = useRef(new Animated.Value(0)).current;
 
   const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
@@ -92,6 +101,38 @@ export function SellScreen({ navigation }: any) {
       setCategoryId(selectedRoot.subcategories[0]?.id ?? "");
     }
   }, [categoryId, selectedRoot]);
+
+  useEffect(() => {
+    heroAnim.setValue(0);
+    detailsAnim.setValue(0);
+    controlsAnim.setValue(0);
+
+    const run = Animated.stagger(90, [
+      Animated.timing(heroAnim, {
+        toValue: 1,
+        duration: 340,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+      Animated.timing(detailsAnim, {
+        toValue: 1,
+        duration: 340,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+      Animated.timing(controlsAnim, {
+        toValue: 1,
+        duration: 340,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      })
+    ]);
+
+    run.start();
+    return () => {
+      run.stop();
+    };
+  }, [controlsAnim, detailsAnim, heroAnim, token]);
 
   function resetForm() {
     setTitle("");
@@ -221,14 +262,32 @@ export function SellScreen({ navigation }: any) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+    <AnimatedScrollView
+      style={[styles.screen, enterStyle]}
+      contentContainerStyle={styles.container}
+    >
       <FirebaseRecaptchaVerifierModal
         ref={recaptchaVerifier}
         firebaseConfig={firebaseAppForRecaptcha.options}
         attemptInvisibleVerification
       />
 
-      <View style={styles.heroCard}>
+      <Animated.View
+        style={[
+          styles.heroCard,
+          {
+            opacity: heroAnim,
+            transform: [
+              {
+                translateY: heroAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [16, 0]
+                })
+              }
+            ]
+          }
+        ]}
+      >
         <Text style={styles.kicker}>TGMG SELL STUDIO</Text>
         <Text style={styles.heading}>Apna Saaman Becho</Text>
         <Text style={styles.sub}>Ek ADD - seedha asli kharedaar tak</Text>
@@ -236,9 +295,24 @@ export function SellScreen({ navigation }: any) {
           Shopkeepers/showroom owners ke duplicate ADDs marketplace ko flood karte hain.
           TGMG par real sellers ko priority milti hai.
         </Text>
-      </View>
+      </Animated.View>
 
-      <View style={styles.panel}>
+      <Animated.View
+        style={[
+          styles.panel,
+          {
+            opacity: detailsAnim,
+            transform: [
+              {
+                translateY: detailsAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [14, 0]
+                })
+              }
+            ]
+          }
+        ]}
+      >
         <Text style={styles.panelTitle}>Listing Details</Text>
 
         <Text style={styles.fieldLabel}>Category</Text>
@@ -332,26 +406,55 @@ export function SellScreen({ navigation }: any) {
             Selected: {selectedRoot?.name} / {selectedSubcategory.name}
           </Text>
         ) : null}
-      </View>
+      </Animated.View>
 
-      <View style={styles.panel}>
+      <Animated.View
+        style={[
+          styles.panel,
+          {
+            opacity: controlsAnim,
+            transform: [
+              {
+                translateY: controlsAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [14, 0]
+                })
+              }
+            ]
+          }
+        ]}
+      >
         <Text style={styles.panelTitle}>Contact Controls</Text>
         <ToggleRow label="Phone show karo" value={showPhone} onChange={setShowPhone} />
         <ToggleRow label="Chat allow karo" value={allowChat} onChange={setAllowChat} />
         <ToggleRow label="Call allow karo" value={allowCall} onChange={setAllowCall} />
         <ToggleRow label="SMS allow karo" value={allowSMS} onChange={setAllowSMS} />
         <ToggleRow label="Price negotiable" value={isNegotiable} onChange={setIsNegotiable} />
-      </View>
+      </Animated.View>
 
-      <Pressable
-        style={[styles.button, publishing ? styles.buttonDisabled : null]}
-        onPress={onSubmit}
-        disabled={publishing}
+      <Animated.View
+        style={{
+          opacity: controlsAnim,
+          transform: [
+            {
+              translateY: controlsAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [12, 0]
+              })
+            }
+          ]
+        }}
       >
-        <Text style={styles.buttonText}>
-          {publishing ? "Please wait..." : "Post Karo (OTP Verify)"}
-        </Text>
-      </Pressable>
+        <Pressable
+          style={[styles.button, publishing ? styles.buttonDisabled : null]}
+          onPress={onSubmit}
+          disabled={publishing}
+        >
+          <Text style={styles.buttonText}>
+            {publishing ? "Please wait..." : "Post Karo (OTP Verify)"}
+          </Text>
+        </Pressable>
+      </Animated.View>
 
       <Modal transparent visible={otpModalVisible} animationType="fade">
         <View style={styles.modalBackdrop}>
@@ -394,7 +497,7 @@ export function SellScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </AnimatedScrollView>
   );
 }
 

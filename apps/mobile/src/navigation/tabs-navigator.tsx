@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, Text, View } from "react-native";
 import { ChatScreen } from "../screens/chat-screen";
 import { HomeScreen } from "../screens/home-screen";
 import { ReelsScreen } from "../screens/reels-screen";
@@ -19,6 +19,66 @@ const iconMap: Record<string, string> = {
   Reels: "\ud83c\udfac",
   Saved: "\ud83d\udd16"
 };
+
+function AnimatedTabIcon({
+  icon,
+  color,
+  focused
+}: {
+  icon: string;
+  color: string;
+  focused: boolean;
+}) {
+  const scale = useRef(new Animated.Value(focused ? 1.08 : 1)).current;
+  const translateY = useRef(new Animated.Value(focused ? -2 : 0)).current;
+  const glowOpacity = useRef(new Animated.Value(focused ? 0.16 : 0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: focused ? 1.1 : 1,
+        speed: 18,
+        bounciness: 8,
+        useNativeDriver: true
+      }),
+      Animated.spring(translateY, {
+        toValue: focused ? -2 : 0,
+        speed: 16,
+        bounciness: 6,
+        useNativeDriver: true
+      }),
+      Animated.timing(glowOpacity, {
+        toValue: focused ? 0.16 : 0,
+        duration: 180,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [focused, glowOpacity, scale, translateY]);
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale }, { translateY }],
+        opacity: focused ? 1 : 0.9
+      }}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: -10,
+          right: -10,
+          top: -6,
+          bottom: -6,
+          borderRadius: 999,
+          backgroundColor: "#C8603A",
+          opacity: glowOpacity
+        }}
+      />
+      <Text style={{ color, fontSize: 16 }}>{icon}</Text>
+    </Animated.View>
+  );
+}
 
 export function TabsNavigator() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
@@ -69,14 +129,7 @@ export function TabsNavigator() {
         tabBarInactiveTintColor: "#9B8070",
         tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
         tabBarIcon: ({ color, focused }) => (
-          <View
-            style={{
-              transform: [{ scale: focused ? 1.08 : 1 }],
-              opacity: focused ? 1 : 0.9
-            }}
-          >
-            <Text style={{ color, fontSize: 16 }}>{iconMap[route.name] ?? "\u2022"}</Text>
-          </View>
+          <AnimatedTabIcon icon={iconMap[route.name] ?? "\u2022"} color={color} focused={focused} />
         )
       })}
     >

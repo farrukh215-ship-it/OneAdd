@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
   FlatList,
   Pressable,
@@ -12,6 +13,7 @@ import {
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { getVideoFeed, VideoFeedItem } from "../services/api";
+import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 
 const { height } = Dimensions.get("window");
 
@@ -82,6 +84,7 @@ function LoadingReel() {
 }
 
 export function ReelsScreen({ navigation }: any) {
+  const enterStyle = useScreenEnterAnimation({ distance: 16, duration: 300 });
   const [items, setItems] = useState<VideoFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -107,7 +110,7 @@ export function ReelsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <Animated.View style={[styles.container, enterStyle]}>
         <FlatList
           data={[1, 2]}
           keyExtractor={(item) => String(item)}
@@ -118,23 +121,23 @@ export function ReelsScreen({ navigation }: any) {
           <ActivityIndicator size="small" color="#fff" />
           <Text style={styles.loadingText}>Loading reels...</Text>
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   if (items.length === 0) {
     return (
-      <View style={styles.container}>
+      <Animated.View style={[styles.container, enterStyle]}>
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyTitle}>No videos yet</Text>
           {error ? <Text style={styles.emptySub}>{error}</Text> : null}
         </View>
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, enterStyle]}>
       <FlatList
         data={items}
         keyExtractor={(item) => item.listingId}
@@ -149,7 +152,7 @@ export function ReelsScreen({ navigation }: any) {
           <ReelCard item={item} isActive={index === activeIndex} navigation={navigation} />
         )}
       />
-    </View>
+    </Animated.View>
   );
 }
 

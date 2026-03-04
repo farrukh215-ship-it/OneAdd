@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -126,6 +128,9 @@ function normalizeGenderLabel(gender: SignupState["gender"]) {
 
 export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: Props) {
   const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  const heroEntry = useRef(new Animated.Value(0)).current;
+  const panelEntry = useRef(new Animated.Value(0)).current;
+  const tabSwitchAnim = useRef(new Animated.Value(1)).current;
 
   const [tab, setTab] = useState<AuthTab>("signin");
   const [loading, setLoading] = useState(false);
@@ -153,6 +158,41 @@ export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: P
   useEffect(() => {
     setTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    heroEntry.setValue(0);
+    panelEntry.setValue(0);
+
+    const run = Animated.stagger(90, [
+      Animated.timing(heroEntry, {
+        toValue: 1,
+        duration: 380,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+      Animated.timing(panelEntry, {
+        toValue: 1,
+        duration: 380,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      })
+    ]);
+
+    run.start();
+    return () => run.stop();
+  }, [heroEntry, panelEntry]);
+
+  useEffect(() => {
+    tabSwitchAnim.setValue(0);
+    const run = Animated.timing(tabSwitchAnim, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    });
+    run.start();
+    return () => run.stop();
+  }, [tab, tabSwitchAnim]);
 
   const signupPhoneValid = phonePattern.test(signup.phone.trim());
   const signupCnicValid = cnicPattern.test(signup.cnic.trim());
@@ -438,7 +478,22 @@ export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: P
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.heroCard}>
+          <Animated.View
+            style={[
+              styles.heroCard,
+              {
+                opacity: heroEntry,
+                transform: [
+                  {
+                    translateY: heroEntry.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [14, 0]
+                    })
+                  }
+                ]
+              }
+            ]}
+          >
             <Image
               source={require("../../assets/TGMG-logo.jpg")}
               style={styles.heroLogo}
@@ -452,9 +507,24 @@ export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: P
               Email/password login. Signup aur password reset phone OTP se secure hain.
             </Text>
             <Text style={styles.heroSubtitle}>Tera Dil Ka Saaman - Mere Ghar Ka Hissa</Text>
-          </View>
+          </Animated.View>
 
-          <View style={styles.tabRow}>
+          <Animated.View
+            style={[
+              styles.tabRow,
+              {
+                opacity: panelEntry,
+                transform: [
+                  {
+                    translateY: panelEntry.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0]
+                    })
+                  }
+                ]
+              }
+            ]}
+          >
             <Pressable
               style={[styles.tabChip, tab === "signin" ? styles.tabChipActive : null]}
               onPress={() => {
@@ -479,10 +549,25 @@ export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: P
                 Create Account
               </Text>
             </Pressable>
-          </View>
+          </Animated.View>
 
           {tab === "signin" ? (
-            <View style={styles.panel}>
+            <Animated.View
+              style={[
+                styles.panel,
+                {
+                  opacity: tabSwitchAnim,
+                  transform: [
+                    {
+                      translateY: tabSwitchAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [12, 0]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            >
               <Text style={styles.panelTitle}>Sign In (Email + Password)</Text>
               <Text style={styles.panelSubtitle}>
                 Ek dafa login ke baad app restart par bhi session active rahega.
@@ -582,9 +667,24 @@ export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: P
                   )}
                 </View>
               ) : null}
-            </View>
+            </Animated.View>
           ) : (
-            <View style={styles.panel}>
+            <Animated.View
+              style={[
+                styles.panel,
+                {
+                  opacity: tabSwitchAnim,
+                  transform: [
+                    {
+                      translateY: tabSwitchAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [12, 0]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            >
               <Text style={styles.panelTitle}>Create Account</Text>
               <Text style={styles.panelSubtitle}>
                 Signup ke liye phone OTP required hai. CNIC auto-format apply hoga.
@@ -676,7 +776,7 @@ export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: P
               >
                 <Text style={styles.primaryButtonText}>Create Account (Send OTP)</Text>
               </Pressable>
-            </View>
+            </Animated.View>
           )}
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}

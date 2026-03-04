@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Pressable,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   View
 } from "react-native";
 import { AuthRequiredCard } from "../components/auth-required-card";
+import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
   getAuthToken,
   getChatMessages,
@@ -41,6 +43,7 @@ function formatTime(value: string) {
 }
 
 export function ChatScreen({ navigation }: any) {
+  const enterStyle = useScreenEnterAnimation({ distance: 12, duration: 300 });
   const [token, setToken] = useState(getAuthToken());
   const currentUserId = useMemo(() => getUserIdFromToken(token), [token]);
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -161,7 +164,7 @@ export function ChatScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>TGMG Chats</Text>
         <Text style={styles.headerSub}>Asli buyers aur sellers ke sath direct baat karein.</Text>
@@ -261,7 +264,7 @@ export function ChatScreen({ navigation }: any) {
         </Pressable>
       </View>
       {sendError ? <Text style={styles.error}>{sendError}</Text> : null}
-    </View>
+    </Animated.View>
   );
 }
 

@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   title: string;
@@ -7,13 +8,41 @@ type Props = {
 };
 
 export function AuthRequiredCard({ title, subtitle, navigation }: Props) {
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const run = Animated.timing(enter, {
+      toValue: 1,
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    });
+    run.start();
+    return () => run.stop();
+  }, [enter]);
+
   function openAuth(tab: "signin" | "signup") {
     navigation.getParent()?.navigate("Login", { tab });
   }
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.card}>
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            opacity: enter,
+            transform: [
+              {
+                translateY: enter.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [14, 0]
+                })
+              }
+            ]
+          }
+        ]}
+      >
         <Text style={styles.kicker}>TGMG SECURE ACCESS</Text>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
@@ -25,7 +54,7 @@ export function AuthRequiredCard({ title, subtitle, navigation }: Props) {
             <Text style={styles.primaryText}>Create Account</Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -97,4 +126,3 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   }
 });
-

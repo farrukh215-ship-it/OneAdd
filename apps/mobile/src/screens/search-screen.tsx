@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Animated,
   FlatList,
   Pressable,
   ScrollView,
@@ -9,6 +10,7 @@ import {
   View
 } from "react-native";
 import { getCategoryCatalog, searchListingsWithFilters } from "../services/api";
+import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
   getRecentlyViewedListingIds,
   getSavedListingIds,
@@ -18,6 +20,7 @@ import {
 import type { Listing, MarketplaceCategory } from "../types";
 
 export function SearchScreen({ navigation, route }: any) {
+  const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Listing[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
@@ -98,7 +101,7 @@ export function SearchScreen({ navigation, route }: any) {
   }
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, enterStyle]}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Dhundo</Text>
         <Text style={styles.heroSub}>Real people ki verified listings, seedha aur fast search.</Text>
@@ -221,7 +224,7 @@ export function SearchScreen({ navigation, route }: any) {
           </Pressable>
         )}
       />
-    </View>
+    </Animated.View>
   );
 }
 

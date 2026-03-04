@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Pressable,
   RefreshControl,
@@ -8,6 +9,7 @@ import {
   Text,
   View
 } from "react-native";
+import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
   getSavedListingIds,
   resolveListingsByIds,
@@ -16,6 +18,7 @@ import {
 import type { Listing } from "../types";
 
 export function SavedScreen({ navigation }: any) {
+  const enterStyle = useScreenEnterAnimation({ distance: 12, duration: 300 });
   const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,14 +65,14 @@ export function SavedScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
+      <Animated.View style={[styles.loading, enterStyle]}>
         <ActivityIndicator size="large" color="#C8603A" />
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.title}>Saved Adds</Text>
         <Text style={styles.sub}>Aap ki save ki hui listings yahan milengi.</Text>
@@ -121,7 +124,7 @@ export function SavedScreen({ navigation }: any) {
           </Pressable>
         )}
       />
-    </View>
+    </Animated.View>
   );
 }
 
