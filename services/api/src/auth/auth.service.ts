@@ -709,18 +709,22 @@ export class AuthService {
     | { projectId: string; clientEmail: string; privateKey: string }
     | null {
     const rawPath = this.configService.get<string>("FIREBASE_SERVICE_ACCOUNT_PATH", "");
-    if (rawPath) {
-      const candidates = [
-        rawPath,
-        isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), rawPath),
-        isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), "..", "..", rawPath)
-      ];
+    const candidates = [
+      rawPath,
+      isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), rawPath),
+      isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), "..", "..", rawPath),
+      "/app/keys/firebase-admin.json",
+      resolve(process.cwd(), "..", "..", "keys", "firebase-admin.json")
+    ]
+      .filter((value): value is string => Boolean(value))
+      .filter((value, index, list) => list.indexOf(value) === index);
 
-      for (const candidate of candidates) {
-        if (!existsSync(candidate)) {
-          continue;
-        }
+    for (const candidate of candidates) {
+      if (!existsSync(candidate)) {
+        continue;
+      }
 
+      try {
         const parsed = JSON.parse(readFileSync(candidate, "utf-8")) as {
           project_id?: string;
           client_email?: string;
@@ -733,6 +737,8 @@ export class AuthService {
             privateKey: parsed.private_key
           };
         }
+      } catch {
+        continue;
       }
     }
 
