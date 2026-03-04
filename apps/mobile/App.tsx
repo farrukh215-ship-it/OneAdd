@@ -1,15 +1,16 @@
 ﻿import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TabsNavigator } from "./src/navigation/tabs-navigator";
 import { FirebaseAuthScreen } from "./src/screens/firebase-auth-screen";
 import { ListingDetailScreen } from "./src/screens/listing-detail-screen";
 import { RecentlyViewedScreen } from "./src/screens/recently-viewed-screen";
 import { useEffect, useState } from "react";
-import { getAuthToken, hydrateAuthToken } from "./src/services/api";
+import { getAuthToken, hydrateAuthToken, subscribeAuthToken } from "./src/services/api";
 
 const RootStack = createNativeStackNavigator();
+const navigationRef = createNavigationContainerRef<any>();
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -33,10 +34,35 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    return subscribeAuthToken((token) => {
+      setIsAuthenticated(Boolean(token));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked || !navigationRef.isReady()) {
+      return;
+    }
+
+    const current = navigationRef.getCurrentRoute()?.name;
+    if (!isAuthenticated && current !== "Login") {
+      navigationRef.navigate("Login", { tab: "signin" });
+    }
+    if (isAuthenticated && current === "Login") {
+      navigationRef.navigate("Tabs");
+    }
+  }, [authChecked, isAuthenticated]);
+
+  if (!authChecked) {
+    return null;
+  }
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style="dark" />
       <RootStack.Navigator
+        initialRouteName={isAuthenticated ? "Tabs" : "Login"}
         screenOptions={{
           headerBackTitle: "Back",
           headerStyle: { backgroundColor: "#FDF6ED" },
@@ -45,13 +71,14 @@ export default function App() {
           contentStyle: { backgroundColor: "#FDF6ED" }
         }}
       >
-        {!authChecked ? null : !isAuthenticated ? (
-          <RootStack.Screen name="Login" options={{ title: "TGMG mein Khush Aamdeed" }}>
-            {() => (
-              <FirebaseAuthScreen onAuthenticated={() => setIsAuthenticated(true)} />
-            )}
-          </RootStack.Screen>
-        ) : null}
+        <RootStack.Screen name="Login" options={{ title: "TGMG mein Khush Aamdeed" }}>
+          {({ route }: any) => (
+            <FirebaseAuthScreen
+              onAuthenticated={() => setIsAuthenticated(true)}
+              initialTab={route?.params?.tab === "signup" ? "signup" : "signin"}
+            />
+          )}
+        </RootStack.Screen>
         <RootStack.Screen
           name="Tabs"
           component={TabsNavigator}

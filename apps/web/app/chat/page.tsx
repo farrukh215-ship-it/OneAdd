@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { OtpLoginCard } from "../../components/otp-login-card";
+import { SignupCard } from "../../components/signup-card";
 import {
   ApiError,
   getChatMessages,
@@ -138,8 +139,11 @@ export default function ChatPage() {
 
   if (!token) {
     return (
-      <main className="screen">
-        <OtpLoginCard />
+      <main className="screen accountScreen">
+        <section className="accountGrid">
+          <OtpLoginCard />
+          <SignupCard />
+        </section>
       </main>
     );
   }

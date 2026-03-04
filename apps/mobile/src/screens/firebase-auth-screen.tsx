@@ -28,6 +28,7 @@ import {
 
 type Props = {
   onAuthenticated: () => void;
+  initialTab?: AuthTab;
 };
 
 type AuthTab = "signin" | "signup";
@@ -123,7 +124,7 @@ function normalizeGenderLabel(gender: SignupState["gender"]) {
   return "Other";
 }
 
-export function FirebaseAuthScreen({ onAuthenticated }: Props) {
+export function FirebaseAuthScreen({ onAuthenticated, initialTab = "signin" }: Props) {
   const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const [tab, setTab] = useState<AuthTab>("signin");
@@ -148,6 +149,10 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
   const [verificationId, setVerificationId] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpCooldown, setOtpCooldown] = useState(0);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   const signupPhoneValid = phonePattern.test(signup.phone.trim());
   const signupCnicValid = cnicPattern.test(signup.cnic.trim());

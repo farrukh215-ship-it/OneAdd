@@ -16,6 +16,7 @@ const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl ?? "http://10.0.2.2:3001";
 let AUTH_TOKEN = extra.demoToken ?? "";
 const AUTH_TOKEN_KEY = "aikad_mobile_access_token";
+const authTokenListeners = new Set<(token: string) => void>();
 
 type AuthResponse = {
   accessToken: string;
@@ -39,6 +40,7 @@ export type VideoFeedItem = {
 export async function setAuthToken(token: string) {
   AUTH_TOKEN = token;
   await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+  authTokenListeners.forEach((listener) => listener(AUTH_TOKEN));
 }
 
 export function getAuthToken() {
@@ -48,17 +50,27 @@ export function getAuthToken() {
 export async function clearAuthToken() {
   AUTH_TOKEN = "";
   await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+  authTokenListeners.forEach((listener) => listener(AUTH_TOKEN));
 }
 
 export async function hydrateAuthToken() {
   if (AUTH_TOKEN) {
+    authTokenListeners.forEach((listener) => listener(AUTH_TOKEN));
     return AUTH_TOKEN;
   }
   const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
   if (stored) {
     AUTH_TOKEN = stored;
+    authTokenListeners.forEach((listener) => listener(AUTH_TOKEN));
   }
   return AUTH_TOKEN;
+}
+
+export function subscribeAuthToken(listener: (token: string) => void) {
+  authTokenListeners.add(listener);
+  return () => {
+    authTokenListeners.delete(listener);
+  };
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {

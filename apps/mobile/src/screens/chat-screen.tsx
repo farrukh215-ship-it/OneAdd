@@ -8,11 +8,13 @@ import {
   TextInput,
   View
 } from "react-native";
+import { AuthRequiredCard } from "../components/auth-required-card";
 import {
   getAuthToken,
   getChatMessages,
   getChatThreads,
-  sendChatMessage
+  sendChatMessage,
+  subscribeAuthToken
 } from "../services/api";
 import type { ChatMessage, ChatThread } from "../types";
 
@@ -38,8 +40,9 @@ function formatTime(value: string) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ChatScreen() {
-  const currentUserId = useMemo(() => getUserIdFromToken(getAuthToken()), []);
+export function ChatScreen({ navigation }: any) {
+  const [token, setToken] = useState(getAuthToken());
+  const currentUserId = useMemo(() => getUserIdFromToken(token), [token]);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -56,6 +59,12 @@ export function ChatScreen() {
     [threads, activeThreadId]
   );
   const isClosed = activeThread?.status === "CLOSED" || activeThread?.listing?.status === "SOLD";
+
+  useEffect(() => {
+    return subscribeAuthToken((nextToken) => {
+      setToken(nextToken);
+    });
+  }, []);
 
   async function loadThreads() {
     setThreadsLoading(true);
@@ -75,11 +84,18 @@ export function ChatScreen() {
   }
 
   useEffect(() => {
+    if (!token) {
+      setThreads([]);
+      setMessages([]);
+      setActiveThreadId("");
+      setThreadsLoading(false);
+      return;
+    }
     loadThreads();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    if (!activeThreadId) {
+    if (!activeThreadId || !token) {
       setMessages([]);
       return;
     }
@@ -112,10 +128,10 @@ export function ChatScreen() {
       alive = false;
       clearInterval(timer);
     };
-  }, [activeThreadId]);
+  }, [activeThreadId, token]);
 
   async function onSend() {
-    if (!activeThreadId || !text.trim() || isClosed) {
+    if (!token || !activeThreadId || !text.trim() || isClosed) {
       return;
     }
 
@@ -132,6 +148,16 @@ export function ChatScreen() {
     } finally {
       setSending(false);
     }
+  }
+
+  if (!token) {
+    return (
+      <AuthRequiredCard
+        navigation={navigation}
+        title="Chat karne ke liye account zaroori hai"
+        subtitle="Asli buyers aur sellers se direct baat karne ke liye pehle login ya create account karein."
+      />
+    );
   }
 
   return (

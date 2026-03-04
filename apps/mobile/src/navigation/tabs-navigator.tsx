@@ -1,11 +1,13 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { ChatScreen } from "../screens/chat-screen";
 import { HomeScreen } from "../screens/home-screen";
 import { ReelsScreen } from "../screens/reels-screen";
 import { SavedScreen } from "../screens/saved-screen";
 import { SearchScreen } from "../screens/search-screen";
 import { SellScreen } from "../screens/sell-screen";
+import { clearAuthToken, getAuthToken, subscribeAuthToken } from "../services/api";
 
 const Tab = createBottomTabNavigator();
 
@@ -19,12 +21,43 @@ const iconMap: Record<string, string> = {
 };
 
 export function TabsNavigator() {
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
+
+  useEffect(() => {
+    return subscribeAuthToken((token) => {
+      setIsAuthenticated(Boolean(token));
+    });
+  }, []);
+
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route, navigation }) => ({
         headerStyle: { backgroundColor: "#FDF6ED" },
         headerTitleStyle: { color: "#5C3D2E", fontWeight: "700" },
         headerTintColor: "#5C3D2E",
+        headerRight: () => (
+          <Pressable
+            style={{
+              borderWidth: 1,
+              borderColor: "#E8D5B7",
+              backgroundColor: "#FFFFFF",
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 6
+            }}
+            onPress={() => {
+              if (isAuthenticated) {
+                void clearAuthToken();
+                return;
+              }
+              navigation.getParent()?.navigate("Login", { tab: "signin" });
+            }}
+          >
+            <Text style={{ color: "#5C3D2E", fontSize: 12, fontWeight: "700" }}>
+              {isAuthenticated ? "Sign Out" : "Login"}
+            </Text>
+          </Pressable>
+        ),
         tabBarStyle: {
           backgroundColor: "#FFFFFF",
           borderTopColor: "#E8D5B7",

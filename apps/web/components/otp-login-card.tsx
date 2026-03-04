@@ -6,6 +6,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber
 } from "firebase/auth";
+import { useRouter } from "next/navigation";
 import {
   ApiError,
   confirmPasswordReset,
@@ -34,6 +35,7 @@ function normalizePhoneInput(raw: string) {
 }
 
 export function OtpLoginCard() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -120,7 +122,7 @@ export function OtpLoginCard() {
         { rememberMe }
       );
       setMessage("Login successful.");
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

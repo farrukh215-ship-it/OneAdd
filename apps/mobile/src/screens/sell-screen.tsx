@@ -12,17 +12,21 @@ import {
 } from "react-native";
 import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+import { AuthRequiredCard } from "../components/auth-required-card";
 import { firebaseAppForRecaptcha, firebaseAuth } from "../services/firebase";
 import {
   activateListing,
   createListing,
+  getAuthToken,
   getCategoryCatalog,
   requestListingPublishOtp,
+  subscribeAuthToken,
   verifyListingPublishOtp
 } from "../services/api";
 import type { MarketplaceCategory } from "../types";
 
-export function SellScreen() {
+export function SellScreen({ navigation }: any) {
+  const [token, setToken] = useState(getAuthToken());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -55,6 +59,16 @@ export function SellScreen() {
   const selectedSubcategory = subcategories.find((item) => item.id === categoryId) ?? null;
 
   useEffect(() => {
+    return subscribeAuthToken((nextToken) => {
+      setToken(nextToken);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setLoadingCatalog(false);
+      return;
+    }
     void getCategoryCatalog()
       .then((data) => {
         setCatalog(data);
@@ -67,7 +81,7 @@ export function SellScreen() {
         }
       })
       .finally(() => setLoadingCatalog(false));
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!selectedRoot) {
@@ -194,6 +208,16 @@ export function SellScreen() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  if (!token) {
+    return (
+      <AuthRequiredCard
+        navigation={navigation}
+        title="Bechne ke liye pehle account banao"
+        subtitle="Apna saaman post karne aur OTP publish verification ke liye login ya create account karein."
+      />
+    );
   }
 
   return (

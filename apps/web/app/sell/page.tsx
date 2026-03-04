@@ -7,6 +7,7 @@ import {
   signInWithPhoneNumber
 } from "firebase/auth";
 import { OtpLoginCard } from "../../components/otp-login-card";
+import { SignupCard } from "../../components/signup-card";
 import {
   activateListing,
   ApiError,
@@ -404,8 +405,11 @@ export default function SellPage() {
 
   if (!token) {
     return (
-      <main className="screen">
-        <OtpLoginCard />
+      <main className="screen accountScreen">
+        <section className="accountGrid">
+          <OtpLoginCard />
+          <SignupCard />
+        </section>
       </main>
     );
   }

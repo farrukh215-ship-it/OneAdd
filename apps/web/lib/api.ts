@@ -4,6 +4,7 @@ import { ChatMessage, ChatThread, Listing, MarketplaceCategory } from "./types";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const TOKEN_KEY = "aikad_access_token";
 const SESSION_TOKEN_KEY = "aikad_access_token_session";
+export const AUTH_TOKEN_CHANGED_EVENT = "aikad-auth-changed";
 
 export class ApiError extends Error {
   status: number;
@@ -32,6 +33,7 @@ export function clearToken() {
   }
   localStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(SESSION_TOKEN_KEY);
+  window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 }
 
 function setToken(token: string, persist = true) {
@@ -41,11 +43,13 @@ function setToken(token: string, persist = true) {
   if (persist) {
     localStorage.setItem(TOKEN_KEY, token);
     sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
     return;
   }
 
   sessionStorage.setItem(SESSION_TOKEN_KEY, token);
   localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 }
 
 async function apiRequest<T>(

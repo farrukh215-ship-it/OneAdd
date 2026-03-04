@@ -6,6 +6,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber
 } from "firebase/auth";
+import { useRouter } from "next/navigation";
 import { ApiError, verifyFirebaseLogin } from "../lib/api";
 import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
 
@@ -95,6 +96,7 @@ function getPasswordStrength(password: string) {
 }
 
 export function SignupCard() {
+  const router = useRouter();
   const [form, setForm] = useState<SignupFormState>(initialState);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -268,7 +270,7 @@ export function SignupCard() {
 
       setOtpModalOpen(false);
       setMessage("Account create ho gaya aur login ho chuka hai.");
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
