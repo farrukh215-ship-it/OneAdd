@@ -34,7 +34,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/aikad_marketplace?schema=public
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: ${CORS_ORIGIN:-https://teragharmeraghar.com,https://www.teragharmeraghar.com}
-      FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH:-../../keys/firebase-admin.json}
+      FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH:-/app/keys/firebase-admin.json}
     depends_on:
       - postgres
       - redis
