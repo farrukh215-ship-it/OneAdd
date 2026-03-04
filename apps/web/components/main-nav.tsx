@@ -11,7 +11,7 @@ const links = [
   { href: "/search", label: "Dhundo", icon: "\ud83d\udd0d" },
   { href: "/reels", label: "Reels", icon: "\ud83c\udfac" },
   { href: "/chat", label: "Chat", icon: "\ud83d\udcac" },
-  { href: "/my-listings", label: "Meri Listings", icon: "\ud83d\udccb" }
+  { href: "/my-listings", label: "Mere Ads", icon: "\ud83d\udccb" }
 ];
 
 function isLinkActive(pathname: string, href: string) {
@@ -35,7 +35,7 @@ export function MainNav() {
       <div className="announce-bar">
         <span className="announce-text">
           {"\ud83c\uddf5\ud83c\uddf0"} Pakistan ka pehla real-person marketplace -
-          <span> Shopkeeper Spam Blocked | Ek Banda | Ek Add</span>
+          <span> Shopkeeper Spam Blocked | Ek Banda | Ek ADD</span>
         </span>
       </div>
 

@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  UnauthorizedException
-} from "@nestjs/common";
+import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { Gender, OtpPurpose } from "@prisma/client";
+import * as bcrypt from "bcryptjs";
 import { AuthService } from "./auth.service";
 
 describe("AuthService", () => {
@@ -53,6 +50,7 @@ describe("AuthService", () => {
         findUnique: jest.fn().mockResolvedValue({
           id: "otp-1",
           userId: null,
+          purpose: OtpPurpose.SIGNUP,
           verifiedAt: new Date(Date.now() - 5_000),
           consumedAt: null,
           expiresAt: new Date(Date.now() + 60_000)
@@ -175,38 +173,24 @@ describe("AuthService", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it("rejects login with consumed OTP verification token", async () => {
+  it("rejects login with invalid password", async () => {
+    const passwordHash = await bcrypt.hash("CorrectPass123!", 10);
     const prisma: any = {
       user: {
-        findFirst: jest.fn().mockResolvedValue({
+        findUnique: jest.fn().mockResolvedValue({
           id: "user-1",
           fullName: "Ali Khan",
           fatherName: "Khan",
           cnic: "12345-1234567-1",
           phone: "+923001234567",
           email: "ali@example.com",
-          passwordHash: "hash"
-        })
-      },
-      otpCode: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: "otp-1",
-          verifiedAt: new Date(Date.now() - 30_000),
-          consumedAt: new Date(),
-          expiresAt: new Date(Date.now() + 60_000)
+          passwordHash
         }),
-        update: jest.fn()
       },
       deviceFingerprint: {
         upsert: jest.fn()
       }
     };
-
-    jwtServiceMock.verifyAsync.mockResolvedValue({
-      type: "otp_verified",
-      phone: "+923001234567",
-      otpId: "otp-1"
-    });
 
     const service = new AuthService(
       prisma,
@@ -219,8 +203,7 @@ describe("AuthService", () => {
       service.login(
         {
           email: "ali@example.com",
-          phone: "+923001234567",
-          otpVerificationToken: "otp-token"
+          password: "WrongPass123!"
         },
         {
           headers: { "user-agent": "jest" },

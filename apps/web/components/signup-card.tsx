@@ -52,6 +52,35 @@ function normalizePhoneInput(raw: string) {
   return `+92${national}`;
 }
 
+function normalizeCnicInput(raw: string) {
+  const digits = raw.replace(/\D/g, "").slice(0, 13);
+  const p1 = digits.slice(0, 5);
+  const p2 = digits.slice(5, 12);
+  const p3 = digits.slice(12, 13);
+
+  if (digits.length <= 5) return p1;
+  if (digits.length <= 12) return `${p1}-${p2}`;
+  return `${p1}-${p2}-${p3}`;
+}
+
+function isLessThan18(dateOfBirth: string) {
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+
+  return age < 18;
+}
+
 function getPasswordStrength(password: string) {
   let score = 0;
   if (password.length >= 8) score += 1;
@@ -137,6 +166,9 @@ export function SignupCard() {
     if (form.password.length < 8) return "Password kam az kam 8 characters ho.";
     if (!passwordsMatch) return "Password aur confirm password match nahi kar rahe.";
     if (!form.dateOfBirth) return "Date of birth required hai.";
+    if (isLessThan18(form.dateOfBirth)) {
+      return "Age less than 18 ka account nahi ban sakta. Ask your mama papa to create account.";
+    }
     if (!phoneValid) return "Phone format +923004203035 hona chahiye.";
     if (!recaptchaVerifierRef.current) {
       return "reCAPTCHA initialize nahi hua. Page refresh karein.";
@@ -228,6 +260,7 @@ export function SignupCard() {
         fatherName: form.fatherName.trim(),
         cnic: form.cnic.trim(),
         email: form.email.trim().toLowerCase(),
+        password: form.password,
         city: "Unknown",
         dateOfBirth: form.dateOfBirth,
         gender: form.gender
@@ -286,7 +319,7 @@ export function SignupCard() {
           placeholder="CNIC (00000-0000000-0)"
           value={form.cnic}
           onChange={(event) =>
-            setForm((prev) => ({ ...prev, cnic: event.target.value }))
+            setForm((prev) => ({ ...prev, cnic: normalizeCnicInput(event.target.value) }))
           }
           autoComplete="off"
           required

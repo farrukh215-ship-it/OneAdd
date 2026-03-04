@@ -5,12 +5,33 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { TabsNavigator } from "./src/navigation/tabs-navigator";
 import { FirebaseAuthScreen } from "./src/screens/firebase-auth-screen";
 import { ListingDetailScreen } from "./src/screens/listing-detail-screen";
-import { useState } from "react";
+import { RecentlyViewedScreen } from "./src/screens/recently-viewed-screen";
+import { useEffect, useState } from "react";
+import { getAuthToken, hydrateAuthToken } from "./src/services/api";
 
 const RootStack = createNativeStackNavigator();
 
 export default function App() {
+  const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void hydrateAuthToken()
+      .then(() => {
+        if (!mounted) return;
+        setIsAuthenticated(Boolean(getAuthToken()));
+      })
+      .finally(() => {
+        if (mounted) {
+          setAuthChecked(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <NavigationContainer>
@@ -24,7 +45,7 @@ export default function App() {
           contentStyle: { backgroundColor: "#FDF6ED" }
         }}
       >
-        {!isAuthenticated ? (
+        {!authChecked ? null : !isAuthenticated ? (
           <RootStack.Screen name="Login" options={{ title: "TGMG mein Khush Aamdeed" }}>
             {() => (
               <FirebaseAuthScreen onAuthenticated={() => setIsAuthenticated(true)} />
@@ -40,6 +61,11 @@ export default function App() {
           name="ListingDetail"
           component={ListingDetailScreen}
           options={{ title: "Listing Detail" }}
+        />
+        <RootStack.Screen
+          name="RecentlyViewed"
+          component={RecentlyViewedScreen}
+          options={{ title: "Recently Viewed" }}
         />
       </RootStack.Navigator>
     </NavigationContainer>

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,7 +10,16 @@ import {
   TextInput,
   View
 } from "react-native";
-import { createListing, getCategoryCatalog } from "../services/api";
+import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+import { firebaseAppForRecaptcha, firebaseAuth } from "../services/firebase";
+import {
+  activateListing,
+  createListing,
+  getCategoryCatalog,
+  requestListingPublishOtp,
+  verifyListingPublishOtp
+} from "../services/api";
 import type { MarketplaceCategory } from "../types";
 
 export function SellScreen() {
@@ -26,8 +36,16 @@ export function SellScreen() {
   const [allowChat, setAllowChat] = useState(true);
   const [allowCall, setAllowCall] = useState(true);
   const [allowSMS, setAllowSMS] = useState(true);
+  const [isNegotiable, setIsNegotiable] = useState(false);
   const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [publishing, setPublishing] = useState(false);
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [publishPhone, setPublishPhone] = useState("");
+  const [publishOtpCode, setPublishOtpCode] = useState("");
+  const [verificationId, setVerificationId] = useState("");
+
+  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const selectedRoot = useMemo(
     () => catalog.find((item) => item.slug === categoryRootSlug) ?? catalog[0] ?? null,
@@ -61,16 +79,18 @@ export function SellScreen() {
     }
   }, [categoryId, selectedRoot]);
 
-  async function onSubmit() {
-    if (!categoryId.trim() || !title.trim() || !description.trim()) {
-      Alert.alert("Missing fields", "Category, title aur description required hain.");
-      return;
-    }
-    if (!price.trim() || Number(price) <= 0) {
-      Alert.alert("Invalid price", "Price valid numeric honi chahiye.");
-      return;
-    }
+  function resetForm() {
+    setTitle("");
+    setDescription("");
+    setPrice("");
+    setCity("");
+    setImageUrl("");
+    setVideoUrl("");
+    setVideoDurationSec("");
+    setIsNegotiable(false);
+  }
 
+  function buildMedia() {
     const media: Array<{
       type: "IMAGE" | "VIDEO";
       url: string;
@@ -83,8 +103,7 @@ export function SellScreen() {
     if (videoUrl.trim()) {
       const duration = Number(videoDurationSec || 0);
       if (!Number.isFinite(duration) || duration <= 0 || duration > 30) {
-        Alert.alert("Invalid video", "Video duration 1 se 30 sec ke darmiyan honi chahiye.");
-        return;
+        throw new Error("Video duration 1 se 30 sec ke darmiyan honi chahiye.");
       }
       media.push({
         type: "VIDEO",
@@ -92,9 +111,64 @@ export function SellScreen() {
         durationSec: duration
       });
     }
+    return media;
+  }
 
+  async function requestPublishOtp() {
+    const response = await requestListingPublishOtp();
+    const provider = new PhoneAuthProvider(firebaseAuth);
+    const id = await provider.verifyPhoneNumber(
+      response.phone,
+      recaptchaVerifier.current as any
+    );
+    setPublishPhone(response.phone);
+    setVerificationId(id);
+    setPublishOtpCode("");
+    setOtpModalVisible(true);
+  }
+
+  async function onSubmit() {
+    if (!categoryId.trim() || !title.trim() || !description.trim()) {
+      Alert.alert("Missing fields", "Category, title aur description required hain.");
+      return;
+    }
+    if (!price.trim() || Number(price) <= 0) {
+      Alert.alert("Invalid price", "Price valid numeric honi chahiye.");
+      return;
+    }
+
+    setPublishing(true);
     try {
-      await createListing({
+      buildMedia();
+      await requestPublishOtp();
+      Alert.alert("OTP Sent", `OTP ${publishPhone || "registered phone"} par bhej diya gaya.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not request publish OTP.";
+      Alert.alert("Error", message);
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function onVerifyAndPublish() {
+    if (!verificationId) {
+      Alert.alert("Error", "Pehle OTP request karein.");
+      return;
+    }
+    if (publishOtpCode.trim().length !== 6) {
+      Alert.alert("Error", "6-digit OTP required.");
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      const credential = PhoneAuthProvider.credential(verificationId, publishOtpCode.trim());
+      const userCredential = await signInWithCredential(firebaseAuth, credential);
+      const idToken = await userCredential.user.getIdToken(true);
+      const otpVerification = await verifyListingPublishOtp({ idToken });
+      const media = buildMedia();
+
+      const created = await createListing({
         categoryId: categoryId.trim(),
         title: title.trim(),
         description: description.trim(),
@@ -105,31 +179,39 @@ export function SellScreen() {
         allowChat,
         allowCall,
         allowSMS,
+        isNegotiable,
+        publishOtpVerificationToken: otpVerification.publishOtpVerificationToken,
         media
       });
 
-      Alert.alert("Success", "Listing created.");
-      setTitle("");
-      setDescription("");
-      setPrice("");
-      setCity("");
-      setImageUrl("");
-      setVideoUrl("");
-      setVideoDurationSec("");
+      await activateListing(created.id);
+      setOtpModalVisible(false);
+      resetForm();
+      Alert.alert("Success", "Listing post ho gayi.");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not create listing.";
+      const message = error instanceof Error ? error.message : "Could not create listing.";
       Alert.alert("Error", message);
+    } finally {
+      setPublishing(false);
     }
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={firebaseAppForRecaptcha.options}
+        attemptInvisibleVerification
+      />
+
       <View style={styles.heroCard}>
         <Text style={styles.kicker}>TGMG SELL STUDIO</Text>
         <Text style={styles.heading}>Apna Saaman Becho</Text>
-        <Text style={styles.sub}>Ek add - seedha asli kharedaar tak</Text>
-        <Text style={styles.note}>Shopkeepers ki duplicate adds block, real sellers first.</Text>
+        <Text style={styles.sub}>Ek ADD - seedha asli kharedaar tak</Text>
+        <Text style={styles.note}>
+          Shopkeepers/showroom owners ke duplicate ADDs marketplace ko flood karte hain.
+          TGMG par real sellers ko priority milti hai.
+        </Text>
       </View>
 
       <View style={styles.panel}>
@@ -234,11 +316,60 @@ export function SellScreen() {
         <ToggleRow label="Chat allow karo" value={allowChat} onChange={setAllowChat} />
         <ToggleRow label="Call allow karo" value={allowCall} onChange={setAllowCall} />
         <ToggleRow label="SMS allow karo" value={allowSMS} onChange={setAllowSMS} />
+        <ToggleRow label="Price negotiable" value={isNegotiable} onChange={setIsNegotiable} />
       </View>
 
-      <Pressable style={styles.button} onPress={onSubmit}>
-        <Text style={styles.buttonText}>Post Karo</Text>
+      <Pressable
+        style={[styles.button, publishing ? styles.buttonDisabled : null]}
+        onPress={onSubmit}
+        disabled={publishing}
+      >
+        <Text style={styles.buttonText}>
+          {publishing ? "Please wait..." : "Post Karo (OTP Verify)"}
+        </Text>
       </Pressable>
+
+      <Modal transparent visible={otpModalVisible} animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Publish OTP Verification</Text>
+            <Text style={styles.modalSubtitle}>
+              Listing post karne ke liye OTP verify karein. OTP: {publishPhone}
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="6-digit OTP"
+              value={publishOtpCode}
+              onChangeText={setPublishOtpCode}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.secondaryButton, publishing ? styles.buttonDisabled : null]}
+                onPress={() => {
+                  void requestPublishOtp();
+                }}
+                disabled={publishing}
+              >
+                <Text style={styles.secondaryButtonText}>Resend OTP</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.button, publishing ? styles.buttonDisabled : null]}
+                onPress={() => {
+                  void onVerifyAndPublish();
+                }}
+                disabled={publishing}
+              >
+                <Text style={styles.buttonText}>Verify & Post</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={() => setOtpModalVisible(false)}>
+              <Text style={styles.closeLinkText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -409,6 +540,58 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontWeight: "700"
+  },
+  buttonDisabled: {
+    opacity: 0.6
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(30,20,16,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#E8D5B7"
+  },
+  modalTitle: {
+    fontSize: 21,
+    fontWeight: "800",
+    color: "#5C3D2E"
+  },
+  modalSubtitle: {
+    color: "#9B8070",
+    fontSize: 13,
+    lineHeight: 19
+  },
+  modalActions: {
+    gap: 8
+  },
+  secondaryButton: {
+    borderRadius: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    backgroundColor: "#FDF6ED",
+    borderWidth: 1,
+    borderColor: "#E8D5B7"
+  },
+  secondaryButtonText: {
+    color: "#7A5544",
+    fontWeight: "700",
+    fontSize: 13
+  },
+  closeLinkText: {
+    color: "#7A5544",
+    fontWeight: "700",
+    textAlign: "center"
   },
   pressed: {
     opacity: 0.95,

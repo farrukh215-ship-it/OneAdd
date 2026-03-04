@@ -37,7 +37,8 @@ export class ListingsController {
     @Query("category") category?: string,
     @Query("city") city?: string,
     @Query("minPrice") minPrice?: string,
-    @Query("maxPrice") maxPrice?: string
+    @Query("maxPrice") maxPrice?: string,
+    @Query("negotiable") negotiable?: string
   ) {
     const parsedMinPrice =
       typeof minPrice === "string" && minPrice.length > 0
@@ -58,7 +59,9 @@ export class ListingsController {
       maxPrice:
         typeof parsedMaxPrice === "number" && Number.isFinite(parsedMaxPrice)
           ? parsedMaxPrice
-          : undefined
+          : undefined,
+      isNegotiable:
+        negotiable === "true" ? true : negotiable === "false" ? false : undefined
     });
   }
 

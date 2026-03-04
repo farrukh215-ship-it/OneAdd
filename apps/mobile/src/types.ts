@@ -18,6 +18,7 @@ export type Listing = {
   allowChat: boolean;
   allowCall: boolean;
   allowSMS: boolean;
+  isNegotiable?: boolean;
   media: ListingMedia[];
   user?: {
     id: string;

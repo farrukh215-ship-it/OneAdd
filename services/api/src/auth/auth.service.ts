@@ -14,15 +14,19 @@ import {
   User
 } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
-import { createHash, randomInt, randomUUID } from "crypto";
+import { createHash, randomInt } from "crypto";
 import { Request } from "express";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { PrismaService } from "../prisma/prisma.service";
 import { FirebaseVerifyDto } from "./dto/firebase-verify.dto";
+import { ListingOtpVerifyDto } from "./dto/listing-otp-verify.dto";
 import { LoginDto } from "./dto/login.dto";
 import { OtpRequestDto } from "./dto/otp-request.dto";
 import { OtpVerifyDto } from "./dto/otp-verify.dto";
+import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
+import { PasswordResetRequestDto } from "./dto/password-reset-request.dto";
+import { PasswordResetVerifyDto } from "./dto/password-reset-verify.dto";
 import { SignupDto } from "./dto/signup.dto";
 import { SMS_PROVIDER, SmsProvider } from "./sms/sms-provider.interface";
 
@@ -50,6 +54,7 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
     const phone = dto.phone.trim();
     const cnic = dto.cnic.trim();
+    this.assertAdult(dto.dateOfBirth);
     const verifiedOtp = await this.validateSignupOtpVerificationToken(
       dto.otpVerificationToken,
       phone
@@ -64,7 +69,7 @@ export class AuthService {
       throw new BadRequestException("CNIC already registered.");
     }
     if (existing?.phone === phone) {
-      throw new BadRequestException("Phone already registered.");
+      throw new BadRequestException("Aik number pe sirf aik account banta hai.");
     }
     if (existing?.email === email) {
       throw new BadRequestException("Email already registered.");
@@ -103,7 +108,7 @@ export class AuthService {
   async requestOtp(dto: OtpRequestDto, request: Request) {
     const phone = dto.phone.trim();
     const isSignupRequest = dto.forSignup === true;
-    const purpose = dto.purpose ?? OtpPurpose.LOGIN;
+    const purpose = dto.purpose ?? (isSignupRequest ? OtpPurpose.SIGNUP : OtpPurpose.LOGIN);
     const ip = getIpAddress(request);
     const userAgent = request.headers["user-agent"] ?? null;
     const fingerprintHash = this.hashFingerprint(ip, userAgent);
@@ -133,7 +138,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { phone } });
     if (isSignupRequest && user) {
-      throw new BadRequestException("Phone already registered. Please login.");
+      throw new BadRequestException("Aik number pe sirf aik account banta hai.");
     }
     if (!isSignupRequest && !user) {
       throw new BadRequestException("No account found for this phone.");
@@ -230,6 +235,7 @@ export class AuthService {
         sub: otpRecord.userId,
         phone,
         otpId: otpRecord.id,
+        purpose,
         type: "otp_verified"
       },
       {
@@ -243,38 +249,142 @@ export class AuthService {
 
   async login(dto: LoginDto, request: Request): Promise<AuthPayload> {
     const email = dto.email?.trim().toLowerCase();
-    const phone = dto.phone?.trim();
+    const password = dto.password?.trim();
 
-    if (!email || !phone) {
-      throw new BadRequestException("Email and phone are required for login.");
+    if (!email || !password) {
+      throw new BadRequestException("Email and password are required for login.");
     }
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email,
-        phone
-      }
+    const user = await this.prisma.user.findUnique({
+      where: { email }
     });
 
     if (!user) {
       throw new UnauthorizedException("Invalid credentials.");
     }
 
-    if (dto.password) {
-      const isMatch = await compare(dto.password, user.passwordHash);
-      if (!isMatch) {
-        throw new UnauthorizedException("Invalid credentials.");
-      }
-    } else if (dto.otpVerificationToken) {
-      await this.validateOtpVerificationToken(dto.otpVerificationToken, user);
-    } else {
-      throw new BadRequestException(
-        "Provide either password or otpVerificationToken."
-      );
+    const isMatch = await compare(password, user.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException("Invalid credentials.");
     }
 
     await this.saveDeviceFingerprint(user.id, request);
     return this.buildAuthResponse(user);
+  }
+
+  async requestPasswordReset(dto: PasswordResetRequestDto, request: Request) {
+    const email = dto.email.trim().toLowerCase();
+    const phone = dto.phone.trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, phone: true }
+    });
+
+    if (!user || user.phone !== phone) {
+      throw new BadRequestException("Account not found for this email and phone.");
+    }
+
+    return {
+      eligible: true,
+      phone
+    };
+  }
+
+  async verifyPasswordReset(dto: PasswordResetVerifyDto, request: Request) {
+    const email = dto.email.trim().toLowerCase();
+    const phone = dto.phone.trim();
+    const user = await this.prisma.user.findUnique({
+      where: { email }
+    });
+    if (!user || user.phone !== phone) {
+      throw new BadRequestException("Account not found for this email and phone.");
+    }
+
+    await this.assertFirebasePhoneMatch(dto.idToken, phone);
+    await this.saveDeviceFingerprint(user.id, request);
+
+    const resetToken = await this.jwtService.signAsync(
+      {
+        sub: user.id,
+        phone,
+        purpose: OtpPurpose.PASSWORD_RESET,
+        type: "action_verified"
+      },
+      {
+        secret: this.configService.get<string>("JWT_ACCESS_SECRET"),
+        expiresIn: "10m"
+      }
+    );
+
+    return { resetToken };
+  }
+
+  async confirmPasswordReset(dto: PasswordResetConfirmDto) {
+    const payload = await this.decodeActionToken(dto.resetToken, OtpPurpose.PASSWORD_RESET);
+    const passwordHash = await hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: String(payload.sub) },
+      data: { passwordHash }
+    });
+
+    return { success: true };
+  }
+
+  async requestListingPublishOtp(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true, phoneVerifiedAt: true }
+    });
+    if (!user) {
+      throw new UnauthorizedException("User not found.");
+    }
+    if (!user.phoneVerifiedAt) {
+      throw new ForbiddenException(
+        "Phone verification required. Please complete OTP verification before posting."
+      );
+    }
+
+    return { phone: user.phone };
+  }
+
+  async verifyListingPublishOtp(userId: string, dto: ListingOtpVerifyDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true, phoneVerifiedAt: true }
+    });
+    if (!user) {
+      throw new UnauthorizedException("User not found.");
+    }
+    if (!user.phoneVerifiedAt) {
+      throw new ForbiddenException(
+        "Phone verification required. Please complete OTP verification before posting."
+      );
+    }
+
+    await this.assertFirebasePhoneMatch(dto.idToken, user.phone);
+
+    const publishOtpVerificationToken = await this.jwtService.signAsync(
+      {
+        sub: userId,
+        phone: user.phone,
+        purpose: OtpPurpose.LISTING_PUBLISH,
+        type: "action_verified"
+      },
+      {
+        secret: this.configService.get<string>("JWT_ACCESS_SECRET"),
+        expiresIn: "10m"
+      }
+    );
+
+    return { publishOtpVerificationToken };
+  }
+
+  async validateListingPublishOtpToken(token: string, user: User) {
+    const payload = await this.decodeActionToken(token, OtpPurpose.LISTING_PUBLISH);
+    if (String(payload.sub) !== user.id || payload.phone !== user.phone) {
+      throw new UnauthorizedException("Invalid listing publish verification token.");
+    }
   }
 
   async verifyFirebaseToken(
@@ -312,6 +422,7 @@ export class AuthService {
       this.assertFirebaseSignupPayload(dto);
       const email = normalizedEmail;
       const cnic = String(dto.cnic).trim();
+      this.assertAdult(String(dto.dateOfBirth));
       const existing = await this.prisma.user.findFirst({
         where: { OR: [{ email }, { cnic }] },
         select: { email: true, cnic: true }
@@ -331,7 +442,7 @@ export class AuthService {
           cnic,
           phone,
           email,
-          passwordHash: await hash(randomUUID(), 10),
+          passwordHash: await hash(String(dto.password), 10),
           city: String(dto.city).trim(),
           dateOfBirth: new Date(String(dto.dateOfBirth)),
           gender: dto.gender as Gender,
@@ -391,12 +502,18 @@ export class AuthService {
     if (payload.phone !== phone) {
       throw new UnauthorizedException("OTP token does not match signup phone.");
     }
+    if (payload.purpose && payload.purpose !== OtpPurpose.SIGNUP) {
+      throw new UnauthorizedException("OTP token is not valid for signup.");
+    }
 
     const otp = await this.prisma.otpCode.findUnique({
       where: { id: payload.otpId as string }
     });
 
     if (!otp || !otp.verifiedAt || otp.consumedAt || otp.expiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException("OTP is not valid for signup.");
+    }
+    if (otp.purpose !== OtpPurpose.SIGNUP && otp.purpose !== OtpPurpose.LOGIN) {
       throw new UnauthorizedException("OTP is not valid for signup.");
     }
     if (otp.userId) {
@@ -407,7 +524,12 @@ export class AuthService {
   }
 
   private async decodeOtpVerificationToken(token: string) {
-    let payload: { phone?: string; otpId?: string; type?: string };
+    let payload: {
+      phone?: string;
+      otpId?: string;
+      type?: string;
+      purpose?: OtpPurpose;
+    };
     try {
       payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>("JWT_ACCESS_SECRET")
@@ -421,6 +543,75 @@ export class AuthService {
     }
 
     return payload;
+  }
+
+  private async decodeActionToken(token: string, purpose: OtpPurpose) {
+    let payload: {
+      sub?: string;
+      phone?: string;
+      purpose?: OtpPurpose;
+      type?: string;
+    };
+    try {
+      payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>("JWT_ACCESS_SECRET")
+      });
+    } catch {
+      throw new UnauthorizedException("Invalid verification token.");
+    }
+
+    if (
+      payload.type !== "action_verified" ||
+      payload.purpose !== purpose ||
+      !payload.sub ||
+      !payload.phone
+    ) {
+      throw new UnauthorizedException("Invalid verification token.");
+    }
+
+    return payload;
+  }
+
+  private assertAdult(dateOfBirth: string) {
+    const birthDate = new Date(dateOfBirth);
+    if (Number.isNaN(birthDate.getTime())) {
+      throw new BadRequestException("Date of birth required hai.");
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const dayDiff = today.getDate() - birthDate.getDate();
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+      age -= 1;
+    }
+
+    if (age < 18) {
+      throw new BadRequestException(
+        "Age less than 18 ka account nahi ban sakta. Ask your mama papa to create account."
+      );
+    }
+  }
+
+  private async assertFirebasePhoneMatch(idToken: string, phone: string) {
+    const firebaseAuth = this.getFirebaseAuth();
+    if (!firebaseAuth) {
+      throw new BadRequestException(
+        "Firebase auth is not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH or FCM_* credentials."
+      );
+    }
+
+    let decodedToken: { phone_number?: string };
+    try {
+      decodedToken = await firebaseAuth.verifyIdToken(idToken, true);
+    } catch {
+      throw new UnauthorizedException("Invalid Firebase idToken.");
+    }
+
+    const tokenPhone = decodedToken.phone_number?.trim();
+    if (!tokenPhone || tokenPhone !== phone) {
+      throw new UnauthorizedException("Phone verification failed.");
+    }
   }
 
   private async saveDeviceFingerprint(userId: string, request: Request) {
@@ -555,6 +746,7 @@ export class AuthService {
       "fatherName",
       "cnic",
       "email",
+      "password",
       "city",
       "dateOfBirth",
       "gender"

@@ -6,6 +6,7 @@ import type {
   MarketplaceCategory
 } from "../types";
 import Constants from "expo-constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as {
   apiUrl?: string;
@@ -14,6 +15,7 @@ const extra = (Constants.expoConfig?.extra ?? {}) as {
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? extra.apiUrl ?? "http://10.0.2.2:3001";
 let AUTH_TOKEN = extra.demoToken ?? "";
+const AUTH_TOKEN_KEY = "aikad_mobile_access_token";
 
 type AuthResponse = {
   accessToken: string;
@@ -34,11 +36,28 @@ export type VideoFeedItem = {
   currency: string;
 };
 
-export function setAuthToken(token: string) {
+export async function setAuthToken(token: string) {
   AUTH_TOKEN = token;
+  await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
 }
 
 export function getAuthToken() {
+  return AUTH_TOKEN;
+}
+
+export async function clearAuthToken() {
+  AUTH_TOKEN = "";
+  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+export async function hydrateAuthToken() {
+  if (AUTH_TOKEN) {
+    return AUTH_TOKEN;
+  }
+  const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+  if (stored) {
+    AUTH_TOKEN = stored;
+  }
   return AUTH_TOKEN;
 }
 
@@ -204,6 +223,7 @@ export type MobileSearchFilters = {
   city?: string;
   minPrice?: number;
   maxPrice?: number;
+  negotiable?: boolean;
 };
 
 export function searchListingsWithFilters(filters: MobileSearchFilters) {
@@ -225,6 +245,9 @@ export function searchListingsWithFilters(filters: MobileSearchFilters) {
   if (typeof filters.maxPrice === "number") {
     params.set("maxPrice", String(filters.maxPrice));
   }
+  if (typeof filters.negotiable === "boolean") {
+    params.set("negotiable", String(filters.negotiable));
+  }
 
   return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
 }
@@ -235,6 +258,57 @@ export function getListingById(id: string) {
 
 export function createListing(payload: Record<string, unknown>) {
   return apiRequest<Listing>("/listings", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function activateListing(listingId: string) {
+  return apiRequest<Listing>(`/listings/${listingId}/activate`, {
+    method: "POST"
+  });
+}
+
+export function loginWithPassword(payload: { email: string; password: string }) {
+  return apiRequest<{ accessToken: string }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function requestPasswordReset(payload: { email: string; phone: string }) {
+  return apiRequest<{ eligible: boolean; phone: string }>("/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function verifyPasswordReset(payload: {
+  email: string;
+  phone: string;
+  idToken: string;
+}) {
+  return apiRequest<{ resetToken: string }>("/auth/password-reset/verify", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function confirmPasswordReset(payload: { resetToken: string; newPassword: string }) {
+  return apiRequest<{ success: true }>("/auth/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function requestListingPublishOtp() {
+  return apiRequest<{ phone: string }>("/auth/listing-otp/request", {
+    method: "POST"
+  });
+}
+
+export function verifyListingPublishOtp(payload: { idToken: string }) {
+  return apiRequest<{ publishOtpVerificationToken: string }>("/auth/listing-otp/verify", {
     method: "POST",
     body: JSON.stringify(payload)
   });
@@ -279,6 +353,7 @@ export function verifyFirebaseLogin(payload: {
   fatherName?: string;
   cnic?: string;
   email: string;
+  password?: string;
   city?: string;
   dateOfBirth?: string;
   gender?: "MALE" | "FEMALE" | "OTHER";

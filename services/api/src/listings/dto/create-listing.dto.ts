@@ -37,6 +37,9 @@ export class CreateListingDto {
   @IsString()
   description: string;
 
+  @IsString()
+  publishOtpVerificationToken: string;
+
   @IsNumber()
   @Min(0)
   price: number;
@@ -56,6 +59,10 @@ export class CreateListingDto {
 
   @IsBoolean()
   allowSMS: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isNegotiable?: boolean;
 
   @IsArray()
   @ArrayMaxSize(7)

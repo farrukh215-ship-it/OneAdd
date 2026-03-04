@@ -10,26 +10,28 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View
 } from "react-native";
-import {
-  PhoneAuthProvider,
-  signInWithCredential,
-  UserCredential
-} from "firebase/auth";
+import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { firebaseAppForRecaptcha, firebaseAuth } from "../services/firebase";
-import { setAuthToken, verifyFirebaseLogin } from "../services/api";
+import {
+  confirmPasswordReset,
+  loginWithPassword,
+  requestPasswordReset,
+  setAuthToken,
+  verifyFirebaseLogin,
+  verifyPasswordReset
+} from "../services/api";
 
 type Props = {
   onAuthenticated: () => void;
 };
 
 type AuthTab = "signin" | "signup";
-type OtpContext = "signin" | "signup" | null;
+type OtpContext = "signup" | "reset" | null;
 
 type SignupState = {
   fullName: string;
@@ -86,6 +88,22 @@ function normalizeCnicInput(raw: string) {
   return `${p1}-${p2}-${p3}`;
 }
 
+function isLessThan18(dateOfBirth: string) {
+  const birthDate = new Date(dateOfBirth);
+  if (Number.isNaN(birthDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+  return age < 18;
+}
+
 function getPasswordStrength(password: string) {
   let score = 0;
   if (password.length >= 8) score += 1;
@@ -114,8 +132,14 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
   const [message, setMessage] = useState("");
 
   const [signinEmail, setSigninEmail] = useState("");
-  const [signinPhone, setSigninPhone] = useState("+92");
-  const [staySignedIn, setStaySignedIn] = useState(true);
+  const [signinPassword, setSigninPassword] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetPhone, setResetPhone] = useState("+92");
+  const [resetToken, setResetToken] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetStep, setResetStep] = useState<"request" | "password">("request");
 
   const [signup, setSignup] = useState<SignupState>(initialSignupState);
 
@@ -163,13 +187,6 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
     setSignup((prev) => ({ ...prev, [field]: value }));
   }
 
-  function currentPhoneForOtp() {
-    if (otpContext === "signup") {
-      return signup.phone.trim();
-    }
-    return signinPhone.trim();
-  }
-
   async function requestOtp(phone: string, context: Exclude<OtpContext, null>) {
     const provider = new PhoneAuthProvider(firebaseAuth);
     const id = await provider.verifyPhoneNumber(
@@ -184,25 +201,32 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
     setMessage("OTP sent. Enter 6-digit code.");
   }
 
-  async function onSigninRequestOtp() {
+  async function onSignin() {
     resetStatus();
-    const phone = signinPhone.trim();
     const email = signinEmail.trim().toLowerCase();
-
     if (!emailPattern.test(email)) {
       setError("Valid email required.");
       return;
     }
-    if (!phonePattern.test(phone)) {
-      setError("Phone format +923004203035 hona chahiye.");
+    if (signinPassword.length < 8) {
+      setError("Password kam az kam 8 characters ka hona chahiye.");
       return;
     }
 
     setLoading(true);
     try {
-      await requestOtp(phone, "signin");
-    } catch (err: any) {
-      setError(err?.message ?? "OTP request failed.");
+      const auth = await loginWithPassword({
+        email,
+        password: signinPassword
+      });
+      await setAuthToken(auth.accessToken);
+      onAuthenticated();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Login failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -216,6 +240,9 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
     if (signup.password.length < 8) return "Password min 8 characters hona chahiye.";
     if (!signupPasswordsMatch) return "Password aur confirm password match nahi kar rahe.";
     if (!signup.dateOfBirth) return "Date of Birth required hai.";
+    if (isLessThan18(signup.dateOfBirth)) {
+      return "Age less than 18 ka account nahi ban sakta. Ask your mama papa to create account.";
+    }
     if (!signupPhoneValid) return "Phone format +923004203035 hona chahiye.";
     return "";
   }
@@ -231,8 +258,41 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
     setLoading(true);
     try {
       await requestOtp(signup.phone.trim(), "signup");
-    } catch (err: any) {
-      setError(err?.message ?? "OTP request failed.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("OTP request failed.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onResetRequestOtp() {
+    resetStatus();
+    const email = resetEmail.trim().toLowerCase();
+    const phone = resetPhone.trim();
+
+    if (!emailPattern.test(email)) {
+      setError("Valid email required.");
+      return;
+    }
+    if (!phonePattern.test(phone)) {
+      setError("Phone format +923004203035 hona chahiye.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await requestPasswordReset({ email, phone });
+      await requestOtp(phone, "reset");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Reset OTP request failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -241,7 +301,8 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
   async function onResendOtp() {
     if (otpCooldown > 0 || !otpContext) return;
     resetStatus();
-    const phone = currentPhoneForOtp();
+
+    const phone = otpContext === "signup" ? signup.phone.trim() : resetPhone.trim();
     if (!phonePattern.test(phone)) {
       setError("Valid phone required.");
       return;
@@ -251,8 +312,12 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
     try {
       await requestOtp(phone, otpContext);
       setMessage("OTP resent.");
-    } catch (err: any) {
-      setError(err?.message ?? "OTP resend failed.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("OTP resend failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -272,36 +337,80 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
     setLoading(true);
     try {
       const credential = PhoneAuthProvider.credential(verificationId, otpCode.trim());
-      const userCredential: UserCredential = await signInWithCredential(
-        firebaseAuth,
-        credential
-      );
+      const userCredential = await signInWithCredential(firebaseAuth, credential);
       const idToken = await userCredential.user.getIdToken(true);
 
-      if (otpContext === "signin") {
-        const auth = await verifyFirebaseLogin({
-          idToken,
-          email: signinEmail.trim().toLowerCase()
-        });
-        setAuthToken(auth.accessToken);
-      } else {
+      if (otpContext === "signup") {
         const auth = await verifyFirebaseLogin({
           idToken,
           fullName: signup.fullName.trim(),
           fatherName: signup.fatherName.trim(),
           cnic: signup.cnic.trim(),
           email: signup.email.trim().toLowerCase(),
+          password: signup.password,
           city: "Unknown",
           dateOfBirth: signup.dateOfBirth,
           gender: signup.gender
         });
-        setAuthToken(auth.accessToken);
+        await setAuthToken(auth.accessToken);
+        setOtpModalVisible(false);
+        onAuthenticated();
+      } else {
+        const verification = await verifyPasswordReset({
+          email: resetEmail.trim().toLowerCase(),
+          phone: resetPhone.trim(),
+          idToken
+        });
+        setResetToken(verification.resetToken);
+        setResetStep("password");
+        setOtpModalVisible(false);
+        setForgotOpen(true);
+        setMessage("OTP verified. Ab new password set karein.");
       }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("OTP verify failed.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      setOtpModalVisible(false);
-      onAuthenticated();
-    } catch (err: any) {
-      setError(err?.message ?? "OTP verify/login failed.");
+  async function onConfirmResetPassword() {
+    resetStatus();
+    if (resetNewPassword.length < 8) {
+      setError("Password min 8 characters hona chahiye.");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setError("Password aur confirm password match nahi kar rahe.");
+      return;
+    }
+    if (!resetToken) {
+      setError("Reset session expire ho gayi. Dobara OTP verify karein.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await confirmPasswordReset({
+        resetToken,
+        newPassword: resetNewPassword
+      });
+      setForgotOpen(false);
+      setResetStep("request");
+      setResetToken("");
+      setResetNewPassword("");
+      setResetConfirmPassword("");
+      setMessage("Password reset ho gaya. Ab email/password se login karein.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Password reset failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -335,20 +444,9 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
             </View>
             <Text style={styles.heroTitle}>TGMG mein Khush Aamdeed</Text>
             <Text style={styles.heroSubtitle}>
-              Apna number dalo, asli banda verify karo, phir secure login ya account create.
+              Email/password login. Signup aur password reset phone OTP se secure hain.
             </Text>
             <Text style={styles.heroSubtitle}>Tera Dil Ka Saaman - Mere Ghar Ka Hissa</Text>
-            <View style={styles.trustRow}>
-              <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>Asli Login</Text>
-              </View>
-              <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>OTP Secure</Text>
-              </View>
-              <View style={styles.trustChip}>
-                <Text style={styles.trustChipText}>No Bulk Seller</Text>
-              </View>
-            </View>
           </View>
 
           <View style={styles.tabRow}>
@@ -360,9 +458,7 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 Keyboard.dismiss();
               }}
             >
-              <Text
-                style={[styles.tabChipText, tab === "signin" ? styles.tabChipTextActive : null]}
-              >
+              <Text style={[styles.tabChipText, tab === "signin" ? styles.tabChipTextActive : null]}>
                 Sign In
               </Text>
             </Pressable>
@@ -374,9 +470,7 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 Keyboard.dismiss();
               }}
             >
-              <Text
-                style={[styles.tabChipText, tab === "signup" ? styles.tabChipTextActive : null]}
-              >
+              <Text style={[styles.tabChipText, tab === "signup" ? styles.tabChipTextActive : null]}>
                 Create Account
               </Text>
             </Pressable>
@@ -384,9 +478,9 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
 
           {tab === "signin" ? (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Sign In (Email + Phone + OTP)</Text>
+              <Text style={styles.panelTitle}>Sign In (Email + Password)</Text>
               <Text style={styles.panelSubtitle}>
-                Email aur phone dono required hain, OTP verify ke baad login hoga.
+                Ek dafa login ke baad app restart par bhi session active rahega.
               </Text>
               <TextInput
                 style={styles.input}
@@ -400,38 +494,95 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
               />
               <TextInput
                 style={styles.input}
-                placeholder="+923004203035"
-                value={signinPhone}
-                onChangeText={(v) => setSigninPhone(normalizePakPhoneInput(v))}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                textContentType="telephoneNumber"
+                placeholder="Password"
+                value={signinPassword}
+                onChangeText={setSigninPassword}
+                autoCapitalize="none"
+                secureTextEntry
+                autoComplete="password"
+                textContentType="password"
               />
-              <View style={styles.switchRow}>
-                <View style={styles.switchCopy}>
-                  <Text style={styles.switchTitle}>Always signed in</Text>
-                  <Text style={styles.switchHint}>Trusted device par secure session maintain rahega.</Text>
-                </View>
-                <Switch
-                  value={staySignedIn}
-                  onValueChange={setStaySignedIn}
-                  trackColor={{ false: "#E8D5B7", true: "#C8603A" }}
-                  thumbColor="#ffffff"
-                />
-              </View>
               <Pressable
                 style={[styles.primaryButton, loading ? styles.buttonDisabled : null]}
-                onPress={onSigninRequestOtp}
+                onPress={onSignin}
                 disabled={loading}
               >
-                <Text style={styles.primaryButtonText}>Request OTP</Text>
+                <Text style={styles.primaryButtonText}>Login</Text>
               </Pressable>
+              <Pressable
+                style={[styles.secondaryButton, loading ? styles.buttonDisabled : null]}
+                onPress={() => {
+                  setForgotOpen((prev) => !prev);
+                  resetStatus();
+                }}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {forgotOpen ? "Close Forgot Password" : "Forgot Password"}
+                </Text>
+              </Pressable>
+
+              {forgotOpen ? (
+                <View style={styles.panelNested}>
+                  <Text style={styles.panelSubtitle}>Phone OTP se password reset karein.</Text>
+
+                  {resetStep === "request" ? (
+                    <>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Account Email"
+                        value={resetEmail}
+                        onChangeText={setResetEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="+923004203035"
+                        value={resetPhone}
+                        onChangeText={(v) => setResetPhone(normalizePakPhoneInput(v))}
+                        keyboardType="phone-pad"
+                      />
+                      <Pressable
+                        style={[styles.primaryButton, loading ? styles.buttonDisabled : null]}
+                        onPress={onResetRequestOtp}
+                        disabled={loading}
+                      >
+                        <Text style={styles.primaryButtonText}>Send OTP</Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="New Password"
+                        value={resetNewPassword}
+                        onChangeText={setResetNewPassword}
+                        secureTextEntry
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Confirm New Password"
+                        value={resetConfirmPassword}
+                        onChangeText={setResetConfirmPassword}
+                        secureTextEntry
+                      />
+                      <Pressable
+                        style={[styles.primaryButton, loading ? styles.buttonDisabled : null]}
+                        onPress={onConfirmResetPassword}
+                        disabled={loading}
+                      >
+                        <Text style={styles.primaryButtonText}>Set New Password</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </View>
+              ) : null}
             </View>
           ) : (
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>Create Account</Text>
               <Text style={styles.panelSubtitle}>
-                Field order web ke bilkul same: profile details se start, phir phone OTP.
+                Signup ke liye phone OTP required hai. CNIC auto-format apply hoga.
               </Text>
               <View style={styles.progressWrap}>
                 <View style={styles.progressTrack}>
@@ -444,39 +595,27 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 placeholder="Full Name"
                 value={signup.fullName}
                 onChangeText={(v) => updateSignup("fullName", v)}
-                autoComplete="name"
-                textContentType="name"
               />
               <TextInput
                 style={styles.input}
                 placeholder="Father Name"
                 value={signup.fatherName}
                 onChangeText={(v) => updateSignup("fatherName", v)}
-                autoComplete="off"
               />
               <TextInput
-                style={[
-                  styles.input,
-                  signup.cnic.length > 0 && !signupCnicValid ? styles.inputError : null
-                ]}
+                style={[styles.input, signup.cnic.length > 0 && !signupCnicValid ? styles.inputError : null]}
                 placeholder="CNIC (00000-0000000-0)"
                 value={signup.cnic}
                 onChangeText={(v) => updateSignup("cnic", normalizeCnicInput(v))}
                 keyboardType="number-pad"
-                autoComplete="off"
               />
               <TextInput
-                style={[
-                  styles.input,
-                  signup.email.length > 0 && !signupEmailValid ? styles.inputError : null
-                ]}
+                style={[styles.input, signup.email.length > 0 && !signupEmailValid ? styles.inputError : null]}
                 placeholder="Email"
                 value={signup.email}
                 onChangeText={(v) => updateSignup("email", v)}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                autoComplete="email"
-                textContentType="emailAddress"
               />
               <TextInput
                 style={styles.input}
@@ -484,8 +623,6 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 value={signup.password}
                 onChangeText={(v) => updateSignup("password", v)}
                 secureTextEntry
-                autoComplete="new-password"
-                textContentType="newPassword"
               />
               <View style={styles.strengthWrap}>
                 <View style={styles.strengthTrack}>
@@ -494,18 +631,11 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                 <Text style={styles.helperText}>Password strength: {strength.label}</Text>
               </View>
               <TextInput
-                style={[
-                  styles.input,
-                  signup.confirmPassword.length > 0 && !signupPasswordsMatch
-                    ? styles.inputError
-                    : null
-                ]}
+                style={[styles.input, signup.confirmPassword.length > 0 && !signupPasswordsMatch ? styles.inputError : null]}
                 placeholder="Confirm Password"
                 value={signup.confirmPassword}
                 onChangeText={(v) => updateSignup("confirmPassword", v)}
                 secureTextEntry
-                autoComplete="new-password"
-                textContentType="newPassword"
               />
               <TextInput
                 style={styles.input}
@@ -521,28 +651,18 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
                     style={[styles.genderChip, signup.gender === g ? styles.genderChipActive : null]}
                     onPress={() => updateSignup("gender", g)}
                   >
-                    <Text
-                      style={[
-                        styles.genderChipText,
-                        signup.gender === g ? styles.genderChipTextActive : null
-                      ]}
-                    >
+                    <Text style={[styles.genderChipText, signup.gender === g ? styles.genderChipTextActive : null]}>
                       {normalizeGenderLabel(g)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
               <TextInput
-                style={[
-                  styles.input,
-                  signup.phone.length > 0 && !signupPhoneValid ? styles.inputError : null
-                ]}
+                style={[styles.input, signup.phone.length > 0 && !signupPhoneValid ? styles.inputError : null]}
                 placeholder="+923004203035"
                 value={signup.phone}
                 onChangeText={(v) => updateSignup("phone", normalizePakPhoneInput(v))}
                 keyboardType="phone-pad"
-                autoComplete="tel"
-                textContentType="telephoneNumber"
               />
               <Pressable
                 style={[styles.primaryButton, loading ? styles.buttonDisabled : null]}
@@ -554,13 +674,6 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
             </View>
           )}
 
-          <View style={styles.featurePanel}>
-            <Text style={styles.featureTitle}>Professional Features</Text>
-            <Text style={styles.featureItem}>1. Smart format guard: phone + CNIC auto-normalize.</Text>
-            <Text style={styles.featureItem}>2. Live completion meter: faster form completion.</Text>
-            <Text style={styles.featureItem}>3. Secure session toggle: trusted-device sign-in behavior.</Text>
-          </View>
-
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           {message ? <Text style={styles.successText}>{message}</Text> : null}
           {loading ? <ActivityIndicator style={styles.loader} color="#C8603A" /> : null}
@@ -571,7 +684,10 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>OTP Verification</Text>
               <Text style={styles.modalSubtitle}>
-                6-digit OTP enter karein. OTP verify hote hi {otpContext === "signup" ? "account create" : "login"} hoga.
+                6-digit OTP enter karein.{" "}
+                {otpContext === "signup"
+                  ? "OTP verify hote hi account create hoga."
+                  : "OTP verify hote hi password reset continue hoga."}
               </Text>
               <TextInput
                 style={styles.input}
@@ -585,10 +701,7 @@ export function FirebaseAuthScreen({ onAuthenticated }: Props) {
               />
               <View style={styles.modalActions}>
                 <Pressable
-                  style={[
-                    styles.secondaryButton,
-                    otpCooldown > 0 || loading ? styles.buttonDisabled : null
-                  ]}
+                  style={[styles.secondaryButton, otpCooldown > 0 || loading ? styles.buttonDisabled : null]}
                   onPress={onResendOtp}
                   disabled={otpCooldown > 0 || loading}
                 >
@@ -671,24 +784,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
-  trustRow: {
-    marginTop: 14,
-    flexDirection: "row",
-    gap: 8
-  },
-  trustChip: {
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#7A5544",
-    backgroundColor: "rgba(245, 234, 216, 0.14)"
-  },
-  trustChipText: {
-    fontSize: 12,
-    color: "#FDF6ED",
-    fontWeight: "700"
-  },
   tabRow: {
     flexDirection: "row",
     gap: 10,
@@ -725,6 +820,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 16,
     elevation: 5
+  },
+  panelNested: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#E8D5B7",
+    gap: 8
   },
   panelTitle: {
     fontSize: 22,
@@ -793,30 +895,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600"
   },
-  switchRow: {
-    borderWidth: 1,
-    borderColor: "#E8D5B7",
-    backgroundColor: "#FDF6ED",
-    borderRadius: 12,
-    padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8
-  },
-  switchCopy: {
-    flex: 1,
-    gap: 2
-  },
-  switchTitle: {
-    color: "#5C3D2E",
-    fontWeight: "700",
-    fontSize: 14
-  },
-  switchHint: {
-    color: "#9B8070",
-    fontSize: 12
-  },
   genderRow: {
     flexDirection: "row",
     gap: 8
@@ -884,26 +962,6 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: 8
   },
-  featurePanel: {
-    marginTop: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E8D5B7",
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    gap: 6
-  },
-  featureTitle: {
-    fontSize: 16,
-    color: "#5C3D2E",
-    fontWeight: "800"
-  },
-  featureItem: {
-    color: "#7A5544",
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "600"
-  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(30,20,16,0.4)",
@@ -943,4 +1001,3 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   }
 });
-

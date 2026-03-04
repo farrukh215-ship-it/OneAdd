@@ -9,11 +9,19 @@ import {
   View
 } from "react-native";
 import { getCategoryCatalog, searchListingsWithFilters } from "../services/api";
+import {
+  getRecentlyViewedListingIds,
+  getSavedListingIds,
+  resolveListingsByIds,
+  toggleSavedListingId
+} from "../services/listing-preferences";
 import type { Listing, MarketplaceCategory } from "../types";
 
 export function SearchScreen({ navigation, route }: any) {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Listing[]>([]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState("");
 
@@ -28,6 +36,16 @@ export function SearchScreen({ navigation, route }: any) {
   useEffect(() => {
     void getCategoryCatalog().then(setCategories).catch(() => setCategories([]));
   }, []);
+
+  async function refreshLocalCollections(sourceItems: Listing[]) {
+    const [nextSavedIds, nextRecentIds] = await Promise.all([
+      getSavedListingIds(),
+      getRecentlyViewedListingIds()
+    ]);
+    setSavedIds(nextSavedIds);
+    const resolvedRecent = await resolveListingsByIds(nextRecentIds.slice(0, 8), sourceItems);
+    setRecentItems(resolvedRecent);
+  }
 
   useEffect(() => {
     const presetQuery = route?.params?.presetQuery;
@@ -61,6 +79,23 @@ export function SearchScreen({ navigation, route }: any) {
 
     return () => clearTimeout(handle);
   }, [query, selectedCategorySlug]);
+
+  useEffect(() => {
+    void refreshLocalCollections(items);
+  }, [items]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      void refreshLocalCollections(items);
+    });
+    return unsubscribe;
+  }, [items, navigation]);
+
+  async function onToggleSaved(listingId: string) {
+    await toggleSavedListingId(listingId);
+    const nextSavedIds = await getSavedListingIds();
+    setSavedIds(nextSavedIds);
+  }
 
   return (
     <View style={styles.screen}>
@@ -119,6 +154,32 @@ export function SearchScreen({ navigation, route }: any) {
         </ScrollView>
       ) : null}
 
+      {recentItems.length > 0 ? (
+        <View style={styles.quickBlock}>
+          <Text style={styles.quickTitle}>Recently Viewed</Text>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={recentItems}
+            keyExtractor={(item) => `recent-${item.id}`}
+            contentContainerStyle={styles.quickList}
+            renderItem={({ item }) => (
+              <Pressable
+                style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
+                onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+              >
+                <Text style={styles.quickPrice}>
+                  {item.currency} {item.price}
+                </Text>
+                <Text style={styles.quickText} numberOfLines={2}>
+                  {item.title}
+                </Text>
+              </Pressable>
+            )}
+          />
+        </View>
+      ) : null}
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -141,9 +202,20 @@ export function SearchScreen({ navigation, route }: any) {
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
             onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
           >
-            <Text style={styles.price}>
-              {item.currency} {item.price}
-            </Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>
+                {item.currency} {item.price}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+                onPress={(event) => {
+                  event.stopPropagation?.();
+                  void onToggleSaved(item.id);
+                }}
+              >
+                <Text style={styles.saveBtnText}>{savedIds.includes(item.id) ? "Saved" : "Save"}</Text>
+              </Pressable>
+            </View>
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.meta}>{item.city || "Pakistan"}</Text>
           </Pressable>
@@ -235,6 +307,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700"
   },
+  quickBlock: {
+    marginBottom: 12
+  },
+  quickTitle: {
+    color: "#5C3D2E",
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 8
+  },
+  quickList: {
+    gap: 10
+  },
+  quickCard: {
+    width: 164,
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E8D5B7",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10
+  },
+  quickPrice: {
+    color: "#C8603A",
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  quickText: {
+    marginTop: 6,
+    color: "#5C3D2E",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600"
+  },
   listContent: {
     paddingBottom: 18
   },
@@ -251,11 +355,30 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2
   },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8
+  },
   price: {
     color: "#C8603A",
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 2
+  },
+  saveBtn: {
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4
+  },
+  saveBtnText: {
+    color: "#5C3D2E",
+    fontSize: 11,
+    fontWeight: "700"
   },
   title: {
     fontSize: 15,

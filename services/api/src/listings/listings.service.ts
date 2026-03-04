@@ -16,6 +16,7 @@ import {
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { TrustScoreService } from "../trust-score/trust-score.service";
+import { AuthService } from "../auth/auth.service";
 import { CreateListingDto } from "./dto/create-listing.dto";
 
 @Injectable()
@@ -23,11 +24,20 @@ export class ListingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly trustScoreService: TrustScoreService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly authService: AuthService
   ) {}
 
   async createListing(userId: string, dto: CreateListingDto) {
     await this.assertPhoneVerified(userId);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new ForbiddenException("User not found.");
+    }
+    await this.authService.validateListingPublishOtpToken(
+      dto.publishOtpVerificationToken,
+      user
+    );
     this.validateMediaConstraints(dto.media);
     const resolvedCategoryId = await this.resolveCategoryReference(dto.categoryId);
 
@@ -43,6 +53,7 @@ export class ListingsService {
         allowChat: dto.allowChat,
         allowCall: dto.allowCall,
         allowSMS: dto.allowSMS,
+        isNegotiable: Boolean(dto.isNegotiable),
         media: {
           create: dto.media.map((item, index) => ({
             type: item.type,
@@ -406,6 +417,7 @@ export class ListingsService {
       minPrice?: number;
       maxPrice?: number;
       city?: string;
+      isNegotiable?: boolean;
     }
   ) {
     const q = query.trim();
@@ -456,6 +468,12 @@ export class ListingsService {
           categoryId: { in: categoryIds }
         });
       }
+    }
+
+    if (typeof filters?.isNegotiable === "boolean") {
+      andFilters.push({
+        isNegotiable: filters.isNegotiable
+      });
     }
 
     const listings = await this.prisma.listing.findMany({

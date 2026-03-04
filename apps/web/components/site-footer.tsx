@@ -46,7 +46,7 @@ export function SiteFooter() {
               <Link href="/sell">Apna Saaman Becho</Link>
             </li>
             <li>
-              <Link href="/my-listings">Meri Listings</Link>
+              <Link href="/my-listings">Mere Ads</Link>
             </li>
           </ul>
         </div>

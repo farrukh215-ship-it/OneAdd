@@ -253,6 +253,7 @@ export type SearchFilters = {
   minPrice?: number;
   maxPrice?: number;
   condition: string;
+  negotiable?: boolean;
 };
 
 export async function searchListingsWithFilters(filters: SearchFilters) {
@@ -271,6 +272,9 @@ export async function searchListingsWithFilters(filters: SearchFilters) {
   }
   if (filters.condition) {
     params.set("condition", filters.condition);
+  }
+  if (typeof filters.negotiable === "boolean") {
+    params.set("negotiable", String(filters.negotiable));
   }
 
   return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
@@ -322,6 +326,65 @@ export async function loginWithOtp(payload: {
   return result;
 }
 
+export async function loginWithPassword(
+  payload: { email: string; password: string },
+  options?: { rememberMe?: boolean }
+) {
+  const result = await apiRequest<{ accessToken: string }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({
+      email: payload.email,
+      password: payload.password
+    })
+  });
+
+  setToken(result.accessToken, options?.rememberMe ?? true);
+  return result;
+}
+
+export async function requestPasswordReset(payload: { email: string; phone: string }) {
+  return apiRequest<{ eligible: boolean; phone: string }>("/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function verifyPasswordReset(payload: {
+  email: string;
+  phone: string;
+  idToken: string;
+}) {
+  return apiRequest<{ resetToken: string }>("/auth/password-reset/verify", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function confirmPasswordReset(payload: {
+  resetToken: string;
+  newPassword: string;
+}) {
+  return apiRequest<{ success: true }>("/auth/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function requestListingPublishOtp() {
+  return apiRequest<{ phone: string }>("/auth/listing-otp/request", {
+    method: "POST",
+    auth: true
+  });
+}
+
+export async function verifyListingPublishOtp(payload: { idToken: string }) {
+  return apiRequest<{ publishOtpVerificationToken: string }>("/auth/listing-otp/verify", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function signup(payload: {
   fullName: string;
   fatherName: string;
@@ -352,6 +415,7 @@ export async function verifyFirebaseLogin(
     fatherName?: string;
     cnic?: string;
     email: string;
+    password?: string;
     city?: string;
     dateOfBirth?: string;
     gender?: "MALE" | "FEMALE" | "OTHER";

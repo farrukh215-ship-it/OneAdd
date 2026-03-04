@@ -9,10 +9,21 @@ export const metadata: Metadata = {
   description:
     "Pakistan ka pehla real-person used marketplace. Ek banda, ek add, duplicate shopkeeper spam block. Apna ghar ka saaman seedha asli kharedaar tak.",
   metadataBase: new URL("https://www.teragharmeraghar.com"),
+  alternates: {
+    canonical: "/"
+  },
   openGraph: {
     title: "TGMG - Tera Ghar Mera Ghar",
     description: "Sirf Asli Log. Sirf Ghar Ka Saaman.",
     type: "website",
+    url: "https://www.teragharmeraghar.com",
+    siteName: "TGMG",
+    images: ["/brand/TGMG-mark.svg"]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TGMG - Tera Ghar Mera Ghar",
+    description: "Sirf Asli Log. Sirf Ghar Ka Saaman.",
     images: ["/brand/TGMG-mark.svg"]
   },
   icons: {
@@ -31,6 +42,28 @@ type RootLayoutProps = {
 };
 
 export default function RootLayout({ children }: RootLayoutProps) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "TGMG",
+        url: "https://www.teragharmeraghar.com",
+        logo: "https://www.teragharmeraghar.com/brand/tgmg-mark.png"
+      },
+      {
+        "@type": "WebSite",
+        name: "TGMG",
+        url: "https://www.teragharmeraghar.com",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://www.teragharmeraghar.com/search?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  };
+
   return (
     <html lang="en">
       <head>
@@ -40,6 +73,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
         />
       </head>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         <MainNav />
         {children}
         <SiteFooter />

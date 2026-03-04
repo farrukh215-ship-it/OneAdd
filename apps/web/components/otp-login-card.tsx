@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -6,7 +6,13 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber
 } from "firebase/auth";
-import { ApiError, verifyFirebaseLogin } from "../lib/api";
+import {
+  ApiError,
+  confirmPasswordReset,
+  loginWithPassword,
+  requestPasswordReset,
+  verifyPasswordReset
+} from "../lib/api";
 import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
 
 const phonePattern = /^\+92[0-9]{10}$/;
@@ -29,22 +35,34 @@ function normalizePhoneInput(raw: string) {
 
 export function OtpLoginCard() {
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("+92");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [otpStep, setOtpStep] = useState(false);
-  const [otpResendIn, setOtpResendIn] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetPhone, setResetPhone] = useState("+92");
+  const [resetOtp, setResetOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [otpResendIn, setOtpResendIn] = useState(0);
+  const [resetStep, setResetStep] = useState<"request" | "otp" | "password">("request");
 
   const recaptchaElementRef = useRef<HTMLDivElement | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const confirmationRef = useRef<ConfirmationResult | null>(null);
 
-  const canRequestOtp = useMemo(() => {
-    return email.includes("@") && phonePattern.test(phone.trim());
-  }, [email, phone]);
+  const canLogin = useMemo(() => email.includes("@") && password.length >= 8, [email, password]);
+
+  useEffect(() => {
+    if (otpResendIn <= 0) return;
+    const timer = window.setTimeout(() => {
+      setOtpResendIn((prev) => prev - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [otpResendIn]);
 
   useEffect(() => {
     if (!isFirebaseConfigured() || !recaptchaElementRef.current) {
@@ -64,15 +82,7 @@ export function OtpLoginCard() {
     };
   }, []);
 
-  useEffect(() => {
-    if (otpResendIn <= 0) return;
-    const timer = window.setTimeout(() => {
-      setOtpResendIn((prev) => prev - 1);
-    }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [otpResendIn]);
-
-  async function requestFirebaseOtp() {
+  async function requestFirebaseOtp(phone: string) {
     if (!isFirebaseConfigured()) {
       throw new Error("Firebase config missing hai. apps/web/.env.local set karein.");
     }
@@ -87,45 +97,89 @@ export function OtpLoginCard() {
       recaptchaVerifierRef.current
     );
     confirmationRef.current = confirmation;
-    setOtpStep(true);
     setOtpResendIn(otpResendSeconds);
   }
 
-  async function onRequestOtp(event: FormEvent) {
+  async function onLogin(event: FormEvent) {
     event.preventDefault();
     setError("");
     setMessage("");
 
-    if (!canRequestOtp) {
-      setError("Email aur phone format sahi enter karein.");
+    if (!canLogin) {
+      setError("Valid email aur password required hai.");
       return;
     }
 
     setLoading(true);
     try {
-      await requestFirebaseOtp();
-      setMessage("OTP send ho gaya. 6-digit code verify karein.");
-    } catch (err: unknown) {
-      if (err instanceof Error) {
+      await loginWithPassword(
+        {
+          email: email.trim().toLowerCase(),
+          password
+        },
+        { rememberMe }
+      );
+      setMessage("Login successful.");
+      window.location.reload();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("OTP request failed.");
+        setError("Login failed.");
       }
     } finally {
       setLoading(false);
     }
   }
 
-  async function onResendOtp() {
+  async function onResetRequest(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    if (!resetEmail.includes("@")) {
+      setError("Valid email required hai.");
+      return;
+    }
+    if (!phonePattern.test(resetPhone.trim())) {
+      setError("Phone format +923004203035 hona chahiye.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await requestPasswordReset({
+        email: resetEmail.trim().toLowerCase(),
+        phone: resetPhone.trim()
+      });
+      await requestFirebaseOtp(resetPhone.trim());
+      setResetStep("otp");
+      setMessage("OTP send ho gaya. 6-digit code verify karein.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Password reset request failed.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onResendResetOtp() {
     if (otpResendIn > 0) return;
 
     setError("");
     setMessage("");
     setLoading(true);
     try {
-      await requestFirebaseOtp();
+      await requestFirebaseOtp(resetPhone.trim());
       setMessage("Naya OTP send kar diya gaya.");
-    } catch (err: unknown) {
+    } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -136,7 +190,7 @@ export function OtpLoginCard() {
     }
   }
 
-  async function onVerify(event: FormEvent) {
+  async function onVerifyResetOtp(event: FormEvent) {
     event.preventDefault();
     setError("");
     setMessage("");
@@ -145,31 +199,23 @@ export function OtpLoginCard() {
       setError("Pehle OTP request karein.");
       return;
     }
-    if (otp.trim().length !== 6) {
+    if (resetOtp.trim().length !== 6) {
       setError("6-digit OTP required hai.");
       return;
     }
 
     setLoading(true);
     try {
-      const credential = await confirmationRef.current.confirm(otp.trim());
+      const credential = await confirmationRef.current.confirm(resetOtp.trim());
       const idToken = await credential.user.getIdToken(true);
-
-      const authResult = await verifyFirebaseLogin(
-        {
-          idToken,
-          email: email.trim().toLowerCase()
-        },
-        { rememberMe }
-      );
-
-      if (authResult.user.email.toLowerCase() !== email.trim().toLowerCase()) {
-        setError("Email aur phone account se match nahi kar rahe.");
-        return;
-      }
-
-      setMessage("Login successful.");
-      window.location.reload();
+      const verification = await verifyPasswordReset({
+        email: resetEmail.trim().toLowerCase(),
+        phone: resetPhone.trim(),
+        idToken
+      });
+      setResetToken(verification.resetToken);
+      setResetStep("password");
+      setMessage("OTP verified. Ab naya password set karein.");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -177,6 +223,50 @@ export function OtpLoginCard() {
         setError(err.message);
       } else {
         setError("OTP verification failed.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onConfirmPasswordReset(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    if (newPassword.length < 8) {
+      setError("Password kam az kam 8 characters ka hona chahiye.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Password aur confirm password match nahi kar rahe.");
+      return;
+    }
+    if (!resetToken) {
+      setError("Reset session expire ho gaya. Dobara try karein.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await confirmPasswordReset({
+        resetToken,
+        newPassword
+      });
+      setForgotOpen(false);
+      setResetStep("request");
+      setResetToken("");
+      setResetOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setMessage("Password reset ho gaya. Ab email/password se login karein.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Password reset confirm failed.");
       }
     } finally {
       setLoading(false);
@@ -192,8 +282,8 @@ export function OtpLoginCard() {
         <p className="authBrandTagline">Sirf Asli Log. Sirf Ghar Ka Saaman.</p>
       </div>
       <h2>TGMG mein Khush Aamdeed</h2>
-      <p className="helperText">Apna number dalo — asli banda verify karo</p>
-      <form className="stack" onSubmit={onRequestOtp}>
+      <p className="helperText">Email aur password se login karein.</p>
+      <form className="stack" onSubmit={onLogin}>
         <input
           className="input"
           type="email"
@@ -205,10 +295,11 @@ export function OtpLoginCard() {
         />
         <input
           className="input"
-          placeholder="+923004203035"
-          value={phone}
-          onChange={(event) => setPhone(normalizePhoneInput(event.target.value))}
-          autoComplete="tel"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
           required
         />
         <label className="toggle">
@@ -219,36 +310,104 @@ export function OtpLoginCard() {
           />
           <span>Always signed in on this device</span>
         </label>
-        <button className="btn" type="submit" disabled={!canRequestOtp || loading}>
-          {loading ? "Please wait..." : "Request OTP"}
+        <button className="btn" type="submit" disabled={!canLogin || loading}>
+          {loading ? "Please wait..." : "Login"}
+        </button>
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={() => {
+            setForgotOpen((prev) => !prev);
+            setError("");
+            setMessage("");
+          }}
+        >
+          {forgotOpen ? "Close Forgot Password" : "Forgot Password"}
         </button>
       </form>
 
-      {otpStep ? (
-        <form className="stack" onSubmit={onVerify}>
-          <input
-            className="input"
-            placeholder="6-digit OTP"
-            value={otp}
-            onChange={(event) => setOtp(event.target.value)}
-            maxLength={6}
-            autoComplete="one-time-code"
-            required
-          />
-          <div className="modalActions">
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={onResendOtp}
-              disabled={otpResendIn > 0 || loading}
-            >
-              {otpResendIn > 0 ? `Resend in ${otpResendIn}s` : "Resend OTP"}
-            </button>
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? "Verifying..." : "Verify & Login"}
-            </button>
-          </div>
-        </form>
+      {forgotOpen ? (
+        <div className="stack" style={{ marginTop: 8 }}>
+          <h3 style={{ margin: 0 }}>Password Reset (Phone OTP)</h3>
+
+          {resetStep === "request" ? (
+            <form className="stack" onSubmit={onResetRequest}>
+              <input
+                className="input"
+                type="email"
+                placeholder="Account Email"
+                value={resetEmail}
+                onChange={(event) => setResetEmail(event.target.value)}
+                autoComplete="email"
+                required
+              />
+              <input
+                className="input"
+                placeholder="+923004203035"
+                value={resetPhone}
+                onChange={(event) => setResetPhone(normalizePhoneInput(event.target.value))}
+                autoComplete="tel"
+                required
+              />
+              <button className="btn" type="submit" disabled={loading}>
+                {loading ? "Please wait..." : "Send OTP"}
+              </button>
+            </form>
+          ) : null}
+
+          {resetStep === "otp" ? (
+            <form className="stack" onSubmit={onVerifyResetOtp}>
+              <input
+                className="input"
+                placeholder="6-digit OTP"
+                value={resetOtp}
+                onChange={(event) => setResetOtp(event.target.value)}
+                maxLength={6}
+                autoComplete="one-time-code"
+                required
+              />
+              <div className="modalActions">
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={onResendResetOtp}
+                  disabled={otpResendIn > 0 || loading}
+                >
+                  {otpResendIn > 0 ? `Resend in ${otpResendIn}s` : "Resend OTP"}
+                </button>
+                <button className="btn" type="submit" disabled={loading}>
+                  {loading ? "Verifying..." : "Verify OTP"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {resetStep === "password" ? (
+            <form className="stack" onSubmit={onConfirmPasswordReset}>
+              <input
+                className="input"
+                type="password"
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                autoComplete="new-password"
+                required
+              />
+              <input
+                className="input"
+                type="password"
+                placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                required
+              />
+              <button className="btn" type="submit" disabled={loading}>
+                {loading ? "Saving..." : "Set New Password"}
+              </button>
+            </form>
+          ) : null}
+        </div>
       ) : null}
 
       <div ref={recaptchaElementRef} />
@@ -258,5 +417,3 @@ export function OtpLoginCard() {
     </section>
   );
 }
-
-

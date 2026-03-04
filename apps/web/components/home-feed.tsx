@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCatalog, getRecentListingsPage } from "../lib/api";
 import { Listing, MarketplaceCategory } from "../lib/types";
 
@@ -82,14 +82,44 @@ type ListingCardProps = {
 function ListingCard({ listing }: ListingCardProps) {
   const image = listingImageUrl(listing);
   const condition = (listing.status || "USED").replace(/_/g, " ");
+  const trustScore = listing.user?.trustScore?.score ?? 0;
+  const responseBadge =
+    trustScore >= 80 ? "Replies < 10m" : trustScore >= 60 ? "Replies < 30m" : "Replies < 2h";
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem("tgmg_saved_listing_ids");
+    const ids = raw ? (JSON.parse(raw) as string[]) : [];
+    setSaved(ids.includes(listing.id));
+  }, [listing.id]);
+
+  function toggleSaved(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof window === "undefined") return;
+
+    const raw = localStorage.getItem("tgmg_saved_listing_ids");
+    const ids = raw ? (JSON.parse(raw) as string[]) : [];
+    const nextIds = saved
+      ? ids.filter((id) => id !== listing.id)
+      : [listing.id, ...ids.filter((id) => id !== listing.id)];
+    localStorage.setItem("tgmg_saved_listing_ids", JSON.stringify(nextIds.slice(0, 200)));
+    setSaved(!saved);
+  }
 
   return (
     <Link className="listing-card" href={`/listing/${listing.id}`}>
       <div className="listing-img">
         <span className="listing-condition">{condition}</span>
-        <span className="listing-save" aria-hidden="true">
-          {"\u2661"}
-        </span>
+        <button
+          className="listing-save"
+          aria-label={saved ? "Unsave listing" : "Save listing"}
+          onClick={toggleSaved}
+          type="button"
+        >
+          {saved ? "\u2665" : "\u2661"}
+        </button>
         <div className="listing-img-inner">
           {image ? (
             <img className="premiumMedia" src={image} alt={listing.title} loading="lazy" />
@@ -104,12 +134,13 @@ function ListingCard({ listing }: ListingCardProps) {
         <p className="listing-desc">{listing.description}</p>
         <p className="listing-price">
           {listing.currency} {listing.price}
-          <span> / fixed</span>
+          <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
         </p>
         <div className="listing-footer">
           <span className="listing-loc">{listing.city || "Pakistan"}</span>
           <span className="badge-verified">Asli Banda</span>
         </div>
+        <p className="listing-desc">{responseBadge}</p>
       </div>
     </Link>
   );
@@ -138,6 +169,7 @@ function categoryHref(slug: string) {
 
 export function HomeFeed() {
   const [items, setItems] = useState<Listing[]>([]);
+  const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -203,6 +235,26 @@ export function HomeFeed() {
     void loadInitial();
     void loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const recentRaw = localStorage.getItem("tgmg_recently_viewed");
+    const recentIds = recentRaw ? (JSON.parse(recentRaw) as string[]) : [];
+    if (recentIds.length === 0) {
+      setRecentItems([]);
+      return;
+    }
+
+    const map = new Map(items.map((item) => [item.id, item]));
+    const nextRecent = recentIds
+      .map((id) => map.get(id))
+      .filter((item): item is Listing => Boolean(item))
+      .slice(0, 6);
+    setRecentItems(nextRecent);
+  }, [items]);
 
   useEffect(() => {
     if (!canLoadMore || !sentinelRef.current) {
@@ -288,7 +340,7 @@ export function HomeFeed() {
           <p className="hero-urdu urdu-text">{urduTagline}</p>
           <p className="hero-desc">
             Pakistan ka pehla real-person used marketplace. <strong>Shopkeepers aur showroom
-            owners ki duplicate adds block,</strong> sirf real household seller ko priority.
+            owners ki duplicate ADDs block,</strong> sirf real household seller ko priority.
           </p>
 
           <div className="hero-actions">
@@ -362,7 +414,7 @@ export function HomeFeed() {
         <div className="trust-sep" />
         <div className="trust-item">
           <span className="trust-icon">{"1\ufe0f\u20e3"}</span>
-          <span className="trust-text">Ek Banda Ek Add</span>
+          <span className="trust-text">Ek Banda Ek ADD</span>
         </div>
         <div className="trust-sep" />
         <div className="trust-item">
@@ -446,7 +498,7 @@ export function HomeFeed() {
               {selectedCategory.subcategories.map((subcategory) => (
                 <Link href={categoryHref(subcategory.slug)} key={subcategory.id} className="subcat-item">
                   <span>{subcategory.name}</span>
-                  <small>{subcategory.listingCount} adds</small>
+                  <small>{subcategory.listingCount} ADDs</small>
                 </Link>
               ))}
             </div>
@@ -473,6 +525,22 @@ export function HomeFeed() {
             </button>
           ))}
         </div>
+
+        {recentItems.length > 0 ? (
+          <>
+            <header className="section-header compactHeader">
+              <div>
+                <p className="section-eyebrow">History</p>
+                <h3 className="section-title">Recently Viewed</h3>
+              </div>
+            </header>
+            <div className="listings-grid">
+              {recentItems.map((listing) => (
+                <ListingCard listing={listing} key={`recent-${listing.id}`} />
+              ))}
+            </div>
+          </>
+        ) : null}
 
         {listingSectionBody}
         {!error ? <div ref={sentinelRef} className="feedSentinel" aria-hidden="true" /> : null}

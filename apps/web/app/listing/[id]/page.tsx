@@ -19,6 +19,9 @@ export async function generateMetadata({
     return {
       title: `${listing.title} | TGMG`,
       description: listing.description.slice(0, 150),
+      alternates: {
+        canonical: `/listing/${id}`
+      },
       openGraph: {
         title: listing.title,
         description: listing.description.slice(0, 150),
@@ -42,5 +45,30 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
   } catch {
     notFound();
   }
-  return <ListingDetailView listing={listing} />;
+
+  const firstImage = listing.media.find((item) => item.type === "IMAGE");
+  const listingStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    description: listing.description,
+    image: firstImage?.url ? [firstImage.url] : undefined,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: listing.currency,
+      price: String(listing.price),
+      availability: listing.status === "ACTIVE" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      url: `https://www.teragharmeraghar.com/listing/${listing.id}`
+    }
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(listingStructuredData) }}
+      />
+      <ListingDetailView listing={listing} />
+    </>
+  );
 }

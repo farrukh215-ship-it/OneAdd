@@ -45,6 +45,6 @@ import { Sms4ConnectProvider } from "./sms/sms4connect.provider";
       }
     }
   ],
-  exports: [JwtModule, JwtAuthGuard, AdminGuard]
+  exports: [JwtModule, JwtAuthGuard, AdminGuard, AuthService]
 })
 export class AuthModule {}

@@ -92,7 +92,7 @@ export default function AccountPage() {
         </div>
 
         <h1 style={{ margin: 0 }}>
-          {profile?.fullName ?? "User"} - Meri Listings
+          {profile?.fullName ?? "User"} - Mere Ads
         </h1>
         <p className="helperText" style={{ margin: 0 }}>
           {profile

@@ -46,6 +46,7 @@ export default function SearchPage() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [condition, setCondition] = useState("ANY");
+  const [negotiableOnly, setNegotiableOnly] = useState(false);
   const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [results, setResults] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,8 +100,9 @@ export default function SearchPage() {
     if (minPrice.trim()) list.push(`Min ${minPrice}`);
     if (maxPrice.trim()) list.push(`Max ${maxPrice}`);
     if (condition !== "ANY") list.push(condition);
+    if (negotiableOnly) list.push("Negotiable Only");
     return list;
-  }, [catalog, category, city, condition, maxPrice, minPrice, query]);
+  }, [catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query]);
 
   async function runSearchWith(payload: SearchFilters) {
     setLoading(true);
@@ -140,7 +142,8 @@ export default function SearchPage() {
       city,
       minPrice: min,
       maxPrice: max,
-      condition
+      condition,
+      negotiable: negotiableOnly
     };
 
     await runSearchWith(payload);
@@ -228,6 +231,14 @@ export default function SearchPage() {
                 ))}
               </select>
             </label>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={negotiableOnly}
+                onChange={(event) => setNegotiableOnly(event.target.checked)}
+              />
+              <span>Negotiable Only</span>
+            </label>
             <button className="searchSubmitBtn" type="submit" disabled={loading}>
               Apply Filters
             </button>
@@ -262,7 +273,8 @@ export default function SearchPage() {
                   city,
                   minPrice: Number.isNaN(parsedMin) ? undefined : parsedMin,
                   maxPrice: Number.isNaN(parsedMax) ? undefined : parsedMax,
-                  condition
+                  condition,
+                  negotiable: negotiableOnly
                 });
               }}
               >
@@ -412,6 +424,14 @@ export default function SearchPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={negotiableOnly}
+                  onChange={(event) => setNegotiableOnly(event.target.checked)}
+                />
+                <span>Negotiable Only</span>
               </label>
               <button className="searchSubmitBtn" type="submit" disabled={loading}>
                 Apply Filters

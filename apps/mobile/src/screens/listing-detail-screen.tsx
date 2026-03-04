@@ -16,6 +16,11 @@ import {
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEffect } from "react";
 import { getListingById, upsertThread } from "../services/api";
+import {
+  addRecentlyViewedListingId,
+  isListingSaved,
+  toggleSavedListingId
+} from "../services/listing-preferences";
 import type { Listing, ListingMedia } from "../types";
 
 const { width } = Dimensions.get("window");
@@ -57,6 +62,7 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const [error, setError] = useState("");
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [chatLoading, setChatLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
   const listingId = String(route.params?.id ?? "");
 
   useEffect(() => {
@@ -68,6 +74,14 @@ export function ListingDetailScreen({ route, navigation }: any) {
       })
       .catch(() => setError("Listing load nahi ho saki."))
       .finally(() => setLoading(false));
+  }, [listingId]);
+
+  useEffect(() => {
+    if (!listingId) {
+      return;
+    }
+    void addRecentlyViewedListingId(listingId);
+    void isListingSaved(listingId).then(setSaved).catch(() => setSaved(false));
   }, [listingId]);
 
   const media = useMemo(() => {
@@ -109,6 +123,11 @@ export function ListingDetailScreen({ route, navigation }: any) {
     await Share.share({
       message: `https://www.teragharmeraghar.com/listing/${listingId}`
     });
+  }
+
+  async function onToggleSaved() {
+    const nextSaved = await toggleSavedListingId(listingId);
+    setSaved(nextSaved);
   }
 
   if (loading) {
@@ -182,9 +201,20 @@ export function ListingDetailScreen({ route, navigation }: any) {
             <Text style={styles.trustText}>{trustBadge}</Text>
           </View>
 
-          <Pressable style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]} onPress={onShare}>
-            <Text style={styles.shareText}>Share Listing</Text>
-          </Pressable>
+          <View style={styles.quickActionsRow}>
+            <Pressable
+              style={({ pressed }) => [styles.quickActionBtn, pressed && styles.pressed]}
+              onPress={onToggleSaved}
+            >
+              <Text style={styles.quickActionText}>{saved ? "Saved" : "Save Listing"}</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.quickActionBtn, pressed && styles.pressed]}
+              onPress={onShare}
+            >
+              <Text style={styles.quickActionText}>Share Listing</Text>
+            </Pressable>
+          </View>
           {error ? <Text style={styles.inlineError}>{error}</Text> : null}
         </View>
       </ScrollView>
@@ -351,8 +381,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 13
   },
-  shareBtn: {
+  quickActionsRow: {
     marginTop: 14,
+    flexDirection: "row",
+    gap: 10
+  },
+  quickActionBtn: {
+    flex: 1,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
@@ -360,7 +395,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center"
   },
-  shareText: {
+  quickActionText: {
     color: "#5C3D2E",
     fontWeight: "700"
   },

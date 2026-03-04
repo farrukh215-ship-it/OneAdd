@@ -13,6 +13,9 @@ describe("ListingsService", () => {
   const notificationsServiceMock = {
     notifyUsers: jest.fn()
   } as any;
+  const authServiceMock = {
+    validateListingPublishOtpToken: jest.fn().mockResolvedValue(undefined)
+  } as any;
 
   const baseListing = {
     id: "listing-1",
@@ -29,7 +32,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
 
     await expect(
@@ -37,6 +41,7 @@ describe("ListingsService", () => {
         categoryId: "cat-1",
         title: "Listing",
         description: "Desc",
+        publishOtpVerificationToken: "publish-token",
         price: 10,
         showPhone: true,
         allowChat: true,
@@ -58,7 +63,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
 
     await expect(
@@ -66,6 +72,7 @@ describe("ListingsService", () => {
         categoryId: "cat-1",
         title: "Listing",
         description: "Desc",
+        publishOtpVerificationToken: "publish-token",
         price: 10,
         showPhone: true,
         allowChat: true,
@@ -109,7 +116,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
 
     await expect(service.activateListing("user-1", "listing-1")).rejects.toBeInstanceOf(
@@ -134,7 +142,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
 
     await expect(service.activateListing("user-1", "listing-1")).rejects.toBeInstanceOf(
@@ -163,7 +172,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
     await service.activateListing("user-1", "listing-1");
 
@@ -190,7 +200,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
     await expect(service.activateListing("user-1", "missing")).rejects.toBeInstanceOf(
       NotFoundException
@@ -220,7 +231,8 @@ describe("ListingsService", () => {
     const service = new ListingsService(
       prisma,
       trustScoreServiceMock,
-      notificationsServiceMock
+      notificationsServiceMock,
+      authServiceMock
     );
 
     const result = await service.expireListingsDaily();

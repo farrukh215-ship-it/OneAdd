@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShareActions } from "./share-actions";
 import { Listing } from "../lib/types";
@@ -17,6 +17,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const { mounted, token } = useAuthToken();
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
+  const [saved, setSaved] = useState(false);
   const isLoggedIn = mounted && Boolean(token);
 
   const images = useMemo(
@@ -36,6 +37,32 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const trustLabel =
     trustScore >= 80 ? "Highly Trusted" : trustScore >= 50 ? "Trusted Seller" : "New Seller";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
+    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
+    setSaved(savedIds.includes(listing.id));
+
+    const recentRaw = localStorage.getItem("tgmg_recently_viewed");
+    const recentIds = recentRaw ? (JSON.parse(recentRaw) as string[]) : [];
+    const nextRecent = [listing.id, ...recentIds.filter((item) => item !== listing.id)].slice(0, 20);
+    localStorage.setItem("tgmg_recently_viewed", JSON.stringify(nextRecent));
+  }, [listing.id]);
+
+  function toggleSaved() {
+    if (typeof window === "undefined") return;
+    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
+    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
+
+    const nextSaved = saved
+      ? savedIds.filter((item) => item !== listing.id)
+      : [listing.id, ...savedIds.filter((item) => item !== listing.id)];
+
+    localStorage.setItem("tgmg_saved_listing_ids", JSON.stringify(nextSaved.slice(0, 200)));
+    setSaved(!saved);
+  }
 
   async function startChat() {
     if (!isLoggedIn) {
@@ -98,6 +125,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <p className="listingPriceMain">
             {listing.currency} {listing.price}
           </p>
+          {listing.isNegotiable ? <p className="pill">Negotiable</p> : null}
           <p className="listingDescription">{listing.description}</p>
 
           <section className="sellerTrustCard">
@@ -129,6 +157,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
                 SMS
               </a>
             ) : null}
+            <button className="btn secondary" onClick={toggleSaved} type="button">
+              {saved ? "Saved ✓" : "Save Listing"}
+            </button>
             {!isLoggedIn ? (
               <Link href="/account" className="btn secondary">
                 Login to contact seller

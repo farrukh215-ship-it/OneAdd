@@ -10,6 +10,12 @@ import {
   View
 } from "react-native";
 import { getCategoryCatalog, getListings } from "../services/api";
+import {
+  getRecentlyViewedListingIds,
+  getSavedListingIds,
+  resolveListingsByIds,
+  toggleSavedListingId
+} from "../services/listing-preferences";
 import type { Listing, MarketplaceCategory } from "../types";
 
 const urduTagline =
@@ -65,9 +71,11 @@ function EmptyState() {
 type HomeCardProps = {
   item: Listing;
   onPress: () => void;
+  saved: boolean;
+  onToggleSaved: () => void;
 };
 
-function HomeCard({ item, onPress }: HomeCardProps) {
+function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
   const image = useMemo(() => item.media.find((media) => media.type === "IMAGE")?.url, [item.media]);
   const trustScore = item.user?.trustScore?.score ?? 0;
   const trustBadge = getTrustBadge(trustScore);
@@ -80,9 +88,20 @@ function HomeCard({ item, onPress }: HomeCardProps) {
         <View style={styles.cardImagePlaceholder} />
       )}
       <View style={styles.cardBody}>
-        <Text style={styles.price}>
-          {item.currency} {item.price}
-        </Text>
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>
+            {item.currency} {item.price}
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.saveBtn, pressed && styles.cardPressed]}
+            onPress={(event) => {
+              event.stopPropagation?.();
+              onToggleSaved();
+            }}
+          >
+            <Text style={styles.saveBtnText}>{saved ? "Saved" : "Save"}</Text>
+          </Pressable>
+        </View>
         <Text style={styles.title} numberOfLines={2}>
           {item.title}
         </Text>
@@ -102,6 +121,9 @@ function HomeCard({ item, onPress }: HomeCardProps) {
 export function HomeScreen({ navigation }: any) {
   const [items, setItems] = useState<Listing[]>([]);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [savedItems, setSavedItems] = useState<Listing[]>([]);
+  const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,6 +131,22 @@ export function HomeScreen({ navigation }: any) {
 
   const selectedCategory =
     categories.find((item) => item.slug === selectedCategorySlug) ?? categories[0] ?? null;
+
+  async function refreshLocalCollections(sourceItems: Listing[]) {
+    const [nextSavedIds, nextRecentIds] = await Promise.all([
+      getSavedListingIds(),
+      getRecentlyViewedListingIds()
+    ]);
+    setSavedIds(nextSavedIds);
+
+    const [resolvedSaved, resolvedRecent] = await Promise.all([
+      resolveListingsByIds(nextSavedIds.slice(0, 8), sourceItems),
+      resolveListingsByIds(nextRecentIds.slice(0, 8), sourceItems)
+    ]);
+
+    setSavedItems(resolvedSaved);
+    setRecentItems(resolvedRecent);
+  }
 
   async function loadAll(mode: "initial" | "refresh" = "initial") {
     if (mode === "initial") {
@@ -122,6 +160,7 @@ export function HomeScreen({ navigation }: any) {
       const [listingData, categoryData] = await Promise.all([getListings(), getCategoryCatalog()]);
       setItems(listingData);
       setCategories(categoryData);
+      await refreshLocalCollections(listingData);
       if (categoryData.length > 0) {
         setSelectedCategorySlug((prev) => prev || categoryData[0].slug);
       }
@@ -139,6 +178,18 @@ export function HomeScreen({ navigation }: any) {
   useEffect(() => {
     void loadAll("initial");
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      void refreshLocalCollections(items);
+    });
+    return unsubscribe;
+  }, [items, navigation]);
+
+  async function onToggleSaved(listingId: string) {
+    await toggleSavedListingId(listingId);
+    await refreshLocalCollections(items);
+  }
 
   return (
     <View style={styles.screen}>
@@ -226,11 +277,68 @@ export function HomeScreen({ navigation }: any) {
               ) : null}
 
               <Text style={styles.headerTitle}>Latest Listings</Text>
+
+              {savedItems.length > 0 ? (
+                <View style={styles.collectionBlock}>
+                  <Text style={styles.collectionTitle}>Saved Adds</Text>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    data={savedItems}
+                    keyExtractor={(item) => `saved-${item.id}`}
+                    contentContainerStyle={styles.collectionList}
+                    renderItem={({ item }) => (
+                      <Pressable
+                        style={({ pressed }) => [styles.collectionCard, pressed && styles.cardPressed]}
+                        onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+                      >
+                        <Text style={styles.collectionPrice}>
+                          {item.currency} {item.price}
+                        </Text>
+                        <Text style={styles.collectionText} numberOfLines={2}>
+                          {item.title}
+                        </Text>
+                      </Pressable>
+                    )}
+                  />
+                </View>
+              ) : null}
+
+              {recentItems.length > 0 ? (
+                <View style={styles.collectionBlock}>
+                  <Text style={styles.collectionTitle}>Recently Viewed</Text>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    data={recentItems}
+                    keyExtractor={(item) => `recent-${item.id}`}
+                    contentContainerStyle={styles.collectionList}
+                    renderItem={({ item }) => (
+                      <Pressable
+                        style={({ pressed }) => [styles.collectionCard, pressed && styles.cardPressed]}
+                        onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+                      >
+                        <Text style={styles.collectionPrice}>
+                          {item.currency} {item.price}
+                        </Text>
+                        <Text style={styles.collectionText} numberOfLines={2}>
+                          {item.title}
+                        </Text>
+                      </Pressable>
+                    )}
+                  />
+                </View>
+              ) : null}
             </View>
           }
           ListEmptyComponent={error ? <Text style={styles.error}>{error}</Text> : <EmptyState />}
           renderItem={({ item }) => (
-            <HomeCard item={item} onPress={() => navigation.navigate("ListingDetail", { id: item.id })} />
+            <HomeCard
+              item={item}
+              saved={savedIds.includes(item.id)}
+              onToggleSaved={() => void onToggleSaved(item.id)}
+              onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+            />
           )}
         />
       )}
@@ -387,6 +495,38 @@ const styles = StyleSheet.create({
     color: "#5C3D2E",
     fontWeight: "800"
   },
+  collectionBlock: {
+    marginTop: 14
+  },
+  collectionTitle: {
+    color: "#5C3D2E",
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 8
+  },
+  collectionList: {
+    gap: 10
+  },
+  collectionCard: {
+    width: 160,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    padding: 10
+  },
+  collectionPrice: {
+    color: "#C8603A",
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  collectionText: {
+    marginTop: 6,
+    color: "#5C3D2E",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600"
+  },
   card: {
     borderRadius: 12,
     overflow: "hidden",
@@ -416,11 +556,30 @@ const styles = StyleSheet.create({
   cardBody: {
     padding: 14
   },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8
+  },
   price: {
     fontSize: 24,
     lineHeight: 28,
     color: "#C8603A",
     fontWeight: "800"
+  },
+  saveBtn: {
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4
+  },
+  saveBtnText: {
+    color: "#5C3D2E",
+    fontSize: 11,
+    fontWeight: "700"
   },
   title: {
     marginTop: 6,

@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { ChatScreen } from "../screens/chat-screen";
 import { HomeScreen } from "../screens/home-screen";
 import { ReelsScreen } from "../screens/reels-screen";
+import { SavedScreen } from "../screens/saved-screen";
 import { SearchScreen } from "../screens/search-screen";
 import { SellScreen } from "../screens/sell-screen";
 
@@ -13,7 +14,8 @@ const iconMap: Record<string, string> = {
   Dhundo: "\ud83d\udd0d",
   Becho: "\ud83c\udff7\ufe0f",
   Chat: "\ud83d\udcac",
-  Reels: "\ud83c\udfac"
+  Reels: "\ud83c\udfac",
+  Saved: "\ud83d\udd16"
 };
 
 export function TabsNavigator() {
@@ -50,6 +52,7 @@ export function TabsNavigator() {
       <Tab.Screen name="Becho" component={SellScreen} />
       <Tab.Screen name="Chat" component={ChatScreen} />
       <Tab.Screen name="Reels" component={ReelsScreen} />
+      <Tab.Screen name="Saved" component={SavedScreen} />
     </Tab.Navigator>
   );
 }

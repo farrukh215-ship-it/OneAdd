@@ -2,6 +2,7 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  MinLength,
   IsOptional,
   IsString,
   IsUrl,
@@ -16,6 +17,11 @@ export class FirebaseVerifyDto {
   @IsOptional()
   @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  password?: string;
 
   @IsOptional()
   @IsString()
