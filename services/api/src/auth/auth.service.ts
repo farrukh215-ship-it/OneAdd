@@ -17,7 +17,7 @@ import { compare, hash } from "bcryptjs";
 import { createHash, randomInt } from "crypto";
 import { Request } from "express";
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { isAbsolute, resolve } from "path";
 import { PrismaService } from "../prisma/prisma.service";
 import { FirebaseVerifyDto } from "./dto/firebase-verify.dto";
 import { ListingOtpVerifyDto } from "./dto/listing-otp-verify.dto";
@@ -710,9 +710,18 @@ export class AuthService {
     | null {
     const rawPath = this.configService.get<string>("FIREBASE_SERVICE_ACCOUNT_PATH", "");
     if (rawPath) {
-      const resolvedPath = join(process.cwd(), rawPath);
-      if (existsSync(resolvedPath)) {
-        const parsed = JSON.parse(readFileSync(resolvedPath, "utf-8")) as {
+      const candidates = [
+        rawPath,
+        isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), rawPath),
+        isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), "..", "..", rawPath)
+      ];
+
+      for (const candidate of candidates) {
+        if (!existsSync(candidate)) {
+          continue;
+        }
+
+        const parsed = JSON.parse(readFileSync(candidate, "utf-8")) as {
           project_id?: string;
           client_email?: string;
           private_key?: string;
