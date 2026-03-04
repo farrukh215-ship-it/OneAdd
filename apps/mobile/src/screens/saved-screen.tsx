@@ -15,6 +15,7 @@ import {
   resolveListingsByIds,
   toggleSavedListingId
 } from "../services/listing-preferences";
+import { StaggerInCard } from "../components/stagger-in-card";
 import type { Listing } from "../types";
 
 export function SavedScreen({ navigation }: any) {
@@ -98,30 +99,32 @@ export function SavedScreen({ navigation }: any) {
           </View>
         }
         ListHeaderComponent={error ? <Text style={styles.error}>{error}</Text> : null}
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-            onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
-          >
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>
-                {item.currency} {item.price}
+        renderItem={({ item, index }) => (
+          <StaggerInCard index={index} delayBase={70} delayStep={34}>
+            <Pressable
+              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+            >
+              <View style={styles.priceRow}>
+                <Text style={styles.price}>
+                  {item.currency} {item.price}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [styles.unsaveBtn, pressed && styles.pressed]}
+                  onPress={(event) => {
+                    event.stopPropagation?.();
+                    void onUnsave(item.id);
+                  }}
+                >
+                  <Text style={styles.unsaveBtnText}>Unsave</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {item.title}
               </Text>
-              <Pressable
-                style={({ pressed }) => [styles.unsaveBtn, pressed && styles.pressed]}
-                onPress={(event) => {
-                  event.stopPropagation?.();
-                  void onUnsave(item.id);
-                }}
-              >
-                <Text style={styles.unsaveBtnText}>Unsave</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.cardTitle} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <Text style={styles.meta}>{item.city || "Pakistan"}</Text>
-          </Pressable>
+              <Text style={styles.meta}>{item.city || "Pakistan"}</Text>
+            </Pressable>
+          </StaggerInCard>
         )}
       />
     </Animated.View>

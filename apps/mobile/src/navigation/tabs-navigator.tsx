@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Pressable, Text, View } from "react-native";
 import { ChatScreen } from "../screens/chat-screen";
 import { HomeScreen } from "../screens/home-screen";
 import { ReelsScreen } from "../screens/reels-screen";
@@ -80,8 +80,58 @@ function AnimatedTabIcon({
   );
 }
 
+function TabBarGlassBackdrop({ pulse }: { pulse: Animated.Value }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        overflow: "hidden",
+        backgroundColor: "rgba(255,255,255,0.92)"
+      }}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: -18,
+          height: 46,
+          backgroundColor: "#F5EAD8",
+          opacity: pulse.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.2, 0.52]
+          }),
+          transform: [
+            {
+              scaleX: pulse.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.08]
+              })
+            }
+          ]
+        }}
+      />
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          height: 1,
+          backgroundColor: "rgba(232,213,183,0.92)"
+        }}
+      />
+    </View>
+  );
+}
+
 export function TabsNavigator() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
+  const tabPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     return subscribeAuthToken((token) => {
@@ -89,8 +139,23 @@ export function TabsNavigator() {
     });
   }, []);
 
+  function triggerTabPulse() {
+    tabPulse.setValue(1);
+    Animated.timing(tabPulse, {
+      toValue: 0,
+      duration: 360,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false
+    }).start();
+  }
+
   return (
     <Tab.Navigator
+      screenListeners={{
+        tabPress: () => {
+          triggerTabPulse();
+        }
+      }}
       screenOptions={({ route, navigation }) => ({
         headerStyle: { backgroundColor: "#FDF6ED" },
         headerTitleStyle: { color: "#5C3D2E", fontWeight: "700" },
@@ -119,12 +184,19 @@ export function TabsNavigator() {
           </Pressable>
         ),
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "transparent",
           borderTopColor: "#E8D5B7",
+          borderTopWidth: 0,
           height: 62,
           paddingBottom: 6,
-          paddingTop: 6
+          paddingTop: 6,
+          shadowColor: "#5C3D2E",
+          shadowOffset: { width: 0, height: -6 },
+          shadowOpacity: 0.1,
+          shadowRadius: 18,
+          elevation: 10
         },
+        tabBarBackground: () => <TabBarGlassBackdrop pulse={tabPulse} />,
         tabBarActiveTintColor: "#C8603A",
         tabBarInactiveTintColor: "#9B8070",
         tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },

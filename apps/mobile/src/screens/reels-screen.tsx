@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Easing,
   FlatList,
   Pressable,
   Share,
@@ -28,14 +29,61 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
     p.loop = true;
     p.muted = false;
   });
+  const ctaOpacity = useRef(new Animated.Value(isActive ? 1 : 0.72)).current;
+  const ctaLift = useRef(new Animated.Value(isActive ? 0 : 14)).current;
+  const primaryPulse = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (isActive) {
       player.play();
-      return;
+    } else {
+      player.pause();
     }
-    player.pause();
   }, [isActive, player]);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(ctaOpacity, {
+        toValue: isActive ? 1 : 0.72,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      }),
+      Animated.timing(ctaLift, {
+        toValue: isActive ? 0 : 14,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true
+      })
+    ]).start();
+
+    pulseLoopRef.current?.stop();
+    primaryPulse.setValue(1);
+    if (isActive) {
+      pulseLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(primaryPulse, {
+            toValue: 1.04,
+            duration: 820,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true
+          }),
+          Animated.timing(primaryPulse, {
+            toValue: 1,
+            duration: 820,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true
+          })
+        ])
+      );
+      pulseLoopRef.current.start();
+    }
+
+    return () => {
+      pulseLoopRef.current?.stop();
+    };
+  }, [ctaLift, ctaOpacity, isActive, primaryPulse]);
 
   async function onShare() {
     await Share.share({
@@ -52,7 +100,15 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
         </View>
       </View>
 
-      <View style={styles.overlay}>
+      <Animated.View
+        style={[
+          styles.overlay,
+          {
+            opacity: ctaOpacity,
+            transform: [{ translateY: ctaLift }]
+          }
+        ]}
+      >
         <Text style={styles.price}>
           {item.currency} {item.price}
         </Text>
@@ -60,17 +116,19 @@ function ReelCard({ item, isActive, navigation }: ReelCardProps) {
           {item.title}
         </Text>
         <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-            onPress={() => navigation.navigate("ListingDetail", { id: item.listingId })}
-          >
-            <Text style={styles.primaryBtnText}>Product Dekho</Text>
-          </Pressable>
+          <Animated.View style={{ flex: 1.25, transform: [{ scale: primaryPulse }] }}>
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+              onPress={() => navigation.navigate("ListingDetail", { id: item.listingId })}
+            >
+              <Text style={styles.primaryBtnText}>Product Dekho</Text>
+            </Pressable>
+          </Animated.View>
           <Pressable style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]} onPress={onShare}>
             <Text style={styles.ghostBtnText}>Share</Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }

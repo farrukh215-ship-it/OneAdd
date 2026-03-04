@@ -11,6 +11,7 @@ import {
   View
 } from "react-native";
 import { getCategoryCatalog, getListings } from "../services/api";
+import { StaggerInCard } from "../components/stagger-in-card";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
   getRecentlyViewedListingIds,
@@ -335,13 +336,15 @@ export function HomeScreen({ navigation }: any) {
             </View>
           }
           ListEmptyComponent={error ? <Text style={styles.error}>{error}</Text> : <EmptyState />}
-          renderItem={({ item }) => (
-            <HomeCard
-              item={item}
-              saved={savedIds.includes(item.id)}
-              onToggleSaved={() => void onToggleSaved(item.id)}
-              onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
-            />
+          renderItem={({ item, index }) => (
+            <StaggerInCard index={index} delayBase={100} delayStep={36}>
+              <HomeCard
+                item={item}
+                saved={savedIds.includes(item.id)}
+                onToggleSaved={() => void onToggleSaved(item.id)}
+                onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+              />
+            </StaggerInCard>
           )}
         />
       )}

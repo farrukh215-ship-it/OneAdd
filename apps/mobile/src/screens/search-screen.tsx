@@ -10,6 +10,7 @@ import {
   View
 } from "react-native";
 import { getCategoryCatalog, searchListingsWithFilters } from "../services/api";
+import { StaggerInCard } from "../components/stagger-in-card";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
   getRecentlyViewedListingIds,
@@ -200,28 +201,30 @@ export function SearchScreen({ navigation, route }: any) {
             </View>
           )
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-            onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
-          >
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>
-                {item.currency} {item.price}
-              </Text>
-              <Pressable
-                style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
-                onPress={(event) => {
-                  event.stopPropagation?.();
-                  void onToggleSaved(item.id);
-                }}
-              >
-                <Text style={styles.saveBtnText}>{savedIds.includes(item.id) ? "Saved" : "Save"}</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.meta}>{item.city || "Pakistan"}</Text>
-          </Pressable>
+        renderItem={({ item, index }) => (
+          <StaggerInCard index={index} delayBase={80} delayStep={34}>
+            <Pressable
+              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
+            >
+              <View style={styles.priceRow}>
+                <Text style={styles.price}>
+                  {item.currency} {item.price}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={(event) => {
+                    event.stopPropagation?.();
+                    void onToggleSaved(item.id);
+                  }}
+                >
+                  <Text style={styles.saveBtnText}>{savedIds.includes(item.id) ? "Saved" : "Save"}</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.title}>{item.title}</Text>
+              <Text style={styles.meta}>{item.city || "Pakistan"}</Text>
+            </Pressable>
+          </StaggerInCard>
         )}
       />
     </Animated.View>
