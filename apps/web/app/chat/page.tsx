@@ -194,12 +194,19 @@ export default function ChatPage() {
                     onClick={() => setActiveThreadId(thread.id)}
                     type="button"
                   >
-                    <p className="chatThreadTitle">{thread.listing?.title || "Direct Chat"}</p>
+                    <div className="chatThreadHead">
+                      <p className="chatThreadTitle">{thread.listing?.title || "Direct Chat"}</p>
+                      <p className="chatThreadTime">{formatTime(thread.lastMessageAt)}</p>
+                    </div>
                     <p className="chatThreadMeta">
                       Uploaded by {(thread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                       {peerName.split(" ")[0]}
                     </p>
-                    <p className="chatThreadTime">{formatTime(thread.lastMessageAt)}</p>
+                    <p className="chatThreadSnippet">
+                      {thread.status === "CLOSED"
+                        ? "Listing closed, read-only thread."
+                        : "Open thread to continue chat."}
+                    </p>
                   </button>
                 );
               })}
@@ -256,7 +263,7 @@ export default function ChatPage() {
             <input
               className="input"
               value={text}
-              placeholder={isClosedThread ? "Chat closed" : "Type a message (Offer: 120000)"}
+              placeholder={isClosedThread ? "Chat closed" : "Type a message"}
               onChange={(event) => setText(event.target.value)}
               disabled={!activeThreadId || isClosedThread || sending}
             />

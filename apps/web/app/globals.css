@@ -2836,17 +2836,18 @@ textarea {
   padding: 8px;
   display: grid;
   gap: 6px;
+  align-content: start;
 }
 
 .chatThreadItem {
   width: 100%;
   border: 1px solid var(--sand);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--white);
   text-align: left;
-  padding: 10px;
+  padding: 9px 10px;
   display: grid;
-  gap: 4px;
+  gap: 3px;
   cursor: pointer;
 }
 
@@ -2855,16 +2856,42 @@ textarea {
   background: #fcf3ea;
 }
 
+.chatThreadHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .chatThreadTitle {
-  font-size: 0.94rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .chatThreadMeta,
 .chatThreadTime {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--muted);
+  margin: 0;
+}
+
+.chatThreadMeta,
+.chatThreadSnippet {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chatThreadSnippet {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--brown-l);
 }
 
 .chatMessagesList {
@@ -3468,7 +3495,7 @@ textarea {
   }
 
   .listingBelowMediaCards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .mobileStickyCta {

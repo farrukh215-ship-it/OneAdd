@@ -26,9 +26,11 @@ type ProfileState = {
   city: string;
 };
 
-function getPrimaryImage(listing: Listing) {
-  const url = listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
-  return resolveMediaUrl(url);
+function getImageCandidates(listing: Listing) {
+  return listing.media
+    .filter((item) => item.type === "IMAGE" && Boolean(item.url?.trim()))
+    .map((item) => resolveMediaUrl(item.url))
+    .filter(Boolean);
 }
 
 function formatListedDate(timestamp?: string) {
@@ -63,6 +65,41 @@ function statusTone(status?: string) {
     default:
       return "neutral";
   }
+}
+
+function AccountListingMedia({ listing }: { listing: Listing }) {
+  const candidates = getImageCandidates(listing);
+  const [failedIndexes, setFailedIndexes] = useState<Set<number>>(new Set());
+  const visibleIndexes = candidates
+    .map((_, index) => index)
+    .filter((index) => !failedIndexes.has(index));
+  const currentIndex = visibleIndexes[0];
+  const imageUrl = currentIndex === undefined ? "" : candidates[currentIndex];
+
+  return (
+    <div className="accountListingMediaWrap">
+      {imageUrl ? (
+        <img
+          className="accountListingMedia"
+          src={imageUrl}
+          alt={listing.title}
+          loading="lazy"
+          onError={() =>
+            setFailedIndexes((prev) => {
+              if (currentIndex === undefined || prev.has(currentIndex)) {
+                return prev;
+              }
+              const next = new Set(prev);
+              next.add(currentIndex);
+              return next;
+            })
+          }
+        />
+      ) : (
+        <div className="accountListingMediaFallback" aria-hidden="true" />
+      )}
+    </div>
+  );
 }
 
 export default function AccountPage() {
@@ -267,18 +304,7 @@ export default function AccountPage() {
             {items.map((listing) => (
               <article className="accountListingCard" key={listing.id}>
                 <Link href={`/listing/${listing.id}`} className="accountListingMain">
-                  <div className="accountListingMediaWrap">
-                    {getPrimaryImage(listing) ? (
-                      <img
-                        className="accountListingMedia"
-                        src={getPrimaryImage(listing)}
-                        alt={listing.title}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="accountListingMediaFallback" aria-hidden="true" />
-                    )}
-                  </div>
+                  <AccountListingMedia listing={listing} />
                   <div className="accountListingBody">
                     <h3 className="accountListingTitle">{listing.title}</h3>
                     <div className="accountListingMetaRow">
@@ -290,6 +316,7 @@ export default function AccountPage() {
                       </span>
                     </div>
                     <p className="helperText accountListedDate">{formatListedDate(listing.createdAt)}</p>
+                    <p className="helperText accountListedDate">City: {listing.city || "Pakistan"}</p>
                   </div>
                 </Link>
                 <div className="accountListingActions">

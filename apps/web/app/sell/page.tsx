@@ -36,6 +36,7 @@ type SellFormState = {
   price: string;
   condition: Condition;
   city: string;
+  exactLocation: string;
   isNegotiable: boolean;
   media: MediaItem[];
   showPhone: boolean;
@@ -51,6 +52,7 @@ const initialState: SellFormState = {
   price: "",
   condition: "USED",
   city: "",
+  exactLocation: "",
   isNegotiable: false,
   media: [],
   showPhone: true,
@@ -94,10 +96,16 @@ function extractConditionFromDescription(description: string): Condition {
   return value;
 }
 
+function extractExactLocationFromDescription(description: string) {
+  const match = description.match(/\n\s*location\s*:\s*(.+)$/im);
+  return match?.[1]?.trim() ?? "";
+}
+
 function cleanDescriptionMetadata(description: string) {
   return description
     .replace(/\n\s*condition\s*:\s*(NEW|USED|LIKE_NEW)\s*$/gim, "")
     .replace(/\n\s*city\s*:\s*.+$/gim, "")
+    .replace(/\n\s*location\s*:\s*.+$/gim, "")
     .trim();
 }
 
@@ -169,6 +177,7 @@ export default function SellPage() {
       if (parsed.form) {
         setForm({
           ...parsed.form,
+          exactLocation: parsed.form.exactLocation ?? "",
           media: normalizeMediaItems(parsed.form.media ?? [])
         });
       }
@@ -266,11 +275,12 @@ export default function SellPage() {
     if (!form.title.trim()) errs.push("Title required hai.");
     if (!form.price.trim() || Number(form.price) <= 0) errs.push("Price valid numeric honi chahiye.");
     if (!form.city.trim()) errs.push("Location select karna zaroori hai.");
+    if (!form.exactLocation.trim()) errs.push("Exact location (area) likhna zaroori hai.");
     if (images.length < 2) errs.push("Kam az kam 2 images upload karni zaroori hain.");
     if (images.length > 6) errs.push("Max 6 images allow hain.");
     if (video && (video.durationSec ?? 0) > 30) errs.push("Video duration 30 sec se kam honi chahiye.");
     return errs;
-  }, [form.categoryId, form.city, form.description, form.price, form.title, images.length, mainCategoryId, video]);
+  }, [form.categoryId, form.city, form.description, form.exactLocation, form.price, form.title, images.length, mainCategoryId, video]);
   useEffect(() => {
     if (!mounted) {
       return;
@@ -306,6 +316,7 @@ export default function SellPage() {
           }));
         const parsedCity = listing.city?.trim() || extractCityFromDescription(listing.description);
         const parsedCondition = extractConditionFromDescription(listing.description);
+        const parsedExactLocation = extractExactLocationFromDescription(listing.description);
         const root = catalog.find((entry) =>
           entry.subcategories.some((sub) => sub.id === listing.categoryId)
         );
@@ -320,6 +331,7 @@ export default function SellPage() {
           price: String(listing.price ?? ""),
           condition: parsedCondition,
           city: parsedCity,
+          exactLocation: parsedExactLocation,
           isNegotiable: Boolean(listing.isNegotiable),
           media: normalizeMediaItems([...imageMedia, ...videoMedia]),
           showPhone: listing.showPhone,
@@ -613,7 +625,7 @@ export default function SellPage() {
       const payload = {
         categoryId: form.categoryId,
         title: form.title,
-        description: `${form.description}\n\nCondition: ${form.condition}`,
+        description: `${form.description}\n\nCondition: ${form.condition}\nLocation: ${form.exactLocation}`,
         city: form.city,
         price: Number(form.price),
         showPhone: form.showPhone,
@@ -845,6 +857,15 @@ export default function SellPage() {
                 </datalist>
               </label>
               <label className="filterLabel">
+                Exact location (Area / Mohalla / Near landmark)
+                <input
+                  className="input"
+                  placeholder="e.g. Johar Town Block H3, Near Emporium"
+                  value={form.exactLocation}
+                  onChange={(event) => setForm((prev) => ({ ...prev, exactLocation: event.target.value }))}
+                />
+              </label>
+              <label className="filterLabel">
                 Apni cheez ke baare mein batao
                 <textarea
                   className="input"
@@ -1019,6 +1040,12 @@ export default function SellPage() {
                 </p>
                 <p>
                   <strong>Condition:</strong> {form.condition}
+                </p>
+                <p>
+                  <strong>City:</strong> {form.city || "-"}
+                </p>
+                <p>
+                  <strong>Exact location:</strong> {form.exactLocation || "-"}
                 </p>
                 <p>
                   <strong>Negotiable:</strong> {form.isNegotiable ? "Yes" : "No"}

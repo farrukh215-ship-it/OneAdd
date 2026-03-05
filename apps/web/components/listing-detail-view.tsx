@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShareActions } from "./share-actions";
-import { Listing, ListingOffer, ListingPublicMessage } from "../lib/types";
+import { Listing, ListingPublicMessage } from "../lib/types";
 import { createListingReport, fetchListingOffers, upsertChatThread } from "../lib/api";
 import {
   getSavedListingIdsLocal,
@@ -45,6 +45,19 @@ function toLastOnline(timestamp?: string | null) {
   return `Online ${days}d ago`;
 }
 
+function extractMetadataValue(description: string, key: "city" | "location") {
+  const match = description.match(new RegExp(`\\n\\s*${key}\\s*:\\s*(.+)$`, "im"));
+  return match?.[1]?.trim() ?? "";
+}
+
+function cleanDescriptionMetadata(description: string) {
+  return description
+    .replace(/\n\s*condition\s*:\s*(NEW|USED|LIKE_NEW)\s*$/gim, "")
+    .replace(/\n\s*city\s*:\s*.+$/gim, "")
+    .replace(/\n\s*location\s*:\s*.+$/gim, "")
+    .trim();
+}
+
 export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const router = useRouter();
   const { mounted, token } = useAuthToken();
@@ -52,7 +65,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [chatError, setChatError] = useState("");
   const [saved, setSaved] = useState(false);
   const [contactVisible, setContactVisible] = useState(false);
-  const [offers, setOffers] = useState<ListingOffer[]>([]);
   const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   const [sellerBlocked, setSellerBlocked] = useState(false);
@@ -85,11 +97,10 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const selectedImageUrl = resolveMediaUrl(selectedImage);
 
   const phone = listing.user?.phone ?? "";
-  const numericPrice = Number.parseFloat(String(listing.price ?? "").replace(/[^\d.]/g, ""));
-  const suggestedOffer =
-    Number.isFinite(numericPrice) && numericPrice > 0
-      ? Math.max(500, Math.round((numericPrice * 0.9) / 500) * 500)
-      : null;
+  const description = cleanDescriptionMetadata(listing.description ?? "");
+  const extractedCity = extractMetadataValue(listing.description ?? "", "city");
+  const exactLocation = extractMetadataValue(listing.description ?? "", "location");
+  const cityLabel = (listing.city?.trim() || extractedCity || "Pakistan").trim();
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const trustLabel =
     trustScore >= 80 ? "Highly Trusted" : trustScore >= 50 ? "Trusted Seller" : "New Seller";
@@ -126,11 +137,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   useEffect(() => {
     fetchListingOffers(listing.id, 12)
       .then((result) => {
-        setOffers(result.offers);
         setRecentMessages(result.recentMessages ?? []);
       })
       .catch(() => {
-        setOffers([]);
         setRecentMessages([]);
       });
   }, [listing.id]);
@@ -266,29 +275,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
           <div className="listingBelowMediaCards">
             <section className="sellerTrustCard">
-              <p className="sellerName">Live Buyer Offers</p>
-              {offers.length === 0 ? (
-                <p className="listingDescription">
-                  Abhi public offers nahi aaye. Chat me likhein:{" "}
-                  <strong>
-                    Offer: {suggestedOffer ? `PKR ${suggestedOffer.toLocaleString()}` : "apni amount"}
-                  </strong>
-                </p>
-              ) : (
-                <div className="stack">
-                  {offers.slice(0, 6).map((offer) => (
-                    <div key={offer.id} className="sellerTrustRow">
-                      <span className="pill">{offer.senderName}</span>
-                      <span className="sellerTrustScore">
-                        {offer.amount ? `PKR ${offer.amount.toLocaleString()}` : offer.content}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="sellerTrustCard">
               <p className="sellerName">Public Chat on this Product</p>
               {recentMessages.length === 0 ? (
                 <p className="listingDescription">
@@ -299,7 +285,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
                   {recentMessages.map((message) => (
                     <div key={message.id} className="sellerTrustRow">
                       <span className="pill">{message.senderName}</span>
-                      <span className="sellerTrustScore">{message.content}</span>
+                      <span className="sellerTrustScore">
+                        {message.amount ? `Offer: PKR ${message.amount.toLocaleString()}` : message.content}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -315,8 +303,12 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             {listing.currency} {listing.price}
           </p>
           {listing.isNegotiable ? <p className="pill">Negotiable</p> : null}
-          <p className="listingDescription">{listing.description}</p>
+          <p className="listingDescription">{description || "No description available."}</p>
           <p className="shareHint">{toListedDate(listing.createdAt)}</p>
+          <p className="shareHint">
+            City: {cityLabel}
+            {exactLocation ? ` · Area: ${exactLocation}` : ""}
+          </p>
 
           <section className="sellerTrustCard">
             <p className="sellerName">{listing.user?.fullName || "Verified Seller"}</p>
