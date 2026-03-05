@@ -217,6 +217,18 @@ function normalizeMediaUrl(url: string) {
     }
 
     const parsed = new URL(url);
+    if (parsed.pathname.startsWith("/api/media/files/")) {
+      if (typeof window !== "undefined") {
+        parsed.protocol = window.location.protocol;
+        parsed.hostname = window.location.hostname;
+        parsed.port = window.location.port;
+        return parsed.toString();
+      }
+      parsed.protocol = "https:";
+      parsed.hostname = "www.teragharmeraghar.com";
+      parsed.port = "";
+      return parsed.toString();
+    }
     if (LEGACY_MEDIA_HOSTS.has(parsed.hostname)) {
       parsed.protocol = "https:";
       parsed.hostname = "www.teragharmeraghar.com";

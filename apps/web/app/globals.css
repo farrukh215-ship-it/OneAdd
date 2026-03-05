@@ -658,12 +658,30 @@ textarea {
   width: 72px;
   height: 72px;
   border-radius: var(--radius-md);
-  display: flex;
+  display: grid;
   align-items: center;
   justify-content: center;
   font-size: 28px;
   flex-shrink: 0;
   background: var(--warm);
+  overflow: hidden;
+  position: relative;
+  padding: 0;
+}
+
+.hcard-img-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hcard-img-fallback {
+  display: none;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .hcard-meta {

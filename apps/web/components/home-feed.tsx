@@ -19,7 +19,18 @@ const urduTagline =
   "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 const quickFilters = ["Latest", "Verified", "Karachi", "Lahore", "Islamabad", "Under 50K"];
 
-const heroFallback = [
+type HeroCard = {
+  listingId?: string;
+  imageUrl?: string;
+  icon: string;
+  title: string;
+  desc: string;
+  city: string;
+  price: string;
+  createdAt?: string;
+};
+
+const heroFallback: HeroCard[] = [
   {
     icon: "\ud83d\udcf1",
     title: "iPhone 13 - 128GB PTA",
@@ -42,6 +53,10 @@ const heroFallback = [
     price: "PKR 135,000"
   }
 ];
+
+function getPrimaryImage(listing: Listing) {
+  return listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
+}
 
 function toRelativeTime(timestamp?: string) {
   if (!timestamp) {
@@ -101,12 +116,15 @@ function dedupeById(listings: Listing[]) {
 }
 
 function heroCardsFromListings(listings: Listing[]) {
-  const fromListings = listings.slice(0, 3).map((item) => ({
+  const fromListings: HeroCard[] = listings.slice(0, 3).map((item) => ({
+    listingId: item.id,
+    imageUrl: getPrimaryImage(item),
     icon: "\ud83c\udfe1",
     title: item.title,
     desc: item.description,
     city: item.city || "Pakistan",
-    price: `${item.currency} ${item.price}`
+    price: `${item.currency} ${item.price}`,
+    createdAt: item.createdAt
   }));
 
   if (fromListings.length < 3) {
@@ -125,7 +143,14 @@ function ListingCard({ listing }: ListingCardProps) {
     [listing.media]
   );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const image = images[activeImageIndex]?.url ?? "";
+  const [failedImageIndexes, setFailedImageIndexes] = useState<Set<number>>(new Set());
+  const visibleImageIndexes = useMemo(
+    () => images.map((_, index) => index).filter((index) => !failedImageIndexes.has(index)),
+    [failedImageIndexes, images]
+  );
+  const activeOriginalImageIndex = visibleImageIndexes[activeImageIndex];
+  const image =
+    activeOriginalImageIndex !== undefined ? images[activeOriginalImageIndex]?.url ?? "" : "";
   const condition = (listing.status || "USED").replace(/_/g, " ");
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const responseBadge =
@@ -147,18 +172,25 @@ function ListingCard({ listing }: ListingCardProps) {
   function goToPrevImage(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    setActiveImageIndex((prev) => (prev <= 0 ? images.length - 1 : prev - 1));
+    setActiveImageIndex((prev) => (prev <= 0 ? visibleImageIndexes.length - 1 : prev - 1));
   }
 
   function goToNextImage(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    setActiveImageIndex((prev) => (prev + 1) % images.length);
+    setActiveImageIndex((prev) => (prev + 1) % visibleImageIndexes.length);
   }
 
   useEffect(() => {
     setActiveImageIndex(0);
+    setFailedImageIndexes(new Set());
   }, [listing.id]);
+
+  useEffect(() => {
+    if (activeImageIndex >= visibleImageIndexes.length) {
+      setActiveImageIndex(0);
+    }
+  }, [activeImageIndex, visibleImageIndexes.length]);
 
   return (
     <Link className="listing-card" href={`/listing/${listing.id}`}>
@@ -180,16 +212,24 @@ function ListingCard({ listing }: ListingCardProps) {
               alt={listing.title}
               loading="lazy"
               onError={() => {
-                if (images.length > 1) {
-                  setActiveImageIndex((prev) => (prev + 1) % images.length);
+                if (activeOriginalImageIndex === undefined) {
+                  return;
                 }
+                setFailedImageIndexes((prev) => {
+                  if (prev.has(activeOriginalImageIndex)) {
+                    return prev;
+                  }
+                  const next = new Set(prev);
+                  next.add(activeOriginalImageIndex);
+                  return next;
+                });
               }}
             />
           ) : (
             <div className="listingImagePlaceholder" aria-hidden="true" />
           )}
         </div>
-        {images.length > 1 ? (
+        {visibleImageIndexes.length > 1 ? (
           <div className="listingSlideControls">
             <button className="listingSlideBtn" onClick={goToPrevImage} type="button">
               ‹
@@ -255,7 +295,6 @@ export function HomeFeed() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const isEmpty = hasLoadedOnce && items.length === 0 && !loading;
   const canLoadMore = !loading && !loadingMore && Boolean(cursor);
 
   const selectedCategory = useMemo(
@@ -321,7 +360,7 @@ export function HomeFeed() {
       await syncSavedListings(isLoggedIn);
       const recentIds = await syncRecentlyViewedListings(isLoggedIn);
       const resolved = await resolveListingsByIds(recentIds.slice(0, 6), items);
-      setRecentItems(resolved);
+      setRecentItems(dedupeById(resolved));
     })();
   }, [isLoggedIn, items, mounted]);
 
@@ -343,7 +382,24 @@ export function HomeFeed() {
     return () => observer.disconnect();
   }, [canLoadMore, cursor]);
 
-  const heroCards = useMemo(() => heroCardsFromListings(items), [items]);
+  const dedupedRecentItems = useMemo(() => dedupeById(recentItems), [recentItems]);
+  const heroSourceListings = useMemo(
+    () => dedupeById([...items, ...dedupedRecentItems]),
+    [dedupedRecentItems, items]
+  );
+  const heroCards = useMemo(() => heroCardsFromListings(heroSourceListings), [heroSourceListings]);
+  const heroListingIds = useMemo(
+    () => new Set(heroCards.map((item) => item.listingId).filter(Boolean)),
+    [heroCards]
+  );
+  const recentListingIds = useMemo(
+    () => new Set(dedupedRecentItems.map((item) => item.id)),
+    [dedupedRecentItems]
+  );
+  const latestItems = useMemo(
+    () => items.filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id)),
+    [heroListingIds, items, recentListingIds]
+  );
 
   function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -372,7 +428,8 @@ export function HomeFeed() {
       );
     }
 
-    if (isEmpty) {
+    const shouldShowEmpty = hasLoadedOnce && latestItems.length === 0 && !loading && !error;
+    if (shouldShowEmpty) {
       return (
         <div className="feedStateCard">
           <div className="emptyIllustration" aria-hidden="true" />
@@ -384,14 +441,14 @@ export function HomeFeed() {
     return (
       <>
         <div className="listings-grid">
-          {items.map((listing) => (
+          {latestItems.map((listing) => (
             <ListingCard listing={listing} key={listing.id} />
           ))}
         </div>
         {loadingMore ? <FeedSkeleton /> : null}
       </>
     );
-  }, [error, isEmpty, items, loading, loadingMore]);
+  }, [error, hasLoadedOnce, latestItems, loading, loadingMore]);
 
   return (
     <>
@@ -452,7 +509,26 @@ export function HomeFeed() {
             <article className="hero-card" key={`${item.title}-${index}`}>
               <div className="hcard-header">
                 <div className="hcard-img" aria-hidden="true">
-                  {item.icon}
+                  {item.imageUrl ? (
+                    <>
+                      <img
+                        className="hcard-img-media"
+                        src={item.imageUrl}
+                        alt={item.title}
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
+                          if (fallback) {
+                            fallback.style.display = "flex";
+                          }
+                        }}
+                      />
+                      <span className="hcard-img-fallback">{item.icon}</span>
+                    </>
+                  ) : (
+                    item.icon
+                  )}
                 </div>
                 <div className="hcard-meta">
                   <h3 className="hcard-title">{item.title}</h3>
@@ -463,7 +539,7 @@ export function HomeFeed() {
               </div>
               <div className="hcard-footer">
                 <span className="badge-verified">Asli Banda</span>
-                <span className="hcard-time">{toRelativeTime(items[index]?.createdAt)}</span>
+                <span className="hcard-time">{toRelativeTime(item.createdAt)}</span>
               </div>
             </article>
           ))}
@@ -595,7 +671,7 @@ export function HomeFeed() {
           ))}
         </div>
 
-        {recentItems.length > 0 ? (
+        {dedupedRecentItems.length > 0 ? (
           <>
             <header className="section-header compactHeader">
               <div>
@@ -604,7 +680,7 @@ export function HomeFeed() {
               </div>
             </header>
             <div className="listings-grid">
-              {recentItems.map((listing) => (
+              {dedupedRecentItems.map((listing) => (
                 <ListingCard listing={listing} key={`recent-${listing.id}`} />
               ))}
             </div>
