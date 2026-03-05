@@ -44,7 +44,7 @@ export class UsersService {
       where: {
         userId,
         listing: {
-          status: { not: ListingStatus.REMOVED }
+          status: ListingStatus.ACTIVE
         }
       },
       orderBy: { createdAt: "desc" },
@@ -108,7 +108,7 @@ export class UsersService {
       where: {
         userId,
         listing: {
-          status: { not: ListingStatus.REMOVED }
+          status: ListingStatus.ACTIVE
         }
       },
       orderBy: { viewedAt: "desc" },

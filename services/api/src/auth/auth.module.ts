@@ -5,6 +5,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { AdminGuard } from "./admin.guard";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "./optional-jwt-auth.guard";
 import { NoopSmsProvider } from "./sms/noop-sms.provider";
 import { SMS_PROVIDER } from "./sms/sms-provider.interface";
 import { Sms4ConnectProvider } from "./sms/sms4connect.provider";
@@ -27,6 +28,7 @@ import { Sms4ConnectProvider } from "./sms/sms4connect.provider";
     AuthService,
     AdminGuard,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     NoopSmsProvider,
     Sms4ConnectProvider,
     {
@@ -45,6 +47,6 @@ import { Sms4ConnectProvider } from "./sms/sms4connect.provider";
       }
     }
   ],
-  exports: [JwtModule, JwtAuthGuard, AdminGuard, AuthService]
+  exports: [JwtModule, JwtAuthGuard, OptionalJwtAuthGuard, AdminGuard, AuthService]
 })
 export class AuthModule {}

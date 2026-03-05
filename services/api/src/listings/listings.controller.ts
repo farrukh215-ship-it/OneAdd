@@ -13,6 +13,7 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/optional-jwt-auth.guard";
 import { CreateListingDto } from "./dto/create-listing.dto";
 import { ListingsService } from "./listings.service";
 
@@ -109,16 +110,26 @@ export class ListingsController {
   }
 
   @Get(":id")
-  detail(@Param("id") listingId: string) {
-    return this.listingsService.getListingById(listingId);
+  @UseGuards(OptionalJwtAuthGuard)
+  detail(@Req() request: Request, @Param("id") listingId: string) {
+    return this.listingsService.getListingById(
+      listingId,
+      request.user?.sub ? String(request.user.sub) : undefined
+    );
   }
 
   @Get(":id/offers")
+  @UseGuards(OptionalJwtAuthGuard)
   offers(
+    @Req() request: Request,
     @Param("id") listingId: string,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number
   ) {
-    return this.listingsService.getListingOffers(listingId, limit ?? 20);
+    return this.listingsService.getListingOffers(
+      listingId,
+      limit ?? 20,
+      request.user?.sub ? String(request.user.sub) : undefined
+    );
   }
 
   @Post()

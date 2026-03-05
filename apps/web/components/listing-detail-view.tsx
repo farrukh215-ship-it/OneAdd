@@ -46,15 +46,28 @@ function toLastOnline(timestamp?: string | null) {
 }
 
 function extractMetadataValue(description: string, key: "city" | "location") {
-  const match = description.match(new RegExp(`\\n\\s*${key}\\s*:\\s*(.+)$`, "im"));
-  return match?.[1]?.trim() ?? "";
+  const match = description.match(new RegExp(`\\b${key}\\s*:\\s*([^\\n]+)`, "i"));
+  if (!match?.[1]) {
+    return "";
+  }
+  return match[1]
+    .replace(/\b(condition|city|location|area)\s*:\s*.*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function extractConditionValue(description: string) {
+  const match = description.match(/\bcondition\s*:\s*(NEW|USED|LIKE_NEW)\b/i);
+  return match?.[1]?.toUpperCase() ?? "";
 }
 
 function cleanDescriptionMetadata(description: string) {
   return description
-    .replace(/\n\s*condition\s*:\s*(NEW|USED|LIKE_NEW)\s*$/gim, "")
-    .replace(/\n\s*city\s*:\s*.+$/gim, "")
-    .replace(/\n\s*location\s*:\s*.+$/gim, "")
+    .replace(/\bcondition\s*:\s*(NEW|USED|LIKE_NEW)\b/gi, "")
+    .replace(/\bcity\s*:\s*[^,\n]+/gi, "")
+    .replace(/\b(location|area)\s*:\s*[^,\n]+/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+,/g, ",")
     .trim();
 }
 
@@ -100,6 +113,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const description = cleanDescriptionMetadata(listing.description ?? "");
   const extractedCity = extractMetadataValue(listing.description ?? "", "city");
   const exactLocation = extractMetadataValue(listing.description ?? "", "location");
+  const conditionLabel = extractConditionValue(listing.description ?? "");
   const cityLabel = (listing.city?.trim() || extractedCity || "Pakistan").trim();
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const trustLabel =
@@ -303,12 +317,26 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             {listing.currency} {listing.price}
           </p>
           {listing.isNegotiable ? <p className="pill">Negotiable</p> : null}
-          <p className="listingDescription">{description || "No description available."}</p>
-          <p className="shareHint">{toListedDate(listing.createdAt)}</p>
-          <p className="shareHint">
-            City: {cityLabel}
-            {exactLocation ? ` · Area: ${exactLocation}` : ""}
-          </p>
+          <section className="listingFactsCard">
+            <p className="listingFactLabel">Description</p>
+            <p className="listingDescription">{description || "No description available."}</p>
+            {conditionLabel ? (
+              <p className="listingFactLine">
+                <strong>Condition:</strong> {conditionLabel.replace(/_/g, " ")}
+              </p>
+            ) : null}
+            <p className="listingFactLine">
+              <strong>City:</strong> {cityLabel}
+            </p>
+            {exactLocation ? (
+              <p className="listingFactLine">
+                <strong>Area:</strong> {exactLocation}
+              </p>
+            ) : null}
+            <p className="listingFactLine">
+              <strong>{toListedDate(listing.createdAt)}</strong>
+            </p>
+          </section>
 
           <section className="sellerTrustCard">
             <p className="sellerName">{listing.user?.fullName || "Verified Seller"}</p>

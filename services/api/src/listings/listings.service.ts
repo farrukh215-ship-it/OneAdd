@@ -753,7 +753,7 @@ export class ListingsService {
     });
   }
 
-  async getListingById(listingId: string) {
+  async getListingById(listingId: string, viewerUserId?: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: {
@@ -780,16 +780,28 @@ export class ListingsService {
     if (!listing) {
       throw new NotFoundException("Listing not found.");
     }
+    if (
+      listing.status !== ListingStatus.ACTIVE &&
+      (!viewerUserId || listing.userId !== viewerUserId)
+    ) {
+      throw new NotFoundException("Listing not found.");
+    }
 
     return this.normalizeListingForClient(listing);
   }
 
-  async getListingOffers(listingId: string, limit = 20) {
+  async getListingOffers(listingId: string, limit = 20, viewerUserId?: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { id: true, title: true }
+      select: { id: true, title: true, status: true, userId: true }
     });
     if (!listing) {
+      throw new NotFoundException("Listing not found.");
+    }
+    if (
+      listing.status !== ListingStatus.ACTIVE &&
+      (!viewerUserId || listing.userId !== viewerUserId)
+    ) {
       throw new NotFoundException("Listing not found.");
     }
 

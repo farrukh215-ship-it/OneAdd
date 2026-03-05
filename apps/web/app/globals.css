@@ -2505,6 +2505,34 @@ textarea {
   line-height: 1.6;
 }
 
+.listingFactsCard {
+  border: 1px solid var(--sand);
+  background: #faf4ec;
+  border-radius: 14px;
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.listingFactLabel {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.listingFactLine {
+  margin: 0;
+  color: var(--brown-l);
+  line-height: 1.5;
+}
+
+.listingFactsCard .listingDescription {
+  margin: 0;
+}
+
 .sellerTrustCard {
   border: 1px solid var(--sand);
   background: var(--warm);
