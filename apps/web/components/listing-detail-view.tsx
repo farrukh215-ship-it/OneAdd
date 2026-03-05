@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShareActions } from "./share-actions";
 import { Listing, ListingOffer, ListingPublicMessage } from "../lib/types";
-import { fetchListingOffers, upsertChatThread } from "../lib/api";
+import { createListingReport, fetchListingOffers, upsertChatThread } from "../lib/api";
 import {
   getSavedListingIdsLocal,
+  isSellerBlockedLocal,
+  toggleBlockedSellerPreference,
   toggleSavedListingPreference,
   trackRecentlyViewedPreference
 } from "../lib/listing-preferences";
@@ -53,6 +55,11 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [offers, setOffers] = useState<ListingOffer[]>([]);
   const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
+  const [sellerBlocked, setSellerBlocked] = useState(false);
+  const [reportMode, setReportMode] = useState(false);
+  const [reportReason, setReportReason] = useState("Fake or misleading listing");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportFeedback, setReportFeedback] = useState("");
   const isLoggedIn = mounted && Boolean(token);
 
   const images = useMemo(
@@ -104,6 +111,10 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   useEffect(() => {
     setSelectedImageIndex(0);
     setFailedImageIds(new Set());
+    setReportMode(false);
+    setReportFeedback("");
+    setReportReason("Fake or misleading listing");
+    setSellerBlocked(isSellerBlockedLocal(listing.user?.id));
   }, [listing.id]);
 
   useEffect(() => {
@@ -126,6 +137,15 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   function toggleSaved() {
     void toggleSavedListingPreference(listing.id, isLoggedIn).then(setSaved);
+  }
+
+  function toggleSellerBlocked() {
+    if (!listing.user?.id) {
+      return;
+    }
+    const next = toggleBlockedSellerPreference(listing.user.id);
+    setSellerBlocked(next);
+    setReportFeedback(next ? "Seller blocked. Unki listings feed/search se hide ho gayi hain." : "Seller unblocked.");
   }
 
   async function startChat() {
@@ -154,6 +174,34 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   function showNextImage() {
     if (visibleImages.length <= 1) return;
     setSelectedImageIndex((prev) => (prev + 1) % visibleImages.length);
+  }
+
+  async function submitReport() {
+    if (!isLoggedIn) {
+      router.push(`/account?next=${encodeURIComponent(`/listing/${listing.id}`)}`);
+      return;
+    }
+    if (reportReason.trim().length < 5) {
+      setReportFeedback("Report reason kam az kam 5 characters ka likhein.");
+      return;
+    }
+
+    setReportLoading(true);
+    setReportFeedback("");
+    try {
+      await createListingReport({
+        targetListingId: listing.id,
+        targetUserId: listing.user?.id,
+        reason: reportReason.trim()
+      });
+      setReportFeedback("Report submit ho gaya. Moderation team review karegi.");
+      setReportMode(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Report submit nahi ho saka.";
+      setReportFeedback(message);
+    } finally {
+      setReportLoading(false);
+    }
   }
 
   return (
@@ -311,6 +359,14 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               <button className="btn secondary" onClick={toggleSaved} type="button">
                 {saved ? "Saved" : "Save Listing"}
               </button>
+              {listing.user?.id ? (
+                <button className="btn secondary" onClick={toggleSellerBlocked} type="button">
+                  {sellerBlocked ? "Unblock Seller" : "Block Seller"}
+                </button>
+              ) : null}
+              <button className="btn secondary" onClick={() => setReportMode((prev) => !prev)} type="button">
+                {reportMode ? "Cancel Report" : "Report Listing"}
+              </button>
               {!isLoggedIn ? (
                 <Link href="/account" className="btn secondary">
                   Login to contact seller
@@ -318,6 +374,24 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               ) : null}
             </div>
             {contactVisible ? <div className="revealedContact">{phone}</div> : null}
+            {reportMode ? (
+              <div className="stack">
+                <label className="filterLabel">
+                  Report reason
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={reportReason}
+                    onChange={(event) => setReportReason(event.target.value)}
+                    placeholder="Issue explain karein (fake item, scam, wrong info...)"
+                  />
+                </label>
+                <button className="btn secondary" type="button" onClick={submitReport} disabled={reportLoading}>
+                  {reportLoading ? "Submitting..." : "Submit Report"}
+                </button>
+              </div>
+            ) : null}
+            {reportFeedback ? <p className="shareHint">{reportFeedback}</p> : null}
             {chatError ? <p className="error">{chatError}</p> : null}
           </section>
 

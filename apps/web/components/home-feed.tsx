@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CSSProperties, FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCatalog, getRecentListingsPage } from "../lib/api";
 import {
+  BLOCKED_SELLERS_CHANGED_EVENT,
+  getBlockedSellerIdsLocal,
   getSavedListingIdsLocal,
   resolveListingsByIds,
   syncRecentlyViewedListings,
@@ -297,6 +299,7 @@ export function HomeFeed() {
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState("");
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [blockedSellerIds, setBlockedSellerIds] = useState<string[]>([]);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const canLoadMore = !loading && !loadingMore && Boolean(cursor);
@@ -369,6 +372,16 @@ export function HomeFeed() {
   }, [isLoggedIn, items, mounted]);
 
   useEffect(() => {
+    if (!mounted || typeof window === "undefined") {
+      return;
+    }
+    const apply = () => setBlockedSellerIds(getBlockedSellerIdsLocal());
+    apply();
+    window.addEventListener(BLOCKED_SELLERS_CHANGED_EVENT, apply);
+    return () => window.removeEventListener(BLOCKED_SELLERS_CHANGED_EVENT, apply);
+  }, [mounted]);
+
+  useEffect(() => {
     if (!canLoadMore || !sentinelRef.current) {
       return;
     }
@@ -386,10 +399,26 @@ export function HomeFeed() {
     return () => observer.disconnect();
   }, [canLoadMore, cursor]);
 
-  const dedupedRecentItems = useMemo(() => dedupeById(recentItems), [recentItems]);
+  const visibleItems = useMemo(
+    () =>
+      items.filter((item) => {
+        const sellerId = item.user?.id;
+        return !sellerId || !blockedSellerIds.includes(sellerId);
+      }),
+    [blockedSellerIds, items]
+  );
+  const visibleRecentItems = useMemo(
+    () =>
+      recentItems.filter((item) => {
+        const sellerId = item.user?.id;
+        return !sellerId || !blockedSellerIds.includes(sellerId);
+      }),
+    [blockedSellerIds, recentItems]
+  );
+  const dedupedRecentItems = useMemo(() => dedupeById(visibleRecentItems), [visibleRecentItems]);
   const heroSourceListings = useMemo(
-    () => dedupeById([...items, ...dedupedRecentItems]),
-    [dedupedRecentItems, items]
+    () => dedupeById([...visibleItems, ...dedupedRecentItems]),
+    [dedupedRecentItems, visibleItems]
   );
   const heroCards = useMemo(() => heroCardsFromListings(heroSourceListings), [heroSourceListings]);
   const heroListingIds = useMemo(
@@ -401,8 +430,9 @@ export function HomeFeed() {
     [dedupedRecentItems]
   );
   const latestItems = useMemo(
-    () => items.filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id)),
-    [heroListingIds, items, recentListingIds]
+    () =>
+      visibleItems.filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id)),
+    [heroListingIds, recentListingIds, visibleItems]
   );
 
   function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -421,7 +451,7 @@ export function HomeFeed() {
       return <FeedSkeleton />;
     }
 
-    if (error && items.length === 0) {
+    if (error && visibleItems.length === 0) {
       return (
         <div className="feedStateCard" role="alert">
           <p>Listings load nahi sakin.</p>
@@ -452,7 +482,7 @@ export function HomeFeed() {
         {loadingMore ? <FeedSkeleton /> : null}
       </>
     );
-  }, [error, hasLoadedOnce, latestItems, loading, loadingMore]);
+  }, [error, hasLoadedOnce, latestItems, loading, loadingMore, visibleItems.length]);
 
   return (
     <>

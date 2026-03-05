@@ -732,6 +732,18 @@ export async function getChatMessages(threadId: string) {
   });
 }
 
+export async function createListingReport(payload: {
+  targetListingId: string;
+  targetUserId?: string;
+  reason: string;
+}) {
+  return apiRequest<{ id: string; reason: string }>("/reports", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function sendChatMessage(threadId: string, content: string) {
   try {
     return await apiRequest<ChatMessage>("/chat/messages", {

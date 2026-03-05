@@ -12,8 +12,11 @@ import { Listing } from "./types";
 
 const SAVED_LISTING_IDS_KEY = "tgmg_saved_listing_ids";
 const RECENTLY_VIEWED_IDS_KEY = "tgmg_recently_viewed";
+const BLOCKED_SELLER_IDS_KEY = "tgmg_blocked_seller_ids";
+export const BLOCKED_SELLERS_CHANGED_EVENT = "tgmg-blocked-sellers-changed";
 const MAX_SAVED_IDS = 200;
 const MAX_RECENT_IDS = 20;
+const MAX_BLOCKED_SELLERS = 200;
 
 function readIds(key: string) {
   if (typeof window === "undefined") {
@@ -40,6 +43,9 @@ function writeIds(key: string, ids: string[]) {
     return;
   }
   localStorage.setItem(key, JSON.stringify(ids));
+  if (key === BLOCKED_SELLER_IDS_KEY) {
+    window.dispatchEvent(new Event(BLOCKED_SELLERS_CHANGED_EVENT));
+  }
 }
 
 export function getSavedListingIdsLocal() {
@@ -48,6 +54,27 @@ export function getSavedListingIdsLocal() {
 
 export function getRecentlyViewedIdsLocal() {
   return readIds(RECENTLY_VIEWED_IDS_KEY);
+}
+
+export function getBlockedSellerIdsLocal() {
+  return readIds(BLOCKED_SELLER_IDS_KEY);
+}
+
+export function isSellerBlockedLocal(sellerId?: string | null) {
+  if (!sellerId) {
+    return false;
+  }
+  return getBlockedSellerIdsLocal().includes(sellerId);
+}
+
+export function toggleBlockedSellerPreference(sellerId: string) {
+  const blockedIds = getBlockedSellerIdsLocal();
+  const isBlocked = blockedIds.includes(sellerId);
+  const nextBlockedIds = isBlocked
+    ? blockedIds.filter((id) => id !== sellerId)
+    : [sellerId, ...blockedIds.filter((id) => id !== sellerId)].slice(0, MAX_BLOCKED_SELLERS);
+  writeIds(BLOCKED_SELLER_IDS_KEY, nextBlockedIds);
+  return !isBlocked;
 }
 
 export async function toggleSavedListingPreference(listingId: string, isLoggedIn: boolean) {

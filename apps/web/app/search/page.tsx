@@ -7,6 +7,10 @@ import {
   SearchFilters,
   searchListingsWithFilters
 } from "../../lib/api";
+import {
+  BLOCKED_SELLERS_CHANGED_EVENT,
+  getBlockedSellerIdsLocal
+} from "../../lib/listing-preferences";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
 
@@ -54,11 +58,30 @@ export default function SearchPage() {
   const [error, setError] = useState("");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [blockedSellerIds, setBlockedSellerIds] = useState<string[]>([]);
 
   const suggestedTags = useMemo(() => catalog.slice(0, 8), [catalog]);
+  const filteredResults = useMemo(
+    () =>
+      results.filter((listing) => {
+        const sellerId = listing.user?.id;
+        return !sellerId || !blockedSellerIds.includes(sellerId);
+      }),
+    [blockedSellerIds, results]
+  );
 
   useEffect(() => {
     void getCategoryCatalog().then(setCatalog).catch(() => setCatalog([]));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const apply = () => setBlockedSellerIds(getBlockedSellerIdsLocal());
+    apply();
+    window.addEventListener(BLOCKED_SELLERS_CHANGED_EVENT, apply);
+    return () => window.removeEventListener(BLOCKED_SELLERS_CHANGED_EVENT, apply);
   }, []);
 
   useEffect(() => {
@@ -300,16 +323,16 @@ export default function SearchPage() {
 
           {loading ? <SearchSkeletonList /> : null}
 
-          {!loading && hasSubmitted && !error && results.length === 0 ? (
+          {!loading && hasSubmitted && !error && filteredResults.length === 0 ? (
             <div className="searchStateEmpty">
               <div className="emptyIllustration" aria-hidden="true" />
               <p>No results</p>
             </div>
           ) : null}
 
-          {!loading && results.length > 0 ? (
+          {!loading && filteredResults.length > 0 ? (
             <div className="searchResultsList">
-              {results.map((listing) => (
+              {filteredResults.map((listing) => (
                 <Link className="searchResultCard" key={listing.id} href={`/listing/${listing.id}`}>
                   {resolveMediaUrl(listing.media.find((item) => item.type === "IMAGE")?.url ?? "") ? (
                     <img
