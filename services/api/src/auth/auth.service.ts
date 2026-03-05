@@ -61,6 +61,20 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "emailondeck.com",
   "tempmailo.com"
 ]);
+const LOGIN_ATTEMPT_MAX = 5;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const RESET_ATTEMPT_MAX = 5;
+const RESET_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+const loginAttemptStore = new Map<
+  string,
+  { count: number; windowStartedAt: number; lockedUntil: number | null }
+>();
+
+const resetAttemptStore = new Map<
+  string,
+  { count: number; windowStartedAt: number; lockedUntil: number | null }
+>();
 
 @Injectable()
 export class AuthService {
@@ -76,6 +90,7 @@ export class AuthService {
     const phone = dto.phone.trim();
     const cnic = dto.cnic.trim();
     this.assertAdult(dto.dateOfBirth);
+    this.assertStrongPassword(dto.password);
     const verifiedOtp = await this.validateSignupOtpVerificationToken(
       dto.otpVerificationToken,
       phone
@@ -271,24 +286,31 @@ export class AuthService {
   async login(dto: LoginDto, request: Request): Promise<AuthPayload> {
     const email = dto.email?.trim().toLowerCase();
     const password = dto.password?.trim();
+    const ip = getIpAddress(request);
 
     if (!email || !password) {
       throw new BadRequestException("Email and password are required for login.");
     }
+
+    const loginAttemptKey = this.buildAttemptKey(email, ip);
+    this.assertAttemptAllowed(loginAttemptStore, loginAttemptKey, "login");
 
     const user = await this.prisma.user.findUnique({
       where: { email }
     });
 
     if (!user) {
+      this.recordAttemptFailure(loginAttemptStore, loginAttemptKey, LOGIN_ATTEMPT_WINDOW_MS, LOGIN_ATTEMPT_MAX);
       throw new UnauthorizedException("Invalid credentials.");
     }
 
     const isMatch = await compare(password, user.passwordHash);
     if (!isMatch) {
+      this.recordAttemptFailure(loginAttemptStore, loginAttemptKey, LOGIN_ATTEMPT_WINDOW_MS, LOGIN_ATTEMPT_MAX);
       throw new UnauthorizedException("Invalid credentials.");
     }
 
+    this.clearAttempt(loginAttemptStore, loginAttemptKey);
     await this.saveDeviceFingerprint(user.id, request);
     return this.buildAuthResponse(user);
   }
@@ -296,14 +318,20 @@ export class AuthService {
   async requestPasswordReset(dto: PasswordResetRequestDto, request: Request) {
     const email = dto.email.trim().toLowerCase();
     const phone = dto.phone.trim();
+    const resetAttemptKey = this.buildAttemptKey(`${email}|${phone}`, getIpAddress(request));
+    this.assertAttemptAllowed(resetAttemptStore, resetAttemptKey, "password reset");
+
     const user = await this.prisma.user.findUnique({
       where: { email },
       select: { id: true, phone: true }
     });
 
     if (!user || user.phone !== phone) {
+      this.recordAttemptFailure(resetAttemptStore, resetAttemptKey, RESET_ATTEMPT_WINDOW_MS, RESET_ATTEMPT_MAX);
       throw new BadRequestException("Account not found for this email and phone.");
     }
+
+    this.clearAttempt(resetAttemptStore, resetAttemptKey);
 
     return {
       eligible: true,
@@ -342,6 +370,7 @@ export class AuthService {
 
   async confirmPasswordReset(dto: PasswordResetConfirmDto) {
     const payload = await this.decodeActionToken(dto.resetToken, OtpPurpose.PASSWORD_RESET);
+    this.assertStrongPassword(dto.newPassword);
     const passwordHash = await hash(dto.newPassword, 10);
 
     await this.prisma.user.update({
@@ -444,6 +473,7 @@ export class AuthService {
       const email = normalizedEmail;
       const cnic = String(dto.cnic).trim();
       this.assertAdult(String(dto.dateOfBirth));
+      this.assertStrongPassword(String(dto.password));
       const existing = await this.prisma.user.findFirst({
         where: { OR: [{ email }, { cnic }] },
         select: { email: true, cnic: true }
@@ -642,6 +672,76 @@ export class AuthService {
     }
 
     return email;
+  }
+
+  private assertStrongPassword(password: string) {
+    const value = String(password ?? "");
+    const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    if (!strongPasswordPattern.test(value)) {
+      throw new BadRequestException(
+        "Password strong hona chahiye (8+ chars, uppercase, lowercase, number, special char)."
+      );
+    }
+  }
+
+  private buildAttemptKey(identity: string, ip: string) {
+    return `${identity}|${ip}`;
+  }
+
+  private assertAttemptAllowed(
+    store: Map<string, { count: number; windowStartedAt: number; lockedUntil: number | null }>,
+    key: string,
+    action: "login" | "password reset"
+  ) {
+    const now = Date.now();
+    const state = store.get(key);
+    if (state?.lockedUntil && state.lockedUntil > now) {
+      throw new ForbiddenException(
+        `Too many failed ${action} attempts. Please try again in 15 minutes.`
+      );
+    }
+  }
+
+  private clearAttempt(
+    store: Map<string, { count: number; windowStartedAt: number; lockedUntil: number | null }>,
+    key: string
+  ) {
+    store.delete(key);
+  }
+
+  private recordAttemptFailure(
+    store: Map<string, { count: number; windowStartedAt: number; lockedUntil: number | null }>,
+    key: string,
+    windowMs: number,
+    maxAttempts: number
+  ) {
+    const now = Date.now();
+    const current = store.get(key);
+
+    if (!current || now - current.windowStartedAt > windowMs) {
+      store.set(key, {
+        count: 1,
+        windowStartedAt: now,
+        lockedUntil: null
+      });
+      return;
+    }
+
+    const nextCount = current.count + 1;
+    if (nextCount >= maxAttempts) {
+      store.set(key, {
+        count: nextCount,
+        windowStartedAt: current.windowStartedAt,
+        lockedUntil: now + windowMs
+      });
+      return;
+    }
+
+    store.set(key, {
+      count: nextCount,
+      windowStartedAt: current.windowStartedAt,
+      lockedUntil: null
+    });
   }
 
   private async assertFirebasePhoneMatch(idToken: string, phone: string) {

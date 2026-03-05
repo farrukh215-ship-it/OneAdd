@@ -9,12 +9,29 @@ import {
   SellerOverviewMetrics
 } from "./types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (typeof window !== "undefined" ? `${window.location.origin}/api` : "http://localhost:3001");
+function resolveApiBaseUrl() {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL ?? `${window.location.origin}/api`;
+  }
+
+  const internal = process.env.INTERNAL_API_URL?.trim();
+  if (internal) {
+    return internal;
+  }
+
+  const publicApi = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (publicApi && /^https?:\/\//i.test(publicApi)) {
+    return publicApi;
+  }
+
+  return "http://api:3001";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 const TOKEN_KEY = "aikad_access_token";
 const SESSION_TOKEN_KEY = "aikad_access_token_session";
 export const AUTH_TOKEN_CHANGED_EVENT = "aikad-auth-changed";
+const LEGACY_MEDIA_HOSTS = new Set(["zaroratbazar.shop", "www.zaroratbazar.shop"]);
 
 export class ApiError extends Error {
   status: number;
@@ -186,6 +203,46 @@ function normalizeVideoFeed(payload: unknown): VideoFeedItem[] {
     .filter((item): item is VideoFeedItem => Boolean(item));
 }
 
+function normalizeMediaUrl(url: string) {
+  if (!url) {
+    return url;
+  }
+
+  try {
+    if (url.startsWith("/")) {
+      if (typeof window !== "undefined") {
+        return `${window.location.origin}${url}`;
+      }
+      return `https://www.teragharmeraghar.com${url}`;
+    }
+
+    const parsed = new URL(url);
+    if (LEGACY_MEDIA_HOSTS.has(parsed.hostname)) {
+      parsed.protocol = "https:";
+      parsed.hostname = "www.teragharmeraghar.com";
+      parsed.port = "";
+      return parsed.toString();
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function normalizeListing(listing: Listing): Listing {
+  return {
+    ...listing,
+    media: (listing.media ?? []).map((item) => ({
+      ...item,
+      url: normalizeMediaUrl(item.url)
+    }))
+  };
+}
+
+function normalizeListingList(listings: Listing[]) {
+  return listings.map(normalizeListing);
+}
+
 function listingToVideoItem(listing: Listing): VideoFeedItem | null {
   const video = listing.media.find(
     (item) => item.type === "VIDEO" && (item.durationSec ?? 0) <= 30
@@ -203,7 +260,8 @@ function listingToVideoItem(listing: Listing): VideoFeedItem | null {
 }
 
 export async function getFeedListings() {
-  return apiRequest<Listing[]>("/listings/feed");
+  const listings = await apiRequest<Listing[]>("/listings/feed");
+  return normalizeListingList(listings);
 }
 
 export async function getCategoryCatalog() {
@@ -257,7 +315,8 @@ export async function getRecentListingsPage(cursor?: string | null) {
 }
 
 export async function searchListings(query: string) {
-  return apiRequest<Listing[]>(`/listings/search?q=${encodeURIComponent(query)}`);
+  const listings = await apiRequest<Listing[]>(`/listings/search?q=${encodeURIComponent(query)}`);
+  return normalizeListingList(listings);
 }
 
 export type SearchFilters = {
@@ -291,7 +350,8 @@ export async function searchListingsWithFilters(filters: SearchFilters) {
     params.set("negotiable", String(filters.negotiable));
   }
 
-  return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
+  const listings = await apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
+  return normalizeListingList(listings);
 }
 
 export async function semanticSearchListingsWithFilters(filters: SearchFilters) {
@@ -312,7 +372,8 @@ export async function semanticSearchListingsWithFilters(filters: SearchFilters) 
     params.set("negotiable", String(filters.negotiable));
   }
 
-  return apiRequest<Listing[]>(`/listings/semantic-search?${params.toString()}`);
+  const listings = await apiRequest<Listing[]>(`/listings/semantic-search?${params.toString()}`);
+  return normalizeListingList(listings);
 }
 
 export async function getSearchSuggestions(query: string, limit = 20) {
@@ -328,7 +389,8 @@ export async function getSearchSuggestions(query: string, limit = 20) {
 }
 
 export async function fetchListingById(id: string) {
-  return apiRequest<Listing>(`/listings/${id}`);
+  const listing = await apiRequest<Listing>(`/listings/${id}`);
+  return normalizeListing(listing);
 }
 
 export async function fetchListingOffers(id: string, limit = 15) {
@@ -486,22 +548,24 @@ export async function verifyFirebaseLogin(
 }
 
 export async function createListing(payload: Record<string, unknown>) {
-  return apiRequest<Listing>("/listings", {
+  const listing = await apiRequest<Listing>("/listings", {
     method: "POST",
     auth: true,
     body: JSON.stringify(payload)
   });
+  return normalizeListing(listing);
 }
 
 export async function uploadListingMedia(
   listingId: string,
   media: Array<{ type: "IMAGE" | "VIDEO"; url: string; durationSec?: number }>
 ) {
-  return apiRequest<Listing>(`/listings/${listingId}/media`, {
+  const listing = await apiRequest<Listing>(`/listings/${listingId}/media`, {
     method: "POST",
     auth: true,
     body: JSON.stringify({ media })
   });
+  return normalizeListing(listing);
 }
 
 export async function uploadMediaFile(params: {
@@ -556,29 +620,36 @@ export async function uploadMediaFile(params: {
 }
 
 export async function activateListing(listingId: string) {
-  return apiRequest<Listing>(`/listings/${listingId}/activate`, {
+  const listing = await apiRequest<Listing>(`/listings/${listingId}/activate`, {
     method: "POST",
     auth: true
   });
+  return normalizeListing(listing);
 }
 
 export async function relistListing(listingId: string) {
-  return apiRequest<Listing>(`/listings/${listingId}/relist`, {
+  const listing = await apiRequest<Listing>(`/listings/${listingId}/relist`, {
     method: "POST",
     auth: true
   });
+  return normalizeListing(listing);
 }
 
 export async function getMyListings() {
-  return apiRequest<Listing[]>("/listings/me", {
+  const listings = await apiRequest<Listing[]>("/listings/me", {
     auth: true
   });
+  return normalizeListingList(listings);
 }
 
 export async function getSavedListings(limit = 40) {
-  return apiRequest<{ items: Listing[]; total: number }>(`/users/me/saved?limit=${limit}`, {
+  const payload = await apiRequest<{ items: Listing[]; total: number }>(`/users/me/saved?limit=${limit}`, {
     auth: true
   });
+  return {
+    ...payload,
+    items: normalizeListingList(payload.items)
+  };
 }
 
 export async function saveListing(listingId: string) {
@@ -596,9 +667,13 @@ export async function unsaveListing(listingId: string) {
 }
 
 export async function getRecentlyViewedListings(limit = 40) {
-  return apiRequest<{ items: Listing[]; total: number }>(`/users/me/recent?limit=${limit}`, {
+  const payload = await apiRequest<{ items: Listing[]; total: number }>(`/users/me/recent?limit=${limit}`, {
     auth: true
   });
+  return {
+    ...payload,
+    items: normalizeListingList(payload.items)
+  };
 }
 
 export async function trackRecentlyViewedListing(listingId: string) {

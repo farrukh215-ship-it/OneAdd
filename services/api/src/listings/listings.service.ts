@@ -431,7 +431,9 @@ export class ListingsService {
     const listings = await this.prisma.listing.findMany({
       where: { status: ListingStatus.ACTIVE },
       include: {
-        media: true,
+        media: {
+          orderBy: { sortOrder: "asc" }
+        },
         user: {
           select: {
             id: true,
@@ -579,7 +581,9 @@ export class ListingsService {
         ...(andFilters.length > 0 ? { AND: andFilters } : {})
       },
       include: {
-        media: true,
+        media: {
+          orderBy: { sortOrder: "asc" }
+        },
         user: {
           select: {
             id: true,
@@ -642,7 +646,9 @@ export class ListingsService {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: {
-        media: true,
+        media: {
+          orderBy: { sortOrder: "asc" }
+        },
         user: {
           select: {
             id: true,
@@ -733,7 +739,11 @@ export class ListingsService {
   async getMyListings(userId: string) {
     return this.prisma.listing.findMany({
       where: { userId },
-      include: { media: true },
+      include: {
+        media: {
+          orderBy: { sortOrder: "asc" }
+        }
+      },
       orderBy: { createdAt: "desc" }
     });
   }

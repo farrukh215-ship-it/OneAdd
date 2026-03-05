@@ -329,86 +329,105 @@ export function OtpLoginCard() {
       </form>
 
       {forgotOpen ? (
-        <div className="stack" style={{ marginTop: 8 }}>
-          <h3 style={{ margin: 0 }}>Password Reset (Phone OTP)</h3>
+        <div
+          className="modalBackdrop"
+          onClick={() => {
+            setForgotOpen(false);
+            setError("");
+          }}
+        >
+          <div className="modalCard stack" onClick={(event) => event.stopPropagation()}>
+            <h3 style={{ margin: 0 }}>Password Reset (Phone OTP)</h3>
 
-          {resetStep === "request" ? (
-            <form className="stack" onSubmit={onResetRequest}>
-              <input
-                className="input"
-                type="email"
-                placeholder="Account Email"
-                value={resetEmail}
-                onChange={(event) => setResetEmail(event.target.value)}
-                autoComplete="email"
-                required
-              />
-              <input
-                className="input"
-                placeholder="+923004203035"
-                value={resetPhone}
-                onChange={(event) => setResetPhone(normalizePhoneInput(event.target.value))}
-                autoComplete="tel"
-                required
-              />
-              <button className="btn" type="submit" disabled={loading}>
-                {loading ? "Please wait..." : "Send OTP"}
-              </button>
-            </form>
-          ) : null}
-
-          {resetStep === "otp" ? (
-            <form className="stack" onSubmit={onVerifyResetOtp}>
-              <input
-                className="input"
-                placeholder="6-digit OTP"
-                value={resetOtp}
-                onChange={(event) => setResetOtp(event.target.value)}
-                maxLength={6}
-                autoComplete="one-time-code"
-                required
-              />
-              <div className="modalActions">
-                <button
-                  className="btn secondary"
-                  type="button"
-                  onClick={onResendResetOtp}
-                  disabled={otpResendIn > 0 || loading}
-                >
-                  {otpResendIn > 0 ? `Resend in ${otpResendIn}s` : "Resend OTP"}
-                </button>
+            {resetStep === "request" ? (
+              <form className="stack" onSubmit={onResetRequest}>
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="Account Email"
+                  value={resetEmail}
+                  onChange={(event) => setResetEmail(event.target.value)}
+                  autoComplete="email"
+                  required
+                />
+                <input
+                  className="input"
+                  placeholder="+923004203035"
+                  value={resetPhone}
+                  onChange={(event) => setResetPhone(normalizePhoneInput(event.target.value))}
+                  autoComplete="tel"
+                  required
+                />
                 <button className="btn" type="submit" disabled={loading}>
-                  {loading ? "Verifying..." : "Verify OTP"}
+                  {loading ? "Please wait..." : "Send OTP"}
                 </button>
-              </div>
-            </form>
-          ) : null}
+              </form>
+            ) : null}
 
-          {resetStep === "password" ? (
-            <form className="stack" onSubmit={onConfirmPasswordReset}>
-              <input
-                className="input"
-                type="password"
-                placeholder="New Password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                autoComplete="new-password"
-                required
-              />
-              <input
-                className="input"
-                type="password"
-                placeholder="Confirm New Password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
-                required
-              />
-              <button className="btn" type="submit" disabled={loading}>
-                {loading ? "Saving..." : "Set New Password"}
-              </button>
-            </form>
-          ) : null}
+            {resetStep === "otp" ? (
+              <form className="stack" onSubmit={onVerifyResetOtp}>
+                <input
+                  className="input"
+                  placeholder="6-digit OTP"
+                  value={resetOtp}
+                  onChange={(event) => setResetOtp(event.target.value)}
+                  maxLength={6}
+                  autoComplete="one-time-code"
+                  required
+                />
+                <div className="modalActions">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={onResendResetOtp}
+                    disabled={otpResendIn > 0 || loading}
+                  >
+                    {otpResendIn > 0 ? `Resend in ${otpResendIn}s` : "Resend OTP"}
+                  </button>
+                  <button className="btn" type="submit" disabled={loading}>
+                    {loading ? "Verifying..." : "Verify OTP"}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+
+            {resetStep === "password" ? (
+              <form className="stack" onSubmit={onConfirmPasswordReset}>
+                <input
+                  className="input"
+                  type="password"
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+                <input
+                  className="input"
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+                <button className="btn" type="submit" disabled={loading}>
+                  {loading ? "Saving..." : "Set New Password"}
+                </button>
+              </form>
+            ) : null}
+
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => {
+                setForgotOpen(false);
+                setError("");
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       ) : null}
 

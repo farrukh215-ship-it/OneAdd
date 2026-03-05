@@ -56,6 +56,8 @@ services:
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:-1:201729412856:web:f2400591798aa5454c350d}
     container_name: aikad-web
     restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://api:3001
     expose:
       - "3000"
 

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -46,6 +47,11 @@ export class AdminController {
       categoryId,
       dto
     );
+  }
+
+  @Delete("categories/:id")
+  deleteCategory(@Req() request: Request, @Param("id") categoryId: string) {
+    return this.adminService.deleteCategory(String(request.user?.sub), categoryId);
   }
 
   @Get("listings")

@@ -11,6 +11,9 @@ export default function CategoriesPage() {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
 
   async function load() {
     setLoading(true);
@@ -33,15 +36,43 @@ export default function CategoriesPage() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
+    setSubmitting(true);
     try {
-      await adminApi.createCategory({ name, slug });
+      await adminApi.createCategory({ name, slug, parentId: parentId || undefined });
       setName("");
       setSlug("");
+      setParentId("");
       await load();
     } catch {
       setError("Category add nahi ho saki.");
+    } finally {
+      setSubmitting(false);
     }
   }
+
+  async function onDelete(id: string) {
+    const okay = window.confirm(
+      "Category delete karna chahte hain? Agar isme subcategory/listings hongi to delete block hoga."
+    );
+    if (!okay) {
+      return;
+    }
+
+    setDeletingId(id);
+    setError("");
+    try {
+      await adminApi.deleteCategory(id);
+      await load();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Category remove nahi ho saki.";
+      setError(message);
+    } finally {
+      setDeletingId("");
+    }
+  }
+
+  const mainCategories = items.filter((item) => !item.parentId);
+  const parentNameById = new Map(items.map((item) => [item.id, item.name]));
 
   return (
     <AdminShell title="Categories">
@@ -49,17 +80,29 @@ export default function CategoriesPage() {
         <input
           className="input"
           value={name}
-          placeholder="Category name"
+          placeholder="Category name (e.g. Mobiles)"
           onChange={(event) => setName(event.target.value)}
         />
         <input
           className="input"
           value={slug}
-          placeholder="slug"
+          placeholder="slug (e.g. mobiles)"
           onChange={(event) => setSlug(event.target.value)}
         />
-        <button className="btn" type="submit">
-          Add
+        <select
+          className="input"
+          value={parentId}
+          onChange={(event) => setParentId(event.target.value)}
+        >
+          <option value="">Main Category (no parent)</option>
+          {mainCategories.map((item) => (
+            <option key={item.id} value={item.id}>
+              Subcategory under: {item.name}
+            </option>
+          ))}
+        </select>
+        <button className="btn" type="submit" disabled={submitting}>
+          {submitting ? "Saving..." : "Add"}
         </button>
       </form>
       <Panel>
@@ -71,7 +114,10 @@ export default function CategoriesPage() {
               <tr>
                 <th>Name</th>
                 <th>Slug</th>
+                <th>Type</th>
+                <th>Parent</th>
                 <th>Depth</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -79,7 +125,19 @@ export default function CategoriesPage() {
                 <tr key={item.id}>
                   <td>{item.name}</td>
                   <td>{item.slug}</td>
+                  <td>{item.parentId ? "Subcategory" : "Main Category"}</td>
+                  <td>{item.parentId ? parentNameById.get(item.parentId) || "-" : "-"}</td>
                   <td>{item.depth}</td>
+                  <td>
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => void onDelete(item.id)}
+                      disabled={deletingId === item.id}
+                    >
+                      {deletingId === item.id ? "Removing..." : "Remove"}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

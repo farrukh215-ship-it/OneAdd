@@ -2375,6 +2375,21 @@ textarea {
   background: var(--warm);
 }
 
+.wizardMediaPreview {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--sand);
+  background: #fff;
+  object-fit: cover;
+  max-height: 180px;
+}
+
+.isCoverBtn {
+  border: 1px solid var(--green);
+  color: var(--green) !important;
+  background: rgba(61, 107, 79, 0.08) !important;
+}
+
 .reviewCard {
   border: 1px solid var(--sand);
   border-radius: 14px;

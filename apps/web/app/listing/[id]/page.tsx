@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingDetailView } from "../../../components/listing-detail-view";
-import { fetchListingById } from "../../../lib/api";
+import { ApiError, fetchListingById } from "../../../lib/api";
 
 type ListingDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -42,8 +42,11 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
 
   try {
     listing = await fetchListingById(id);
-  } catch {
-    notFound();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+    throw error;
   }
 
   const firstImage = listing.media.find((item) => item.type === "IMAGE");

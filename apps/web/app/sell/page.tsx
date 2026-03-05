@@ -72,15 +72,6 @@ function suggestPriceFromText(text: string) {
   return 12000;
 }
 
-function isValidHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
-
 function countWords(value: string) {
   return value
     .trim()
@@ -95,8 +86,7 @@ export default function SellPage() {
   const [mainCategoryId, setMainCategoryId] = useState("");
   const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [activeCategoryIds, setActiveCategoryIds] = useState<string[]>([]);
-  const [imageInput, setImageInput] = useState("");
-  const [videoInput, setVideoInput] = useState("");
+  const [coverImageId, setCoverImageId] = useState("");
   const [videoDuration, setVideoDuration] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -213,6 +203,17 @@ export default function SellPage() {
     }
   }, [catalog, form.categoryId, mainCategoryId]);
 
+  useEffect(() => {
+    if (images.length === 0) {
+      setCoverImageId("");
+      return;
+    }
+
+    if (!coverImageId || !images.some((item) => item.id === coverImageId)) {
+      setCoverImageId(images[0].id);
+    }
+  }, [coverImageId, images]);
+
   const validationErrors = useMemo(() => {
     const errs: string[] = [];
     if (!mainCategoryId.trim()) errs.push("Main category required hai.");
@@ -301,56 +302,6 @@ export default function SellPage() {
     setSuccess("");
   }
 
-  function addImage() {
-    setError("");
-    if (!imageInput.trim()) {
-      setError("Image URL add karein.");
-      return;
-    }
-    if (!isValidHttpUrl(imageInput.trim())) {
-      setError("Image URL valid http/https hona chahiye.");
-      return;
-    }
-    if (images.length >= 6) {
-      setError("Max 6 images allow hain.");
-      return;
-    }
-    setForm((prev) => ({
-      ...prev,
-      media: [...prev.media, { id: uid(), type: "IMAGE", url: imageInput.trim() }]
-    }));
-    setImageInput("");
-  }
-
-  function setOrReplaceVideo() {
-    setError("");
-    if (!videoInput.trim()) {
-      setError("Video URL add karein.");
-      return;
-    }
-    if (!isValidHttpUrl(videoInput.trim())) {
-      setError("Video URL valid http/https hona chahiye.");
-      return;
-    }
-    const duration = Number(videoDuration || 0);
-    if (!Number.isFinite(duration) || duration <= 0 || duration > 30) {
-      setError("Video duration 1 se 30 sec ke darmiyan honi chahiye.");
-      return;
-    }
-    setForm((prev) => {
-      const withoutVideo = prev.media.filter((item) => item.type !== "VIDEO");
-      return {
-        ...prev,
-        media: [
-          ...withoutVideo,
-          { id: uid(), type: "VIDEO", url: videoInput.trim(), durationSec: duration }
-        ]
-      };
-    });
-    setVideoInput("");
-    setVideoDuration("");
-  }
-
   async function onImageFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) {
@@ -427,7 +378,6 @@ export default function SellPage() {
           ]
         };
       });
-      setVideoInput("");
       setSuccess("Video upload ho gayi.");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -448,6 +398,15 @@ export default function SellPage() {
       ...prev,
       media: prev.media.filter((item) => item.id !== id)
     }));
+    if (coverImageId === id) {
+      setCoverImageId("");
+    }
+  }
+
+  function setCoverImage(id: string) {
+    setCoverImageId(id);
+    setSuccess("Cover image set ho gayi.");
+    setError("");
   }
 
   function runAiAssist(
@@ -504,6 +463,17 @@ export default function SellPage() {
   async function publishListing() {
     setPublishing(true);
     try {
+      const orderedMedia = (() => {
+        const imageList = form.media.filter((item) => item.type === "IMAGE");
+        const videoList = form.media.filter((item) => item.type === "VIDEO");
+        if (!coverImageId || imageList.length === 0) {
+          return [...imageList, ...videoList];
+        }
+        const cover = imageList.find((item) => item.id === coverImageId);
+        const rest = imageList.filter((item) => item.id !== coverImageId);
+        return cover ? [cover, ...rest, ...videoList] : [...imageList, ...videoList];
+      })();
+
       const created = await createListing({
         categoryId: form.categoryId,
         title: form.title,
@@ -515,7 +485,7 @@ export default function SellPage() {
         allowCall: form.allowCall,
         allowSMS: form.allowSMS,
         isNegotiable: form.isNegotiable,
-        media: form.media.map((item) => ({
+        media: orderedMedia.map((item) => ({
           type: item.type,
           url: item.url,
           durationSec: item.durationSec
@@ -525,7 +495,7 @@ export default function SellPage() {
       try {
         await uploadListingMedia(
           created.id,
-          form.media.map((item) => ({
+          orderedMedia.map((item) => ({
             type: item.type,
             url: item.url,
             durationSec: item.durationSec
@@ -539,6 +509,7 @@ export default function SellPage() {
       setSuccess("Listing successfully publish ho gayi.");
       setForm(initialState);
       setMainCategoryId("");
+      setCoverImageId("");
       setStep(1);
       localStorage.removeItem(SELL_DRAFT_KEY);
       setDraftStatus("Draft clear ho gaya.");
@@ -790,21 +761,6 @@ export default function SellPage() {
                   {uploadingImage ? "Uploading..." : "Auto Upload Enabled"}
                 </button>
               </div>
-
-              <div className="mediaComposer">
-                <label className="filterLabel">
-                  Image URL (optional manual)
-                  <input
-                    className="input"
-                    value={imageInput}
-                    onChange={(event) => setImageInput(event.target.value)}
-                    placeholder="https://cdn.example.com/image.jpg"
-                  />
-                </label>
-                <button type="button" className="searchSubmitBtn" onClick={addImage}>
-                  Add Image
-                </button>
-              </div>
               <p className="shareHint">Required: kam az kam 2 images upload karna zaroori hai.</p>
 
               <div className="mediaComposer">
@@ -832,28 +788,26 @@ export default function SellPage() {
                 </button>
               </div>
 
-              <div className="mediaComposer">
-                <label className="filterLabel">
-                  Video URL (manual fallback)
-                  <input
-                    className="input"
-                    value={videoInput}
-                    onChange={(event) => setVideoInput(event.target.value)}
-                    placeholder="https://cdn.example.com/video.mp4"
-                  />
-                </label>
-                <button type="button" className="searchSubmitBtn" onClick={setOrReplaceVideo}>
-                  Save Video
-                </button>
-              </div>
-
               <div className="wizardMediaGrid">
-                {form.media.map((item) => (
+                {form.media.map((item, index) => (
                   <article key={item.id} className="wizardMediaCard">
                     <p className="pill">{item.type}</p>
-                    <p className="searchResultMeta">{item.url}</p>
+                    {item.type === "IMAGE" ? (
+                      <img className="wizardMediaPreview" src={item.url} alt={`Upload ${index + 1}`} />
+                    ) : (
+                      <video className="wizardMediaPreview" src={item.url} controls preload="metadata" />
+                    )}
                     {item.type === "VIDEO" ? (
                       <p className="searchResultMeta">Duration: {item.durationSec}s</p>
+                    ) : null}
+                    {item.type === "IMAGE" ? (
+                      <button
+                        type="button"
+                        className={`searchSubmitBtn ghost ${coverImageId === item.id ? "isCoverBtn" : ""}`}
+                        onClick={() => setCoverImage(item.id)}
+                      >
+                        {coverImageId === item.id ? "Cover Selected" : "Set as Cover"}
+                      </button>
                     ) : null}
                     <button
                       type="button"
@@ -891,6 +845,10 @@ export default function SellPage() {
                 </p>
                 <p>
                   <strong>Media:</strong> {images.length} images, {video ? "1 video" : "0 video"}
+                </p>
+                <p>
+                  <strong>Cover image:</strong>{" "}
+                  {coverImageId ? `Selected (${images.findIndex((item) => item.id === coverImageId) + 1})` : "Auto first image"}
                 </p>
                 <p>
                   <strong>Description words:</strong> {descriptionWordCount}

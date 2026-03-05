@@ -84,6 +84,10 @@ export const adminApi = {
       method: "PATCH",
       body: JSON.stringify(payload)
     }),
+  deleteCategory: (id: string) =>
+    request(`/admin/categories/${id}`, {
+      method: "DELETE"
+    }),
   getListings: () => request<any[]>("/admin/listings"),
   getReportsQueue: () => request<any[]>("/reports/queue"),
   getAdminReports: async () => {
