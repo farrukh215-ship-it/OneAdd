@@ -3,6 +3,7 @@ import {
   Animated,
   Alert,
   Easing,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   View
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { AuthRequiredCard } from "../components/auth-required-card";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import { pakistanCities } from "@aikad/shared";
@@ -28,6 +30,8 @@ import {
 import type { MarketplaceCategory } from "../types";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+const DEFAULT_MAP_LAT = 30.3753;
+const DEFAULT_MAP_LNG = 69.3451;
 
 function isValidHttpUrl(value: string) {
   try {
@@ -71,6 +75,147 @@ function cleanDescriptionMetadata(description: string) {
     .trim();
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildMapPickerHtml(params: {
+  lat: number;
+  lng: number;
+  query: string;
+}) {
+  const safeQuery = escapeHtml(params.query.trim() || "Pakistan");
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #fdf6ed; }
+      #app { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr; }
+      #top {
+        display: flex; gap: 8px; align-items: center; padding: 8px; background: #fff;
+        border-bottom: 1px solid #e8d5b7; font: 13px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #q { flex: 1; color: #7a5544; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .btn {
+        border: 1px solid #e8d5b7; background: #fff8f2; color: #7a5544; border-radius: 10px;
+        padding: 7px 10px; font-weight: 700; font-size: 12px;
+      }
+      #map { height: 100%; width: 100%; }
+      #pinMeta {
+        position: fixed; bottom: 8px; left: 8px; right: 8px; z-index: 9999;
+        background: rgba(255,255,255,0.95); border: 1px solid #e8d5b7; border-radius: 12px;
+        padding: 8px 10px; color: #5c3d2e; font: 12px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #pinMeta strong { color: #c8603a; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="top">
+        <div id="q">${safeQuery}</div>
+        <button class="btn" id="gpsBtn" type="button">Use GPS</button>
+      </div>
+      <div id="map"></div>
+    </div>
+    <div id="pinMeta"><strong>Pin:</strong> loading...</div>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script>
+      const post = (payload) => {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+        }
+      };
+
+      const initialLat = ${Number.isFinite(params.lat) ? params.lat : DEFAULT_MAP_LAT};
+      const initialLng = ${Number.isFinite(params.lng) ? params.lng : DEFAULT_MAP_LNG};
+      const map = L.map("map", { zoomControl: true }).setView([initialLat, initialLng], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+
+      let marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map);
+      const pinMeta = document.getElementById("pinMeta");
+      const setMeta = (lat, lng) => {
+        pinMeta.innerHTML = "<strong>Pin:</strong> " + lat.toFixed(6) + ", " + lng.toFixed(6);
+      };
+      const applyPin = (lat, lng, source) => {
+        marker.setLatLng([lat, lng]);
+        map.panTo([lat, lng], { animate: true });
+        setMeta(lat, lng);
+        post({ type: "pin", lat, lng, source });
+      };
+
+      marker.on("dragend", () => {
+        const pos = marker.getLatLng();
+        applyPin(pos.lat, pos.lng, "drag");
+      });
+
+      map.on("click", (event) => {
+        applyPin(event.latlng.lat, event.latlng.lng, "tap");
+      });
+
+      const runGps = () => {
+        if (!navigator.geolocation) {
+          post({ type: "error", message: "GPS not available" });
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            applyPin(position.coords.latitude, position.coords.longitude, "gps");
+          },
+          (error) => {
+            post({ type: "error", message: error && error.message ? error.message : "Location error" });
+          },
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+      };
+
+      window.useGpsFromNative = runGps;
+      document.getElementById("gpsBtn").addEventListener("click", runGps);
+
+      setMeta(initialLat, initialLng);
+      post({ type: "ready", lat: initialLat, lng: initialLng });
+
+      const query = "${safeQuery}".trim();
+      if (query && query.toLowerCase() !== "pakistan") {
+        fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query))
+          .then((response) => response.json())
+          .then((rows) => {
+            if (Array.isArray(rows) && rows.length > 0) {
+              const first = rows[0];
+              const lat = Number(first.lat);
+              const lng = Number(first.lon);
+              if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                map.setView([lat, lng], 14);
+                applyPin(lat, lng, "search");
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    </script>
+  </body>
+</html>`;
+}
+
 export function SellScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 16, duration: 320 });
   const [token, setToken] = useState(getAuthToken());
@@ -99,6 +244,8 @@ export function SellScreen({ navigation, route }: any) {
   const [publishing, setPublishing] = useState(false);
   const [editingListingId, setEditingListingId] = useState("");
   const [loadingListingForEdit, setLoadingListingForEdit] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const mapWebRef = useRef<WebView>(null);
   const heroAnim = useRef(new Animated.Value(0)).current;
   const detailsAnim = useRef(new Animated.Value(0)).current;
   const controlsAnim = useRef(new Animated.Value(0)).current;
@@ -118,6 +265,21 @@ export function SellScreen({ navigation, route }: any) {
       .filter((item) => item.toLowerCase().includes(query))
       .slice(0, 12);
   }, [city]);
+  const mapQueryText = useMemo(
+    () => [exactLocation.trim(), city.trim(), "Pakistan"].filter(Boolean).join(", "),
+    [city, exactLocation]
+  );
+  const normalizedMapLat = Number(mapLat);
+  const normalizedMapLng = Number(mapLng);
+  const mapSourceHtml = useMemo(
+    () =>
+      buildMapPickerHtml({
+        lat: Number.isFinite(normalizedMapLat) ? normalizedMapLat : DEFAULT_MAP_LAT,
+        lng: Number.isFinite(normalizedMapLng) ? normalizedMapLng : DEFAULT_MAP_LNG,
+        query: mapQueryText
+      }),
+    [mapQueryText, normalizedMapLat, normalizedMapLng]
+  );
 
   useEffect(() => {
     return subscribeAuthToken((nextToken) => {
@@ -435,6 +597,41 @@ export function SellScreen({ navigation, route }: any) {
     }
   }
 
+  function openMapPicker() {
+    if (!city.trim()) {
+      Alert.alert("City required", "Pehle city select karein phir map pin set karein.");
+      return;
+    }
+    setMapPickerOpen(true);
+  }
+
+  function handleMapMessage(event: WebViewMessageEvent) {
+    try {
+      const payload = JSON.parse(event.nativeEvent.data) as
+        | { type: "pin"; lat: number; lng: number; source?: string }
+        | { type: "ready"; lat: number; lng: number }
+        | { type: "error"; message?: string };
+
+      if (payload.type === "pin" || payload.type === "ready") {
+        if (Number.isFinite(payload.lat) && Number.isFinite(payload.lng)) {
+          setMapLat(payload.lat.toFixed(6));
+          setMapLng(payload.lng.toFixed(6));
+        }
+        return;
+      }
+
+      if (payload.type === "error" && payload.message) {
+        Alert.alert("Map", payload.message);
+      }
+    } catch {
+      // Ignore malformed map events.
+    }
+  }
+
+  function triggerMapGps() {
+    mapWebRef.current?.injectJavaScript("window.useGpsFromNative && window.useGpsFromNative(); true;");
+  }
+
   async function onSubmit() {
     if (!categoryId.trim() || !title.trim() || !description.trim()) {
       Alert.alert("Missing fields", "Category, title aur description required hain.");
@@ -665,19 +862,39 @@ export function SellScreen({ navigation, route }: any) {
           value={exactLocation}
           onChangeText={setExactLocation}
         />
-        <View style={styles.mapRow}>
-          <TextInput
-            style={[styles.input, styles.mapInput]}
-            placeholder="Map Lat (optional)"
-            value={mapLat}
-            onChangeText={setMapLat}
-          />
-          <TextInput
-            style={[styles.input, styles.mapInput]}
-            placeholder="Map Lng (optional)"
-            value={mapLng}
-            onChangeText={setMapLng}
-          />
+        <View style={styles.mapPickerCard}>
+          <Text style={styles.mapPickerTitle}>Map Pin (Exact location)</Text>
+          <Text style={styles.mapPickerSubtitle}>
+            Pin drop karein ya GPS se current location pick karein.
+          </Text>
+          <View style={styles.mapPickerActions}>
+            <Pressable style={({ pressed }) => [styles.secondaryButton, styles.mapPickerBtn, pressed && styles.pressed]} onPress={openMapPicker}>
+              <Text style={styles.secondaryButtonText}>Open Map Picker</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, styles.mapPickerBtn, pressed && styles.pressed]}
+              onPress={() => {
+                setMapLat("");
+                setMapLng("");
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>Clear Pin</Text>
+            </Pressable>
+          </View>
+          <View style={styles.mapRow}>
+            <TextInput
+              style={[styles.input, styles.mapInput]}
+              placeholder="Map Lat"
+              value={mapLat}
+              onChangeText={setMapLat}
+            />
+            <TextInput
+              style={[styles.input, styles.mapInput]}
+              placeholder="Map Lng"
+              value={mapLng}
+              onChangeText={setMapLng}
+            />
+          </View>
         </View>
 
         <Pressable
@@ -794,6 +1011,49 @@ export function SellScreen({ navigation, route }: any) {
           </Text>
         </Pressable>
       </Animated.View>
+
+      <Modal visible={mapPickerOpen} animationType="slide" transparent onRequestClose={() => setMapPickerOpen(false)}>
+        <View style={styles.mapModalBackdrop}>
+          <View style={styles.mapModalCard}>
+            <View style={styles.mapModalHead}>
+              <View style={styles.mapModalHeadText}>
+                <Text style={styles.mapModalTitle}>Pick Exact Location</Text>
+                <Text style={styles.mapModalSubtitle}>{mapQueryText || "Pakistan"}</Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.mapCloseBtn, pressed && styles.pressed]}
+                onPress={() => setMapPickerOpen(false)}
+              >
+                <Text style={styles.mapCloseBtnText}>Close</Text>
+              </Pressable>
+            </View>
+            <View style={styles.mapWebFrame}>
+              <WebView
+                ref={mapWebRef}
+                originWhitelist={["*"]}
+                source={{ html: mapSourceHtml }}
+                onMessage={handleMapMessage}
+                javaScriptEnabled
+                domStorageEnabled
+                geolocationEnabled
+                allowsInlineMediaPlayback
+                setSupportMultipleWindows={false}
+              />
+            </View>
+            <View style={styles.mapModalFoot}>
+              <Pressable style={({ pressed }) => [styles.secondaryButton, styles.mapPickerBtn, pressed && styles.pressed]} onPress={triggerMapGps}>
+                <Text style={styles.secondaryButtonText}>Use GPS</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.button, styles.mapDoneBtn, pressed && styles.pressed]}
+                onPress={() => setMapPickerOpen(false)}
+              >
+                <Text style={styles.buttonText}>Done</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </AnimatedScrollView>
   );
 }
@@ -934,7 +1194,98 @@ const styles = StyleSheet.create({
     gap: 8
   },
   mapInput: {
+    flex: 1,
+    marginBottom: 0
+  },
+  mapPickerCard: {
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    borderRadius: 12,
+    backgroundColor: "#FFFDF9",
+    padding: 10,
+    marginBottom: 10,
+    gap: 8
+  },
+  mapPickerTitle: {
+    color: "#5C3D2E",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  mapPickerSubtitle: {
+    color: "#9B8070",
+    fontSize: 12
+  },
+  mapPickerActions: {
+    flexDirection: "row",
+    gap: 8
+  },
+  mapPickerBtn: {
     flex: 1
+  },
+  mapModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(18,12,9,0.45)",
+    padding: 12,
+    justifyContent: "center"
+  },
+  mapModalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    overflow: "hidden",
+    maxHeight: "90%"
+  },
+  mapModalHead: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFE1D0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  mapModalHeadText: {
+    flex: 1
+  },
+  mapModalTitle: {
+    color: "#5C3D2E",
+    fontSize: 16,
+    fontWeight: "800"
+  },
+  mapModalSubtitle: {
+    color: "#9B8070",
+    fontSize: 12,
+    marginTop: 2
+  },
+  mapCloseBtn: {
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  mapCloseBtnText: {
+    color: "#7A5544",
+    fontWeight: "700",
+    fontSize: 12
+  },
+  mapWebFrame: {
+    minHeight: 340,
+    height: 420,
+    backgroundColor: "#F9EFE3"
+  },
+  mapModalFoot: {
+    borderTopWidth: 1,
+    borderTopColor: "#EFE1D0",
+    flexDirection: "row",
+    gap: 8,
+    padding: 10
+  },
+  mapDoneBtn: {
+    flex: 1,
+    marginTop: 0,
+    paddingVertical: 11
   },
   citySuggestionRow: {
     gap: 8,
