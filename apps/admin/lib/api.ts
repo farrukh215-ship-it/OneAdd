@@ -60,7 +60,7 @@ type AdminActionPayload = {
   note?: string;
 };
 
-export async function loginAdmin(payload: { identifier: string; password: string }) {
+export async function loginAdmin(payload: { email: string; password: string }) {
   const result = await request<{ accessToken: string }>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload)

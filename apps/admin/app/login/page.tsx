@@ -6,7 +6,7 @@ import { loginAdmin } from "../../lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -15,7 +15,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await loginAdmin({ identifier, password });
+      await loginAdmin({ email, password });
       router.push("/dashboard");
     } catch {
       setError("Invalid credentials.");
@@ -34,9 +34,10 @@ export default function LoginPage() {
         </div>
         <input
           className="input"
-          placeholder="Email / phone / CNIC"
-          value={identifier}
-          onChange={(event) => setIdentifier(event.target.value)}
+          placeholder="Email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
         />
         <input
           className="input"
