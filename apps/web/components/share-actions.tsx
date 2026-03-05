@@ -16,26 +16,29 @@ export function ShareActions({ listingId, title }: ShareActionsProps) {
   }
 
   return (
-    <div className="actions">
-      <a className="btn secondary" href={fbUrl} target="_blank" rel="noreferrer">
-        <span className="actionIcon" aria-hidden="true">
-          f
-        </span>
-        Share on Facebook
-      </a>
-      <a className="btn secondary" href={waUrl} target="_blank" rel="noreferrer">
-        <span className="actionIcon" aria-hidden="true">
-          WA
-        </span>
-        Share on WhatsApp
-      </a>
-      <button className="btn secondary" onClick={copyLink} type="button">
-        <span className="actionIcon" aria-hidden="true">
-          #
-        </span>
-        Copy Link
-      </button>
-      <span className="shareHint">{title}</span>
-    </div>
+    <section className="shareActionsPanel">
+      <p className="sharePanelLabel">Share this listing</p>
+      <div className="shareActionGrid">
+        <a className="btn secondary" href={fbUrl} target="_blank" rel="noreferrer">
+          <span className="actionIcon" aria-hidden="true">
+            f
+          </span>
+          Share on Facebook
+        </a>
+        <a className="btn secondary" href={waUrl} target="_blank" rel="noreferrer">
+          <span className="actionIcon" aria-hidden="true">
+            WA
+          </span>
+          Share on WhatsApp
+        </a>
+        <button className="btn secondary" onClick={copyLink} type="button">
+          <span className="actionIcon" aria-hidden="true">
+            #
+          </span>
+          Copy Link
+        </button>
+      </div>
+      <p className="shareHint">{title}</p>
+    </section>
   );
 }

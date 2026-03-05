@@ -51,21 +51,29 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [contactVisible, setContactVisible] = useState(false);
   const [offers, setOffers] = useState<ListingOffer[]>([]);
   const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   const isLoggedIn = mounted && Boolean(token);
 
   const images = useMemo(
-    () => listing.media.filter((item) => item.type === "IMAGE").slice(0, 6),
+    () =>
+      listing.media
+        .filter((item) => item.type === "IMAGE" && Boolean(item.url?.trim()))
+        .slice(0, 6),
     [listing.media]
   );
   const video = useMemo(
     () =>
       listing.media.find(
-        (item) => item.type === "VIDEO" && (item.durationSec ?? 0) <= 30
+        (item) => item.type === "VIDEO" && Boolean(item.url?.trim()) && (item.durationSec ?? 0) <= 30
       ),
     [listing.media]
   );
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const selectedImage = images[selectedImageIndex]?.url ?? "";
+  const visibleImages = useMemo(
+    () => images.filter((item) => !failedImageIds.has(item.id)),
+    [failedImageIds, images]
+  );
+  const selectedImage = visibleImages[selectedImageIndex]?.url ?? "";
 
   const phone = listing.user?.phone ?? "";
   const trustScore = listing.user?.trustScore?.score ?? 0;
@@ -88,7 +96,14 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   useEffect(() => {
     setSelectedImageIndex(0);
+    setFailedImageIds(new Set());
   }, [listing.id]);
+
+  useEffect(() => {
+    if (selectedImageIndex >= visibleImages.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [selectedImageIndex, visibleImages.length]);
 
   useEffect(() => {
     fetchListingOffers(listing.id, 12)
@@ -125,13 +140,13 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   }
 
   function showPrevImage() {
-    if (images.length <= 1) return;
-    setSelectedImageIndex((prev) => (prev <= 0 ? images.length - 1 : prev - 1));
+    if (visibleImages.length <= 1) return;
+    setSelectedImageIndex((prev) => (prev <= 0 ? visibleImages.length - 1 : prev - 1));
   }
 
   function showNextImage() {
-    if (images.length <= 1) return;
-    setSelectedImageIndex((prev) => (prev + 1) % images.length);
+    if (visibleImages.length <= 1) return;
+    setSelectedImageIndex((prev) => (prev + 1) % visibleImages.length);
   }
 
   return (
@@ -144,33 +159,39 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
                 src={selectedImage}
                 alt={listing.title}
                 className="listingMainImage"
-                onError={showNextImage}
+                onError={() => {
+                  const broken = visibleImages[selectedImageIndex];
+                  if (!broken) return;
+                  setFailedImageIds((prev) => {
+                    if (prev.has(broken.id)) return prev;
+                    const next = new Set(prev);
+                    next.add(broken.id);
+                    return next;
+                  });
+                }}
               />
             ) : (
               <div className="listingMediaFallback" aria-hidden="true" />
             )}
-            {images.length > 1 ? (
+            {visibleImages.length > 1 ? (
               <div className="listingMainControls">
                 <button className="listingMainControlBtn" type="button" onClick={showPrevImage}>
-                  ‹
+                  {"\u2039"}
                 </button>
                 <button className="listingMainControlBtn" type="button" onClick={showNextImage}>
-                  ›
+                  {"\u203a"}
                 </button>
               </div>
             ) : null}
           </div>
 
-          {images.length > 1 ? (
+          {visibleImages.length > 1 ? (
             <div className="listingThumbRow">
-              {images.map((item) => (
+              {visibleImages.map((item, index) => (
                 <button
-                  className={`listingThumb ${selectedImage === item.url ? "active" : ""}`}
+                  className={`listingThumb ${selectedImageIndex === index ? "active" : ""}`}
                   key={item.id}
-                  onClick={() => {
-                    const index = images.findIndex((media) => media.id === item.id);
-                    setSelectedImageIndex(index >= 0 ? index : 0);
-                  }}
+                  onClick={() => setSelectedImageIndex(index)}
                   type="button"
                 >
                   <img src={item.url} alt={listing.title} />
@@ -252,8 +273,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           </section>
 
           <section className="desktopActionPanel">
-            {isLoggedIn && listing.showPhone && phone ? (
-              <>
+            <div className="listingActionGrid">
+              {isLoggedIn && listing.showPhone && phone ? (
                 <button
                   className="btn secondary"
                   onClick={() => setContactVisible((prev) => !prev)}
@@ -261,37 +282,37 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
                 >
                   {contactVisible ? "Hide Contact" : "Show Contact"}
                 </button>
-                {contactVisible ? <span className="pill">{phone}</span> : null}
-              </>
-            ) : null}
-            {listing.allowChat ? (
-              <button className="btn" onClick={startChat} disabled={chatLoading} type="button">
-                {chatLoading ? "Opening..." : "Start Chat"}
+              ) : null}
+              {listing.allowChat ? (
+                <button className="btn" onClick={startChat} disabled={chatLoading} type="button">
+                  {chatLoading ? "Opening..." : "Start Chat"}
+                </button>
+              ) : (
+                <span className="pill muted">Chat disabled</span>
+              )}
+              {isLoggedIn && listing.allowCall && phone ? (
+                <a className="btn secondary" href={`tel:${phone}`}>
+                  Call
+                </a>
+              ) : null}
+              {isLoggedIn && listing.allowSMS && phone ? (
+                <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
+                  <span className="actionIcon" aria-hidden="true">
+                    WA
+                  </span>
+                  Start WhatsApp
+                </a>
+              ) : null}
+              <button className="btn secondary" onClick={toggleSaved} type="button">
+                {saved ? "Saved" : "Save Listing"}
               </button>
-            ) : (
-              <span className="pill muted">Chat disabled</span>
-            )}
-            {isLoggedIn && listing.allowCall && phone ? (
-              <a className="btn secondary" href={`tel:${phone}`}>
-                Call
-              </a>
-            ) : null}
-            {isLoggedIn && listing.allowSMS && phone ? (
-              <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
-                <span className="actionIcon" aria-hidden="true">
-                  WA
-                </span>
-                Start WhatsApp
-              </a>
-            ) : null}
-            <button className="btn secondary" onClick={toggleSaved} type="button">
-              {saved ? "Saved" : "Save Listing"}
-            </button>
-            {!isLoggedIn ? (
-              <Link href="/account" className="btn secondary">
-                Login to contact seller
-              </Link>
-            ) : null}
+              {!isLoggedIn ? (
+                <Link href="/account" className="btn secondary">
+                  Login to contact seller
+                </Link>
+              ) : null}
+            </div>
+            {contactVisible ? <div className="revealedContact">{phone}</div> : null}
             {chatError ? <p className="error">{chatError}</p> : null}
           </section>
 

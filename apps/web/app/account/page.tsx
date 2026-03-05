@@ -22,6 +22,44 @@ type ProfileState = {
   city: string;
 };
 
+function getPrimaryImage(listing: Listing) {
+  return listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
+}
+
+function formatListedDate(timestamp?: string) {
+  if (!timestamp) {
+    return "Listed recently";
+  }
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "Listed recently";
+  }
+  return `Listed ${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  })}`;
+}
+
+function statusLabel(status?: string) {
+  return (status || "ACTIVE").replace(/_/g, " ");
+}
+
+function statusTone(status?: string) {
+  switch (status) {
+    case "ACTIVE":
+      return "success";
+    case "SOLD":
+      return "muted";
+    case "EXPIRED":
+      return "warn";
+    case "PAUSED":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+}
+
 export default function AccountPage() {
   const router = useRouter();
   const { mounted, token } = useAuthToken();
@@ -100,8 +138,8 @@ export default function AccountPage() {
 
   return (
     <main className="screen accountScreen">
-      <section className="panel stack">
-        <div className="actions">
+      <section className="panel accountPanel">
+        <div className="actions accountTopActions">
           <span className="pill">Profile</span>
           <button
             className="btn secondary"
@@ -116,12 +154,10 @@ export default function AccountPage() {
           </button>
         </div>
 
-        <h1 style={{ margin: 0 }}>
-          {profile?.fullName ?? "User"} - Mere Ads
-        </h1>
-        <p className="helperText" style={{ margin: 0 }}>
+        <h1 className="accountTitle">{profile?.fullName ?? "User"} - Mere Ads</h1>
+        <p className="helperText accountSubline">
           {profile
-            ? `${profile.email} | ${profile.phone} | ${profile.city}`
+            ? `${profile.email} | ${profile.phone} | ${profile.city || "Pakistan"}`
             : "Loading profile..."}
         </p>
 
@@ -129,12 +165,27 @@ export default function AccountPage() {
         {error ? <p className="error">{error}</p> : null}
 
         {metrics ? (
-          <div className="filter-bar">
-            <span className="filter-chip active">Total Ads: {metrics.totalAds}</span>
-            <span className="filter-chip">Active: {metrics.activeAds}</span>
-            <span className="filter-chip">Views: {metrics.totalViews}</span>
-            <span className="filter-chip">Chat Starts: {metrics.chatStarts}</span>
-            <span className="filter-chip">Offers: {metrics.offersCount}</span>
+          <div className="accountMetricRow">
+            <div className="accountMetricCard">
+              <p>Total Ads</p>
+              <strong>{metrics.totalAds}</strong>
+            </div>
+            <div className="accountMetricCard">
+              <p>Active</p>
+              <strong>{metrics.activeAds}</strong>
+            </div>
+            <div className="accountMetricCard">
+              <p>Views</p>
+              <strong>{metrics.totalViews}</strong>
+            </div>
+            <div className="accountMetricCard">
+              <p>Chat Starts</p>
+              <strong>{metrics.chatStarts}</strong>
+            </div>
+            <div className="accountMetricCard">
+              <p>Offers</p>
+              <strong>{metrics.offersCount}</strong>
+            </div>
           </div>
         ) : null}
 
@@ -149,34 +200,52 @@ export default function AccountPage() {
           ) : null}
 
         {items.length > 0 ? (
-          <div className="grid">
+          <div className="accountListingsGrid">
             {items.map((listing) => (
-              <article className="listingCard" key={listing.id}>
-                <Link href={`/listing/${listing.id}`} className="stack">
-                  <p className="listingTitle">{listing.title}</p>
-                  <p className="listingMeta">{listing.status}</p>
-                  <p className="listingMeta">
-                    Listed:{" "}
-                    {listing.createdAt
-                      ? new Date(listing.createdAt).toLocaleDateString("en-GB")
-                      : "recently"}
-                  </p>
+              <article className="accountListingCard" key={listing.id}>
+                <Link href={`/listing/${listing.id}`} className="accountListingMain">
+                  <div className="accountListingMediaWrap">
+                    {getPrimaryImage(listing) ? (
+                      <img
+                        className="accountListingMedia"
+                        src={getPrimaryImage(listing)}
+                        alt={listing.title}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="accountListingMediaFallback" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="accountListingBody">
+                    <h3 className="accountListingTitle">{listing.title}</h3>
+                    <div className="accountListingMetaRow">
+                      <span className={`statusPill ${statusTone(listing.status)}`}>
+                        {statusLabel(listing.status)}
+                      </span>
+                      <span className="accountListingPrice">
+                        {listing.currency} {listing.price}
+                      </span>
+                    </div>
+                    <p className="helperText accountListedDate">{formatListedDate(listing.createdAt)}</p>
+                  </div>
                 </Link>
-                <Link href={`/sell?edit=${encodeURIComponent(listing.id)}`} className="btn secondary">
-                  Edit ADD
-                </Link>
-                {listing.status === "SOLD" || listing.status === "EXPIRED" || listing.status === "PAUSED" ? (
-                  <button
-                    className="btn secondary"
-                    type="button"
-                    onClick={() => {
-                      void onRelist(listing.id);
-                    }}
-                    disabled={relistingId === listing.id}
-                  >
-                    {relistingId === listing.id ? "Relisting..." : "Relist"}
-                  </button>
-                ) : null}
+                <div className="accountListingActions">
+                  <Link href={`/sell?edit=${encodeURIComponent(listing.id)}`} className="btn secondary">
+                    Edit ADD
+                  </Link>
+                  {listing.status === "SOLD" || listing.status === "EXPIRED" || listing.status === "PAUSED" ? (
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => {
+                        void onRelist(listing.id);
+                      }}
+                      disabled={relistingId === listing.id}
+                    >
+                      {relistingId === listing.id ? "Relisting..." : "Relist"}
+                    </button>
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>
