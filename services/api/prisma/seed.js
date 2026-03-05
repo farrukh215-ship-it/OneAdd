@@ -36,7 +36,7 @@ const defaultFeatureFlags = [
   },
   {
     key: "TRUST_SCORE_ENFORCEMENT",
-    enabled: false,
+    enabled: true,
     description: "Gate selected flows based on user trust score."
   },
   {
@@ -71,7 +71,7 @@ const defaultFeatureFlags = [
   },
   {
     key: "SEMANTIC_SEARCH",
-    enabled: false,
+    enabled: true,
     description: "Enable semantic search ranking."
   },
   {
@@ -91,12 +91,12 @@ const defaultFeatureFlags = [
   },
   {
     key: "RECOMMENDATIONS_FEED",
-    enabled: false,
+    enabled: true,
     description: "Enable personalized recommendation feed."
   },
   {
     key: "PRICE_INTELLIGENCE",
-    enabled: false,
+    enabled: true,
     description: "Enable dynamic price suggestion ranges."
   },
   {
@@ -106,7 +106,7 @@ const defaultFeatureFlags = [
   },
   {
     key: "AB_EXPERIMENTS",
-    enabled: false,
+    enabled: true,
     description: "Enable A/B experimentation framework hooks."
   }
 ];

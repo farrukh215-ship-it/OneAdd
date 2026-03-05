@@ -290,6 +290,10 @@ function categoryHref(slug: string) {
 export function HomeFeed() {
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchCategorySlug, setSearchCategorySlug] = useState("");
+  const [searchSubcategorySlug, setSearchSubcategorySlug] = useState("");
+  const [searchCity, setSearchCity] = useState("");
   const [items, setItems] = useState<Listing[]>([]);
   const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -307,6 +311,10 @@ export function HomeFeed() {
   const selectedCategory = useMemo(
     () => categories.find((item) => item.slug === selectedCategorySlug) ?? categories[0] ?? null,
     [categories, selectedCategorySlug]
+  );
+  const selectedSearchCategory = useMemo(
+    () => categories.find((item) => item.slug === searchCategorySlug) ?? null,
+    [categories, searchCategorySlug]
   );
 
   async function loadCategories() {
@@ -437,13 +445,26 @@ export function HomeFeed() {
 
   function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const query = String(form.get("q") || "").trim();
+    const params = new URLSearchParams();
+    const query = searchQuery.trim();
+    const city = searchCity.trim();
+
     if (query) {
-      window.location.href = `/search?q=${encodeURIComponent(query)}`;
-      return;
+      params.set("q", query);
     }
-    window.location.href = "/search";
+    if (searchCategorySlug) {
+      params.set("category", searchCategorySlug);
+    }
+    if (searchSubcategorySlug) {
+      params.set("subcategory", searchSubcategorySlug);
+    }
+    if (city) {
+      params.set("city", city);
+    }
+    params.set("mode", "semantic");
+
+    const target = params.toString() ? `/search?${params.toString()}` : "/search";
+    window.location.href = target;
   }
 
   const listingSectionBody = useMemo(() => {
@@ -624,22 +645,70 @@ export function HomeFeed() {
       </div>
 
       <section className="search-section">
-        <form className="search-box" onSubmit={onSearchSubmit}>
-          <span className="search-icon" aria-hidden="true">
-            {"\ud83d\udd0d"}
-          </span>
-          <input
-            className="search-input"
-            name="q"
-            placeholder="Kya dhoond rahe ho? iPhone, Sofa, Fridge..."
-          />
-          <span className="search-divider" />
-          <div className="search-location">
-            <span aria-hidden="true">{"\ud83d\udccd"}</span>
-            Pakistan
-          </div>
+        <form className="search-box search-box-advanced" onSubmit={onSearchSubmit}>
+          <label className="search-field search-field-keyword">
+            <span className="search-field-label">Product</span>
+            <div className="search-input-wrap">
+              <span className="search-icon" aria-hidden="true">
+                {"\ud83d\udd0d"}
+              </span>
+              <input
+                className="search-input"
+                name="q"
+                placeholder="Product name (iPhone, Sofa, Fridge...)"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+          </label>
+          <label className="search-field">
+            <span className="search-field-label">Category</span>
+            <select
+              className="search-select"
+              value={searchCategorySlug}
+              onChange={(event) => {
+                setSearchCategorySlug(event.target.value);
+                setSearchSubcategorySlug("");
+              }}
+            >
+              <option value="">All Categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="search-field">
+            <span className="search-field-label">Subcategory</span>
+            <select
+              className="search-select"
+              value={searchSubcategorySlug}
+              onChange={(event) => setSearchSubcategorySlug(event.target.value)}
+              disabled={!selectedSearchCategory}
+            >
+              <option value="">
+                {selectedSearchCategory ? "All Subcategories" : "Select category first"}
+              </option>
+              {(selectedSearchCategory?.subcategories ?? []).map((subcategory) => (
+                <option key={subcategory.id} value={subcategory.slug}>
+                  {subcategory.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="search-field">
+            <span className="search-field-label">City</span>
+            <input
+              className="search-select"
+              name="city"
+              placeholder="Karachi, Lahore..."
+              value={searchCity}
+              onChange={(event) => setSearchCity(event.target.value)}
+            />
+          </label>
           <button className="search-btn" type="submit">
-            Dhundo
+            Smart Search
           </button>
         </form>
         <div className="search-tags">

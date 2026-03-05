@@ -301,12 +301,14 @@ export type SearchFilters = {
   maxPrice?: number;
   condition: string;
   negotiable?: boolean;
+  limit?: number;
 };
 
 export async function searchListingsWithFilters(filters: SearchFilters) {
   const params = new URLSearchParams();
   params.set("q", filters.query.trim());
   params.set("category", filters.category);
+  params.set("limit", String(filters.limit ?? 100));
 
   if (filters.city.trim()) {
     params.set("city", filters.city.trim());
@@ -332,6 +334,7 @@ export async function semanticSearchListingsWithFilters(filters: SearchFilters) 
   const params = new URLSearchParams();
   params.set("q", filters.query.trim());
   params.set("category", filters.category);
+  params.set("limit", String(filters.limit ?? 100));
 
   if (filters.city.trim()) {
     params.set("city", filters.city.trim());

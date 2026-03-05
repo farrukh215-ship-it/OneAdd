@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   getCategoryCatalog,
   SearchFilters,
+  semanticSearchListingsWithFilters,
   searchListingsWithFilters
 } from "../../lib/api";
 import {
@@ -15,6 +16,8 @@ import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
 
 const conditions = ["ANY", "NEW", "USED"];
+const searchModes = ["semantic", "keyword"] as const;
+type SearchMode = (typeof searchModes)[number];
 
 function parsePositiveNumber(value: string) {
   if (!value.trim()) {
@@ -59,6 +62,7 @@ export default function SearchPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [blockedSellerIds, setBlockedSellerIds] = useState<string[]>([]);
+  const [searchMode, setSearchMode] = useState<SearchMode>("semantic");
 
   const suggestedTags = useMemo(() => catalog.slice(0, 8), [catalog]);
   const filteredResults = useMemo(
@@ -92,19 +96,57 @@ export default function SearchPage() {
     const params = new URLSearchParams(window.location.search);
     const initialQ = params.get("q") ?? "";
     const initialCategory = params.get("category") ?? "";
+    const initialSubcategory = params.get("subcategory") ?? "";
+    const initialCity = params.get("city") ?? "";
+    const initialMinPrice = params.get("minPrice") ?? "";
+    const initialMaxPrice = params.get("maxPrice") ?? "";
+    const initialCondition = params.get("condition") ?? "ANY";
+    const initialNegotiable = params.get("negotiable") === "true";
+    const initialMode = params.get("mode") === "keyword" ? "keyword" : "semantic";
+    const resolvedCategory = initialSubcategory || initialCategory;
     if (initialQ) {
       setQuery(initialQ);
     }
-    if (initialCategory) {
-      setCategory(initialCategory);
+    if (resolvedCategory) {
+      setCategory(resolvedCategory);
     }
-    if (initialQ || initialCategory) {
+    if (initialCity) {
+      setCity(initialCity);
+    }
+    if (initialMinPrice) {
+      setMinPrice(initialMinPrice);
+    }
+    if (initialMaxPrice) {
+      setMaxPrice(initialMaxPrice);
+    }
+    if (initialCondition && conditions.includes(initialCondition)) {
+      setCondition(initialCondition);
+    }
+    if (initialNegotiable) {
+      setNegotiableOnly(true);
+    }
+    setSearchMode(initialMode);
+    const parsedInitialMin = parsePositiveNumber(initialMinPrice);
+    const parsedInitialMax = parsePositiveNumber(initialMaxPrice);
+
+    if (
+      initialQ ||
+      resolvedCategory ||
+      initialCity ||
+      initialMinPrice ||
+      initialMaxPrice ||
+      initialNegotiable
+    ) {
       void runSearchWith({
         query: initialQ,
-        category: initialCategory,
-        city: "",
-        condition: "ANY"
-      });
+        category: resolvedCategory,
+        city: initialCity,
+        minPrice: Number.isNaN(parsedInitialMin) ? undefined : parsedInitialMin,
+        maxPrice: Number.isNaN(parsedInitialMax) ? undefined : parsedInitialMax,
+        condition: conditions.includes(initialCondition) ? initialCondition : "ANY",
+        negotiable: initialNegotiable,
+        limit: 100
+      }, initialMode);
     }
     // Only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,17 +167,68 @@ export default function SearchPage() {
     if (maxPrice.trim()) list.push(`Max ${maxPrice}`);
     if (condition !== "ANY") list.push(condition);
     if (negotiableOnly) list.push("Negotiable Only");
+    list.push(searchMode === "semantic" ? "Smart Ranking" : "Exact Match");
     return list;
-  }, [catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query]);
+  }, [catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query, searchMode]);
 
-  async function runSearchWith(payload: SearchFilters) {
+  function updateUrlFromSearch(payload: SearchFilters, mode: SearchMode) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    const cleanQuery = payload.query.trim();
+    const cleanCategory = payload.category.trim();
+    const cleanCity = payload.city.trim();
+
+    if (cleanQuery) {
+      params.set("q", cleanQuery);
+    }
+    if (cleanCategory) {
+      params.set("category", cleanCategory);
+    }
+    if (cleanCity) {
+      params.set("city", cleanCity);
+    }
+    if (typeof payload.minPrice === "number") {
+      params.set("minPrice", String(payload.minPrice));
+    }
+    if (typeof payload.maxPrice === "number") {
+      params.set("maxPrice", String(payload.maxPrice));
+    }
+    if (payload.condition && payload.condition !== "ANY") {
+      params.set("condition", payload.condition);
+    }
+    if (typeof payload.negotiable === "boolean") {
+      params.set("negotiable", String(payload.negotiable));
+    }
+    params.set("mode", mode);
+
+    const url = params.toString() ? `/search?${params.toString()}` : "/search";
+    window.history.replaceState({}, "", url);
+  }
+
+  async function runSearchWith(payload: SearchFilters, modeOverride?: SearchMode) {
     setLoading(true);
     setError("");
     try {
-      const data = await searchListingsWithFilters(payload);
+      const mode = modeOverride ?? searchMode;
+      let data: Listing[] = [];
+
+      if (mode === "semantic") {
+        try {
+          data = await semanticSearchListingsWithFilters(payload);
+        } catch {
+          data = await searchListingsWithFilters(payload);
+        }
+      } else {
+        data = await searchListingsWithFilters(payload);
+      }
+
       setResults(data);
       setMobileFiltersOpen(false);
       setHasSubmitted(true);
+      updateUrlFromSearch(payload, mode);
     } catch {
       setError("Search request fail ho gayi. Dobara try karein.");
     } finally {
@@ -167,7 +260,8 @@ export default function SearchPage() {
       minPrice: min,
       maxPrice: max,
       condition,
-      negotiable: negotiableOnly
+      negotiable: negotiableOnly,
+      limit: 100
     };
 
     await runSearchWith(payload);
@@ -191,6 +285,17 @@ export default function SearchPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
+            </label>
+            <label className="filterLabel">
+              Search Mode
+              <select
+                className="input"
+                value={searchMode}
+                onChange={(event) => setSearchMode(event.target.value as SearchMode)}
+              >
+                <option value="semantic">Smart AI Ranking</option>
+                <option value="keyword">Exact Keyword</option>
+              </select>
             </label>
             <label className="filterLabel">
               Category / Subcategory
@@ -298,7 +403,8 @@ export default function SearchPage() {
                   minPrice: Number.isNaN(parsedMin) ? undefined : parsedMin,
                   maxPrice: Number.isNaN(parsedMax) ? undefined : parsedMax,
                   condition,
-                  negotiable: negotiableOnly
+                  negotiable: negotiableOnly,
+                  limit: 100
                 });
               }}
               >
@@ -385,6 +491,17 @@ export default function SearchPage() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
+              </label>
+              <label className="filterLabel">
+                Search Mode
+                <select
+                  className="input"
+                  value={searchMode}
+                  onChange={(event) => setSearchMode(event.target.value as SearchMode)}
+                >
+                  <option value="semantic">Smart AI Ranking</option>
+                  <option value="keyword">Exact Keyword</option>
+                </select>
               </label>
               <label className="filterLabel">
                 Category / Subcategory

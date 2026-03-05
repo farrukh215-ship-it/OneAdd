@@ -799,6 +799,71 @@ textarea {
   transition: var(--transition);
 }
 
+.search-box-advanced {
+  max-width: 1180px;
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(260px, 2.2fr) repeat(3, minmax(160px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.search-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.search-field-label {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--sand);
+  border-radius: 12px;
+  padding: 0 10px;
+  min-height: 46px;
+  background: var(--white);
+}
+
+.search-input-wrap .search-icon {
+  font-size: 16px;
+}
+
+.search-box-advanced .search-input {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.search-select {
+  min-height: 46px;
+  border: 1px solid var(--sand);
+  border-radius: 12px;
+  padding: 0 12px;
+  color: var(--brown);
+  background: var(--white);
+}
+
+.search-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.search-box-advanced .search-btn {
+  min-height: 46px;
+  border-radius: 12px;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
 .search-box:focus-within {
   border-color: var(--clay);
   box-shadow: 0 0 0 4px rgba(200, 96, 58, 0.08), var(--shadow-md);
@@ -866,7 +931,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 760px;
+  max-width: 1180px;
   margin: 14px auto 0;
   flex-wrap: wrap;
 }
@@ -3394,6 +3459,15 @@ textarea {
   .search-section {
     padding: 32px;
   }
+
+  .search-box-advanced {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-box-advanced .search-field-keyword,
+  .search-box-advanced .search-btn {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3479,12 +3553,14 @@ textarea {
     padding: 24px 20px;
   }
 
-  .search-box {
-    padding-left: 14px;
+  .search-box-advanced {
+    grid-template-columns: 1fr;
+    padding: 12px;
   }
 
-  .search-location {
-    display: none;
+  .search-box-advanced .search-field-keyword,
+  .search-box-advanced .search-btn {
+    grid-column: auto;
   }
 
   .accountListingMain {
