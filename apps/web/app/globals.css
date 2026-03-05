@@ -2458,6 +2458,21 @@ textarea {
   margin-bottom: 14px;
 }
 
+.searchNoticeBanner {
+  background: #eef8f1;
+  color: #2f6b46;
+  border: 1px solid #c8e7d0;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.searchResultCount {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .mobileOnly {
   display: block;
 }

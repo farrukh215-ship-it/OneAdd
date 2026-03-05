@@ -856,8 +856,45 @@ export class ListingsService {
       .split(/[\s,./\\\-_:;]+/)
       .map((token) => token.trim())
       .filter((token) => token.length >= 2);
+    const knownCities = [
+      "karachi",
+      "lahore",
+      "islamabad",
+      "rawalpindi",
+      "faisalabad",
+      "multan",
+      "peshawar",
+      "hyderabad",
+      "quetta",
+      "gujranwala",
+      "sialkot",
+      "sargodha"
+    ];
     if (query.length >= 2) {
       base.unshift(query.toLowerCase());
+    }
+
+    for (const token of [...base]) {
+      const normalized = token.replace(/\s+/g, "");
+      if (normalized.length < 5) {
+        continue;
+      }
+      for (const city of knownCities) {
+        const index = normalized.indexOf(city);
+        if (index < 0) {
+          continue;
+        }
+
+        const before = normalized.slice(0, index);
+        const after = normalized.slice(index + city.length);
+        if (before.length >= 2) {
+          base.push(before);
+        }
+        if (after.length >= 2) {
+          base.push(after);
+        }
+        base.push(city);
+      }
     }
 
     if (extraTerms?.length) {
@@ -1091,8 +1128,10 @@ export class ListingsService {
 
     const synonymMap: Record<string, string[]> = {
       bicycle: ["cycle", "bike", "cycles"],
+      bicycles: ["bicycle", "cycle", "bike", "cycles"],
       cycles: ["cycle", "bicycle", "bike"],
       cycle: ["bicycle", "bike", "cycles"],
+      bikes: ["bike", "bicycle", "cycle", "cycles"],
       bike: ["bicycle", "cycle"],
       mobile: ["phone", "smartphone", "cell"],
       phone: ["mobile", "smartphone", "cellphone"],

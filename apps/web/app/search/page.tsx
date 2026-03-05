@@ -8,10 +8,6 @@ import {
   semanticSearchListingsWithFilters,
   searchListingsWithFilters
 } from "../../lib/api";
-import {
-  BLOCKED_SELLERS_CHANGED_EVENT,
-  getBlockedSellerIdsLocal
-} from "../../lib/listing-preferences";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
 
@@ -66,33 +62,15 @@ export default function SearchPage() {
   const [results, setResults] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [blockedSellerIds, setBlockedSellerIds] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortBy>("relevance");
 
   const suggestedTags = useMemo(() => catalog.slice(0, 8), [catalog]);
-  const filteredResults = useMemo(
-    () =>
-      results.filter((listing) => {
-        const sellerId = listing.user?.id;
-        return !sellerId || !blockedSellerIds.includes(sellerId);
-      }),
-    [blockedSellerIds, results]
-  );
 
   useEffect(() => {
     void getCategoryCatalog().then(setCatalog).catch(() => setCatalog([]));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const apply = () => setBlockedSellerIds(getBlockedSellerIdsLocal());
-    apply();
-    window.addEventListener(BLOCKED_SELLERS_CHANGED_EVENT, apply);
-    return () => window.removeEventListener(BLOCKED_SELLERS_CHANGED_EVENT, apply);
   }, []);
 
   useEffect(() => {
@@ -233,12 +211,44 @@ export default function SearchPage() {
   async function runSearchWith(payload: SearchFilters) {
     setLoading(true);
     setError("");
+    setNotice("");
     try {
       let data: Listing[] = [];
-      try {
-        data = await semanticSearchListingsWithFilters(payload);
-      } catch {
+
+      if (payload.query.trim()) {
+        try {
+          data = await semanticSearchListingsWithFilters(payload);
+        } catch {
+          data = await searchListingsWithFilters(payload);
+        }
+      } else {
         data = await searchListingsWithFilters(payload);
+      }
+
+      const hasNarrowingFilters =
+        Boolean(payload.query.trim()) ||
+        Boolean(payload.city.trim()) ||
+        Boolean(payload.area?.trim()) ||
+        typeof payload.minPrice === "number" ||
+        typeof payload.maxPrice === "number" ||
+        payload.negotiable === true ||
+        payload.condition !== "ANY";
+
+      if (data.length === 0 && payload.category.trim() && hasNarrowingFilters) {
+        const relaxedPayload: SearchFilters = {
+          ...payload,
+          query: "",
+          city: "",
+          area: "",
+          minPrice: undefined,
+          maxPrice: undefined,
+          negotiable: undefined,
+          condition: "ANY"
+        };
+        data = await searchListingsWithFilters(relaxedPayload);
+        if (data.length > 0) {
+          setNotice("Filters bohat strict thay. Category ke best matching results dikhaye gaye hain.");
+        }
       }
 
       setResults(data);
@@ -458,19 +468,25 @@ export default function SearchPage() {
               {error}
             </div>
           ) : null}
+          {!error && notice ? <div className="searchNoticeBanner">{notice}</div> : null}
+          {!loading && !error ? (
+            <p className="searchResultCount">
+              {results.length} result{results.length === 1 ? "" : "s"} found
+            </p>
+          ) : null}
 
           {loading ? <SearchSkeletonList /> : null}
 
-          {!loading && hasSubmitted && !error && filteredResults.length === 0 ? (
+          {!loading && hasSubmitted && !error && results.length === 0 ? (
             <div className="searchStateEmpty">
               <div className="emptyIllustration" aria-hidden="true" />
               <p>No results</p>
             </div>
           ) : null}
 
-          {!loading && filteredResults.length > 0 ? (
+          {!loading && results.length > 0 ? (
             <div className="searchResultsList">
-              {filteredResults.map((listing) => (
+              {results.map((listing) => (
                 <Link className="searchResultCard" key={listing.id} href={`/listing/${listing.id}`}>
                   {resolveMediaUrl(listing.media.find((item) => item.type === "IMAGE")?.url ?? "") ? (
                     <img
