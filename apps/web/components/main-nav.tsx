@@ -3,9 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { clearToken, getCategoryCatalog, getMe } from "../lib/api";
-import { MarketplaceCategory } from "../lib/types";
+import { useEffect, useState } from "react";
+import { clearToken, getMe } from "../lib/api";
 import { useAuthToken } from "../lib/use-auth-token";
 import { CommandPalette } from "./command-palette";
 
@@ -33,16 +32,7 @@ export function MainNav() {
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
   const [accountName, setAccountName] = useState("");
-  const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategorySlug, setSearchCategorySlug] = useState("");
-  const [searchSubcategorySlug, setSearchSubcategorySlug] = useState("");
-  const [searchCity, setSearchCity] = useState("");
   const mobileAccountName = accountName.split(" ")[0] || "You";
-  const selectedSearchCategory = useMemo(
-    () => categories.find((item) => item.slug === searchCategorySlug) ?? null,
-    [categories, searchCategorySlug]
-  );
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -55,32 +45,6 @@ export function MainNav() {
       })
       .catch(() => setAccountName("Account"));
   }, [isLoggedIn]);
-
-  useEffect(() => {
-    getCategoryCatalog()
-      .then((data) => setCategories(data))
-      .catch(() => setCategories([]));
-  }, []);
-
-  function onHeaderSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const params = new URLSearchParams();
-    const query = searchQuery.trim();
-    const city = searchCity.trim();
-    if (query) {
-      params.set("q", query);
-    }
-    if (searchCategorySlug) {
-      params.set("category", searchCategorySlug);
-    }
-    if (searchSubcategorySlug) {
-      params.set("subcategory", searchSubcategorySlug);
-    }
-    if (city) {
-      params.set("city", city);
-    }
-    router.push(params.toString() ? `/search?${params.toString()}` : "/search");
-  }
 
   return (
     <>
@@ -144,76 +108,6 @@ export function MainNav() {
           </Link>
         </div>
       </nav>
-      {pathname === "/" || pathname === "/search" ? (
-        <section className="header-search-wrap">
-          <form className="search-box search-box-advanced nav-search-box" onSubmit={onHeaderSearchSubmit}>
-            <label className="search-field search-field-keyword">
-              <span className="search-field-label">Product</span>
-              <div className="search-input-wrap">
-                <span className="search-icon" aria-hidden="true">
-                  {"\ud83d\udd0d"}
-                </span>
-                <input
-                  className="search-input"
-                  name="q"
-                  placeholder="Product name (iPhone, Sofa, Cycle...)"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                />
-              </div>
-            </label>
-            <label className="search-field">
-              <span className="search-field-label">Category</span>
-              <select
-                className="search-select"
-                value={searchCategorySlug}
-                onChange={(event) => {
-                  setSearchCategorySlug(event.target.value);
-                  setSearchSubcategorySlug("");
-                }}
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.slug}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="search-field">
-              <span className="search-field-label">Subcategory</span>
-              <select
-                className="search-select"
-                value={searchSubcategorySlug}
-                onChange={(event) => setSearchSubcategorySlug(event.target.value)}
-                disabled={!selectedSearchCategory}
-              >
-                <option value="">
-                  {selectedSearchCategory ? "All Subcategories" : "Select category first"}
-                </option>
-                {(selectedSearchCategory?.subcategories ?? []).map((subcategory) => (
-                  <option key={subcategory.id} value={subcategory.slug}>
-                    {subcategory.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="search-field">
-              <span className="search-field-label">City / Area</span>
-              <input
-                className="search-select"
-                name="city"
-                placeholder="Karachi, Lahore, DHA..."
-                value={searchCity}
-                onChange={(event) => setSearchCity(event.target.value)}
-              />
-            </label>
-            <button className="search-btn" type="submit">
-              Smart Search
-            </button>
-          </form>
-        </section>
-      ) : null}
 
       <nav className="mobile-nav" aria-label="Primary">
         <div className="mobile-nav-inner">

@@ -826,6 +826,41 @@ textarea {
   gap: 12px;
 }
 
+.hero-search-sidebar {
+  margin-bottom: 20px;
+  max-width: 560px;
+}
+
+.hero-search-box {
+  max-width: 100%;
+  grid-template-columns: 1fr;
+  border-radius: 20px;
+  border: 1px solid rgba(200, 96, 58, 0.22);
+  padding: 16px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(253, 247, 239, 0.95)),
+    radial-gradient(circle at top right, rgba(200, 96, 58, 0.08), transparent 56%);
+  box-shadow: 0 12px 30px rgba(72, 45, 31, 0.1);
+}
+
+.hero-search-box .search-field-label {
+  font-size: 10px;
+  letter-spacing: 1.7px;
+}
+
+.hero-search-box .search-input-wrap,
+.hero-search-box .search-select {
+  min-height: 48px;
+}
+
+.hero-search-box .search-btn {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .search-field {
   display: grid;
   gap: 6px;
@@ -3543,6 +3578,20 @@ textarea {
   .search-box-advanced .search-btn {
     grid-column: 1 / -1;
   }
+
+  .hero-search-sidebar {
+    max-width: none;
+    margin-bottom: 16px;
+  }
+
+  .hero-search-box {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-search-box .search-field-keyword,
+  .hero-search-box .search-btn {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3641,6 +3690,15 @@ textarea {
   .search-box-advanced .search-field-keyword,
   .search-box-advanced .search-btn {
     grid-column: auto;
+  }
+
+  .hero-search-sidebar {
+    margin-bottom: 14px;
+  }
+
+  .hero-search-box {
+    padding: 12px;
+    border-radius: 16px;
   }
 
   .accountListingMain {
