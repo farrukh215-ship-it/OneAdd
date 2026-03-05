@@ -11,6 +11,7 @@ import {
   toggleSavedListingPreference,
   trackRecentlyViewedPreference
 } from "../lib/listing-preferences";
+import { resolveMediaUrl } from "../lib/media-url";
 import { useAuthToken } from "../lib/use-auth-token";
 
 type ListingDetailViewProps = {
@@ -74,6 +75,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
     [failedImageIds, images]
   );
   const selectedImage = visibleImages[selectedImageIndex]?.url ?? "";
+  const selectedImageUrl = resolveMediaUrl(selectedImage);
 
   const phone = listing.user?.phone ?? "";
   const trustScore = listing.user?.trustScore?.score ?? 0;
@@ -154,9 +156,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
       <div className="listingDetailLayout">
         <section className="listingMediaColumn">
           <div className="listingMainMedia">
-            {selectedImage ? (
+            {selectedImageUrl ? (
               <img
-                src={selectedImage}
+                src={selectedImageUrl}
                 alt={listing.title}
                 className="listingMainImage"
                 onError={() => {
@@ -194,7 +196,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
                   onClick={() => setSelectedImageIndex(index)}
                   type="button"
                 >
-                  <img src={item.url} alt={listing.title} />
+                  <img src={resolveMediaUrl(item.url)} alt={listing.title} />
                 </button>
               ))}
             </div>
@@ -202,7 +204,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
           {video ? (
             <video
-              src={video.url}
+              src={resolveMediaUrl(video.url)}
               className="listingVideoBlock"
               controls
               preload="metadata"

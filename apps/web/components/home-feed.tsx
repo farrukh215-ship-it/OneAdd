@@ -11,6 +11,7 @@ import {
   syncSavedListings,
   toggleSavedListingPreference
 } from "../lib/listing-preferences";
+import { resolveMediaUrl } from "../lib/media-url";
 import { Listing, MarketplaceCategory } from "../lib/types";
 import { useAuthToken } from "../lib/use-auth-token";
 
@@ -55,7 +56,8 @@ const heroFallback: HeroCard[] = [
 ];
 
 function getPrimaryImage(listing: Listing) {
-  return listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
+  const url = listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
+  return resolveMediaUrl(url);
 }
 
 function toRelativeTime(timestamp?: string) {
@@ -150,7 +152,9 @@ function ListingCard({ listing }: ListingCardProps) {
   );
   const activeOriginalImageIndex = visibleImageIndexes[activeImageIndex];
   const image =
-    activeOriginalImageIndex !== undefined ? images[activeOriginalImageIndex]?.url ?? "" : "";
+    activeOriginalImageIndex !== undefined
+      ? resolveMediaUrl(images[activeOriginalImageIndex]?.url ?? "")
+      : "";
   const condition = (listing.status || "USED").replace(/_/g, " ");
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const responseBadge =

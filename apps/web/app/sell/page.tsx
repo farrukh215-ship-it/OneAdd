@@ -17,6 +17,7 @@ import {
 } from "../../lib/api";
 import { MarketplaceCategory } from "../../lib/types";
 import { useAuthToken } from "../../lib/use-auth-token";
+import { resolveMediaUrl } from "../../lib/media-url";
 
 type WizardStep = 1 | 2 | 3 | 4;
 type Condition = "NEW" | "USED" | "LIKE_NEW";
@@ -100,6 +101,13 @@ function cleanDescriptionMetadata(description: string) {
     .trim();
 }
 
+function normalizeMediaItems(items: MediaItem[]) {
+  return items.map((item) => ({
+    ...item,
+    url: resolveMediaUrl(item.url)
+  }));
+}
+
 export default function SellPage() {
   const { mounted, token } = useAuthToken();
   const [step, setStep] = useState<WizardStep>(1);
@@ -120,6 +128,7 @@ export default function SellPage() {
   const [editingCategoryId, setEditingCategoryId] = useState("");
   const [editQueryId, setEditQueryId] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
+  const [failedMediaIds, setFailedMediaIds] = useState<Set<string>>(new Set());
 
   const draftHydratedRef = useRef(false);
 
@@ -158,7 +167,10 @@ export default function SellPage() {
         mainCategoryId?: string;
       };
       if (parsed.form) {
-        setForm(parsed.form);
+        setForm({
+          ...parsed.form,
+          media: normalizeMediaItems(parsed.form.media ?? [])
+        });
       }
       if (parsed.step && parsed.step >= 1 && parsed.step <= 4) {
         setStep(parsed.step);
@@ -243,6 +255,10 @@ export default function SellPage() {
     }
   }, [coverImageId, images]);
 
+  useEffect(() => {
+    setFailedMediaIds(new Set());
+  }, [form.media]);
+
   const validationErrors = useMemo(() => {
     const errs: string[] = [];
     if (!mainCategoryId.trim()) errs.push("Main category required hai.");
@@ -305,7 +321,7 @@ export default function SellPage() {
           condition: parsedCondition,
           city: parsedCity,
           isNegotiable: Boolean(listing.isNegotiable),
-          media: [...imageMedia, ...videoMedia],
+          media: normalizeMediaItems([...imageMedia, ...videoMedia]),
           showPhone: listing.showPhone,
           allowChat: listing.allowChat,
           allowCall: listing.allowCall,
@@ -433,7 +449,10 @@ export default function SellPage() {
         });
         setForm((prev) => ({
           ...prev,
-          media: [...prev.media, { id: uid(), type: "IMAGE", url: uploaded.url }]
+          media: normalizeMediaItems([
+            ...prev.media,
+            { id: uid(), type: "IMAGE", url: uploaded.url }
+          ])
         }));
       }
       setSuccess("Images upload ho gayin.");
@@ -476,7 +495,7 @@ export default function SellPage() {
         const withoutVideo = prev.media.filter((item) => item.type !== "VIDEO");
         return {
           ...prev,
-          media: [
+          media: normalizeMediaItems([
             ...withoutVideo,
             {
               id: uid(),
@@ -484,7 +503,7 @@ export default function SellPage() {
               url: uploaded.url,
               durationSec: uploaded.durationSec ?? duration
             }
-          ]
+          ])
         };
       });
       setSuccess("Video upload ho gayi.");
@@ -507,6 +526,14 @@ export default function SellPage() {
       ...prev,
       media: prev.media.filter((item) => item.id !== id)
     }));
+    setFailedMediaIds((prev) => {
+      if (!prev.has(id)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     if (coverImageId === id) {
       setCoverImageId("");
     }
@@ -908,31 +935,67 @@ export default function SellPage() {
               <div className="wizardMediaGrid">
                 {form.media.map((item, index) => (
                   <article key={item.id} className="wizardMediaCard">
-                    <p className="pill">{item.type}</p>
-                    {item.type === "IMAGE" ? (
-                      <img className="wizardMediaPreview" src={item.url} alt={`Upload ${index + 1}`} />
-                    ) : (
-                      <video className="wizardMediaPreview" src={item.url} controls preload="metadata" />
-                    )}
-                    {item.type === "VIDEO" ? (
-                      <p className="searchResultMeta">Duration: {item.durationSec}s</p>
-                    ) : null}
-                    {item.type === "IMAGE" ? (
+                    <div className="wizardMediaCardHead">
+                      <p className="pill">{item.type}</p>
+                      <p className="searchResultMeta">Upload {index + 1}</p>
+                    </div>
+                    <div className="wizardMediaPreviewFrame">
+                      {item.type === "IMAGE" && !failedMediaIds.has(item.id) ? (
+                        <img
+                          className="wizardMediaPreview"
+                          src={resolveMediaUrl(item.url)}
+                          alt={`Upload ${index + 1}`}
+                          onError={() =>
+                            setFailedMediaIds((prev) => {
+                              const next = new Set(prev);
+                              next.add(item.id);
+                              return next;
+                            })
+                          }
+                        />
+                      ) : null}
+                      {item.type === "VIDEO" && !failedMediaIds.has(item.id) ? (
+                        <video
+                          className="wizardMediaPreview"
+                          src={resolveMediaUrl(item.url)}
+                          controls
+                          preload="metadata"
+                          onError={() =>
+                            setFailedMediaIds((prev) => {
+                              const next = new Set(prev);
+                              next.add(item.id);
+                              return next;
+                            })
+                          }
+                        />
+                      ) : null}
+                      {failedMediaIds.has(item.id) ? (
+                        <div className="wizardMediaFallback">
+                          <span>Preview unavailable</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="wizardMediaActions">
+                      {item.type === "VIDEO" ? (
+                        <p className="searchResultMeta">Duration: {item.durationSec}s</p>
+                      ) : null}
+                      {item.type === "IMAGE" ? (
+                        <button
+                          type="button"
+                          className={`searchSubmitBtn ghost ${coverImageId === item.id ? "isCoverBtn" : ""}`}
+                          onClick={() => setCoverImage(item.id)}
+                        >
+                          {coverImageId === item.id ? "Cover Selected" : "Set as Cover"}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
-                        className={`searchSubmitBtn ghost ${coverImageId === item.id ? "isCoverBtn" : ""}`}
-                        onClick={() => setCoverImage(item.id)}
+                        className="searchSubmitBtn ghost"
+                        onClick={() => removeMedia(item.id)}
                       >
-                        {coverImageId === item.id ? "Cover Selected" : "Set as Cover"}
+                        Remove
                       </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="searchSubmitBtn ghost"
-                      onClick={() => removeMedia(item.id)}
-                    >
-                      Remove
-                    </button>
+                    </div>
                   </article>
                 ))}
               </div>

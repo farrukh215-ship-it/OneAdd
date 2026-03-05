@@ -8,6 +8,7 @@ import {
   SearchSuggestion,
   SellerOverviewMetrics
 } from "./types";
+import { resolveMediaUrl } from "./media-url";
 
 function resolveApiBaseUrl() {
   if (typeof window !== "undefined") {
@@ -31,7 +32,6 @@ const API_BASE_URL = resolveApiBaseUrl();
 const TOKEN_KEY = "aikad_access_token";
 const SESSION_TOKEN_KEY = "aikad_access_token_session";
 export const AUTH_TOKEN_CHANGED_EVENT = "aikad-auth-changed";
-const LEGACY_MEDIA_HOSTS = new Set(["zaroratbazar.shop", "www.zaroratbazar.shop"]);
 
 export class ApiError extends Error {
   status: number;
@@ -203,59 +203,12 @@ function normalizeVideoFeed(payload: unknown): VideoFeedItem[] {
     .filter((item): item is VideoFeedItem => Boolean(item));
 }
 
-function normalizeMediaUrl(url: string) {
-  if (!url) {
-    return url;
-  }
-
-  const normalizeMediaPath = (pathname: string) => {
-    if (pathname.startsWith("/media/files/")) {
-      return `/api${pathname}`;
-    }
-    return pathname;
-  };
-
-  try {
-    if (url.startsWith("/")) {
-      const path = normalizeMediaPath(url);
-      if (typeof window !== "undefined") {
-        return `${window.location.origin}${path}`;
-      }
-      return `https://www.teragharmeraghar.com${path}`;
-    }
-
-    const parsed = new URL(url);
-    parsed.pathname = normalizeMediaPath(parsed.pathname);
-    if (parsed.pathname.startsWith("/api/media/files/")) {
-      if (typeof window !== "undefined") {
-        parsed.protocol = window.location.protocol;
-        parsed.hostname = window.location.hostname;
-        parsed.port = window.location.port;
-        return parsed.toString();
-      }
-      parsed.protocol = "https:";
-      parsed.hostname = "www.teragharmeraghar.com";
-      parsed.port = "";
-      return parsed.toString();
-    }
-    if (LEGACY_MEDIA_HOSTS.has(parsed.hostname)) {
-      parsed.protocol = "https:";
-      parsed.hostname = "www.teragharmeraghar.com";
-      parsed.port = "";
-      return parsed.toString();
-    }
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
 function normalizeListing(listing: Listing): Listing {
   return {
     ...listing,
     media: (listing.media ?? []).map((item) => ({
       ...item,
-      url: normalizeMediaUrl(item.url)
+      url: resolveMediaUrl(item.url)
     }))
   };
 }
@@ -652,7 +605,7 @@ export async function uploadMediaFile(params: {
   };
   return {
     ...payload,
-    url: normalizeMediaUrl(payload.url)
+    url: resolveMediaUrl(payload.url)
   };
 }
 

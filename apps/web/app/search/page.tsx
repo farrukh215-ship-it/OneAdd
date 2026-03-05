@@ -7,6 +7,7 @@ import {
   SearchFilters,
   searchListingsWithFilters
 } from "../../lib/api";
+import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
 
 const conditions = ["ANY", "NEW", "USED"];
@@ -310,10 +311,10 @@ export default function SearchPage() {
             <div className="searchResultsList">
               {results.map((listing) => (
                 <Link className="searchResultCard" key={listing.id} href={`/listing/${listing.id}`}>
-                  {listing.media.find((item) => item.type === "IMAGE")?.url ? (
+                  {resolveMediaUrl(listing.media.find((item) => item.type === "IMAGE")?.url ?? "") ? (
                     <img
                       className="searchResultImage"
-                      src={listing.media.find((item) => item.type === "IMAGE")?.url}
+                      src={resolveMediaUrl(listing.media.find((item) => item.type === "IMAGE")?.url ?? "")}
                       alt={listing.title}
                     />
                   ) : (

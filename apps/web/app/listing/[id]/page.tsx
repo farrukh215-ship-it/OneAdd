@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingDetailView } from "../../../components/listing-detail-view";
 import { ApiError, fetchListingById } from "../../../lib/api";
+import { resolveMediaUrl } from "../../../lib/media-url";
 
 type ListingDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -26,7 +27,7 @@ export async function generateMetadata({
         title: listing.title,
         description: listing.description.slice(0, 150),
         type: "article",
-        images: firstImage ? [firstImage.url] : []
+        images: firstImage ? [resolveMediaUrl(firstImage.url)] : []
       }
     };
   } catch {
@@ -55,7 +56,7 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     "@type": "Product",
     name: listing.title,
     description: listing.description,
-    image: firstImage?.url ? [firstImage.url] : undefined,
+    image: firstImage?.url ? [resolveMediaUrl(firstImage.url)] : undefined,
     offers: {
       "@type": "Offer",
       priceCurrency: listing.currency,

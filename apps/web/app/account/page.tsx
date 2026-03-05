@@ -12,6 +12,7 @@ import {
   getSellerOverviewMetrics,
   relistListing
 } from "../../lib/api";
+import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { Listing, SellerOverviewMetrics } from "../../lib/types";
 
@@ -23,7 +24,8 @@ type ProfileState = {
 };
 
 function getPrimaryImage(listing: Listing) {
-  return listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
+  const url = listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
+  return resolveMediaUrl(url);
 }
 
 function formatListedDate(timestamp?: string) {

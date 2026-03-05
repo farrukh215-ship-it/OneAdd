@@ -2702,23 +2702,63 @@ textarea {
 
 .wizardMediaGrid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
 .wizardMediaCard {
   border: 1px solid var(--sand);
-  border-radius: 14px;
-  padding: 10px;
-  background: var(--warm);
+  border-radius: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, #fbf4ea 0%, #f7eee3 100%);
+  display: grid;
+  gap: 10px;
+}
+
+.wizardMediaCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wizardMediaPreviewFrame {
+  border: 1px solid #e5d6c4;
+  border-radius: 12px;
+  background: radial-gradient(circle at 18% 20%, #f6ebde 0%, #efe2d3 48%, #ebddcf 100%);
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
 }
 
 .wizardMediaPreview {
   width: 100%;
-  border-radius: 10px;
-  border: 1px solid var(--sand);
+  height: 100%;
+  border: 0;
+  border-radius: 0;
   background: #fff;
-  object-fit: cover;
-  max-height: 180px;
+  object-fit: contain;
+  display: block;
+}
+
+.wizardMediaFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.84rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.wizardMediaActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .isCoverBtn {
@@ -3380,6 +3420,10 @@ textarea {
 
   .mediaComposer {
     grid-template-columns: 1fr auto;
+  }
+
+  .wizardMediaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
