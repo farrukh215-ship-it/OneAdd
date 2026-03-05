@@ -713,7 +713,7 @@ export function SellScreen({ navigation, route }: any) {
         <ToggleRow label="Phone show karo" value={showPhone} onChange={setShowPhone} />
         <ToggleRow label="Chat allow karo" value={allowChat} onChange={setAllowChat} />
         <ToggleRow label="Call allow karo" value={allowCall} onChange={setAllowCall} />
-        <ToggleRow label="SMS allow karo" value={allowSMS} onChange={setAllowSMS} />
+        <ToggleRow label="WhatsApp allow karo" value={allowSMS} onChange={setAllowSMS} />
         <ToggleRow label="Price negotiable" value={isNegotiable} onChange={setIsNegotiable} />
       </Animated.View>
 

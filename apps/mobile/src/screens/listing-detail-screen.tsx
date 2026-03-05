@@ -108,6 +108,7 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [chatLoading, setChatLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [contactVisible, setContactVisible] = useState(false);
   const [offers, setOffers] = useState<ListingOffer[]>([]);
   const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const listingId = String(route.params?.id ?? "");
@@ -138,6 +139,7 @@ export function ListingDetailScreen({ route, navigation }: any) {
     if (!listingId) {
       return;
     }
+    setContactVisible(false);
     void addRecentlyViewedListingId(listingId);
     void isListingSaved(listingId).then(setSaved).catch(() => setSaved(false));
   }, [listingId]);
@@ -196,6 +198,12 @@ export function ListingDetailScreen({ route, navigation }: any) {
     });
   }
 
+  async function onShareFacebook() {
+    const link = `https://www.teragharmeraghar.com/listing/${listingId}`;
+    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;
+    await Linking.openURL(fbShareUrl);
+  }
+
   async function onToggleSaved() {
     const nextSaved = await toggleSavedListingId(listingId);
     setSaved(nextSaved);
@@ -225,6 +233,8 @@ export function ListingDetailScreen({ route, navigation }: any) {
     trustScore >= 80 ? "Asli Banda" : trustScore >= 50 ? "Trusted Asli Banda" : "New Member";
   const currentUserId = getUserIdFromToken(getAuthToken());
   const isOwner = Boolean(currentUserId && listing.user?.id === currentUserId);
+  const canShowContact = Boolean(listing.showPhone && phone);
+  const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, "")}`;
 
   return (
     <View style={styles.screen}>
@@ -293,9 +303,28 @@ export function ListingDetailScreen({ route, navigation }: any) {
           <View style={styles.trustCard}>
             <Text style={styles.sellerName}>{listing.user?.fullName || "Asli Seller"}</Text>
             <Text style={styles.trustText}>{trustBadge}</Text>
+            <Text style={styles.trustSub}>Trust score: {trustScore}</Text>
             <Text style={styles.trustSub}>
               Seller last online: {formatRelativeTime(listing.user?.lastSeenAt)}
             </Text>
+            <Text style={styles.trustSub}>
+              Note: Trust score 0 ka matlab new seller profile hai.
+            </Text>
+            {canShowContact ? (
+              <View style={styles.contactRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.quickActionBtn, pressed && styles.pressed]}
+                  onPress={() => setContactVisible((prev) => !prev)}
+                >
+                  <Text style={styles.quickActionText}>
+                    {contactVisible ? "Hide Contact" : "Show Contact"}
+                  </Text>
+                </Pressable>
+                {contactVisible ? <Text style={styles.trustSub}>{phone}</Text> : null}
+              </View>
+            ) : (
+              <Text style={styles.trustSub}>Seller ne contact hide rakha hai.</Text>
+            )}
           </View>
 
           <View style={styles.trustCard}>
@@ -337,6 +366,12 @@ export function ListingDetailScreen({ route, navigation }: any) {
             >
               <Text style={styles.quickActionText}>Share Listing</Text>
             </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.quickActionBtn, pressed && styles.pressed]}
+              onPress={onShareFacebook}
+            >
+              <Text style={styles.quickActionText}>Share on Facebook</Text>
+            </Pressable>
           </View>
           {error ? <Text style={styles.inlineError}>{error}</Text> : null}
         </View>
@@ -369,7 +404,15 @@ export function ListingDetailScreen({ route, navigation }: any) {
             <Text style={styles.disabledPillText}>Chat disabled</Text>
           </View>
         )}
-        {listing.allowCall && phone ? (
+        {canShowContact && !contactVisible ? (
+          <Pressable
+            style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
+            onPress={() => setContactVisible(true)}
+          >
+            <Text style={styles.secondaryCtaText}>Show Contact</Text>
+          </Pressable>
+        ) : null}
+        {canShowContact && contactVisible && listing.allowCall ? (
           <Pressable
             style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
             onPress={() => Linking.openURL(`tel:${phone}`)}
@@ -377,12 +420,10 @@ export function ListingDetailScreen({ route, navigation }: any) {
             <Text style={styles.secondaryCtaText}>Call</Text>
           </Pressable>
         ) : null}
-        {listing.allowSMS && phone ? (
+        {canShowContact && contactVisible && listing.allowSMS ? (
           <Pressable
             style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
-            onPress={() =>
-              Linking.openURL(`https://wa.me/${phone.replace(/[^\d]/g, "")}`)
-            }
+            onPress={() => Linking.openURL(whatsappUrl)}
           >
             <Text style={styles.secondaryCtaText}>WhatsApp</Text>
           </Pressable>
@@ -559,13 +600,18 @@ const styles = StyleSheet.create({
     color: "#7A5544",
     fontSize: 12
   },
+  contactRow: {
+    marginTop: 8,
+    gap: 6
+  },
   quickActionsRow: {
     marginTop: 14,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10
   },
   quickActionBtn: {
-    flex: 1,
+    minWidth: 120,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
