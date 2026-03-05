@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
 import { FeatureFlagModule } from "../feature-flags/feature-flag.module";
 import { RecommendationsController } from "./recommendations.controller";
 import { RecommendationsService } from "./recommendations.service";
 
 @Module({
-  imports: [FeatureFlagModule],
+  imports: [AuthModule, FeatureFlagModule],
   controllers: [RecommendationsController],
   providers: [RecommendationsService]
 })
