@@ -27,7 +27,7 @@ function getUserIdFromToken(token: string) {
   }
 }
 
-function formatTime(value?: string) {
+function formatDateTime(value?: string) {
   if (!value) {
     return "";
   }
@@ -35,7 +35,12 @@ function formatTime(value?: string) {
   if (Number.isNaN(date.getTime())) {
     return "";
   }
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 export default function ChatPage() {
@@ -50,6 +55,7 @@ export default function ChatPage() {
   const [error, setError] = useState("");
   const [sendError, setSendError] = useState("");
   const [sending, setSending] = useState(false);
+  const [showPeerContact, setShowPeerContact] = useState(false);
 
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
@@ -64,6 +70,12 @@ export default function ChatPage() {
         ? activeThread.seller?.fullName
         : activeThread.buyer?.fullName) || "Buyer/Seller"
     );
+  }, [activeThread, currentUserId]);
+  const activePeer = useMemo(() => {
+    if (!activeThread) {
+      return null;
+    }
+    return activeThread.buyer?.id === currentUserId ? activeThread.seller : activeThread.buyer;
   }, [activeThread, currentUserId]);
   const isClosedThread =
     activeThread?.status === "CLOSED" || activeThread?.listing?.status === "SOLD";
@@ -118,6 +130,10 @@ export default function ChatPage() {
       clearInterval(timer);
     };
   }, [activeThreadId, token]);
+
+  useEffect(() => {
+    setShowPeerContact(false);
+  }, [activeThreadId]);
 
   async function onSend(event: FormEvent) {
     event.preventDefault();
@@ -196,7 +212,7 @@ export default function ChatPage() {
                   >
                     <div className="chatThreadHead">
                       <p className="chatThreadTitle">{thread.listing?.title || "Direct Chat"}</p>
-                      <p className="chatThreadTime">{formatTime(thread.lastMessageAt)}</p>
+                      <p className="chatThreadTime">{formatDateTime(thread.lastMessageAt)}</p>
                     </div>
                     <p className="chatThreadMeta">
                       Uploaded by {(thread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
@@ -224,6 +240,19 @@ export default function ChatPage() {
                 Uploaded by {(activeThread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                 {activePeerName.split(" ")[0]}
               </p>
+              {activePeer?.city ? <p className="chatThreadMeta">City: {activePeer.city}</p> : null}
+              {activePeer?.phone ? (
+                <div className="chatPeerActions">
+                  <button
+                    className="searchSubmitBtn ghost"
+                    onClick={() => setShowPeerContact((prev) => !prev)}
+                    type="button"
+                  >
+                    {showPeerContact ? "Hide Contact" : "Show Contact"}
+                  </button>
+                  {showPeerContact ? <span className="revealedContact">{activePeer.phone}</span> : null}
+                </div>
+              ) : null}
             </header>
           ) : null}
 
@@ -246,7 +275,7 @@ export default function ChatPage() {
                   >
                     <p className="chatBubbleSender">{mine ? "You" : activePeerName.split(" ")[0]}</p>
                     <p className="chatBubbleText">{message.content}</p>
-                    <time className="chatBubbleTime">{formatTime(message.createdAt)}</time>
+                    <time className="chatBubbleTime">{formatDateTime(message.createdAt)}</time>
                   </article>
                 );
               })}

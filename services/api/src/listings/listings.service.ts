@@ -804,6 +804,8 @@ export class ListingsService {
     ) {
       throw new NotFoundException("Listing not found.");
     }
+    const canViewSenderContact =
+      Boolean(viewerUserId) && listing.userId === viewerUserId;
 
     const messages = await this.prisma.chatMessage.findMany({
       where: {
@@ -820,6 +822,9 @@ export class ListingsService {
         createdAt: true,
         sender: {
           select: {
+            id: true,
+            phone: true,
+            city: true,
             fullName: true
           }
         }
@@ -842,7 +847,10 @@ export class ListingsService {
         return {
           id: message.id,
           createdAt: message.createdAt,
+          senderId: message.sender.id,
           senderName,
+          senderCity: message.sender.city || null,
+          senderPhone: canViewSenderContact ? message.sender.phone || null : null,
           amount: Number.isFinite(amount) ? amount : null,
           content: clean.slice(0, 180)
         };

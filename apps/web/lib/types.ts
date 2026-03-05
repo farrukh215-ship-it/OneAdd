@@ -44,10 +44,14 @@ export type ChatThread = {
   buyer?: {
     id: string;
     fullName?: string;
+    phone?: string;
+    city?: string;
   };
   seller?: {
     id: string;
     fullName?: string;
+    phone?: string;
+    city?: string;
   };
 };
 
@@ -62,7 +66,10 @@ export type ChatMessage = {
 export type ListingOffer = {
   id: string;
   createdAt: string;
+  senderId?: string;
   senderName: string;
+  senderCity?: string | null;
+  senderPhone?: string | null;
   amount: number | null;
   content: string;
 };
@@ -70,7 +77,10 @@ export type ListingOffer = {
 export type ListingPublicMessage = {
   id: string;
   createdAt: string;
+  senderId?: string;
   senderName: string;
+  senderCity?: string | null;
+  senderPhone?: string | null;
   content: string;
   amount: number | null;
 };

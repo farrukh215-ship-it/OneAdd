@@ -121,8 +121,8 @@ export class ChatService {
         OR: [{ buyerId: userId }, { sellerId: userId }]
       },
       include: {
-        buyer: { select: { id: true, fullName: true } },
-        seller: { select: { id: true, fullName: true } },
+        buyer: { select: { id: true, fullName: true, phone: true, city: true } },
+        seller: { select: { id: true, fullName: true, phone: true, city: true } },
         listing: { select: { id: true, title: true, status: true } }
       },
       orderBy: { lastMessageAt: "desc" }

@@ -368,7 +368,9 @@ export async function fetchListingById(id: string) {
 }
 
 export async function fetchListingOffers(id: string, limit = 15) {
-  return apiRequest<ListingOffersResponse>(`/listings/${id}/offers?limit=${limit}`);
+  return apiRequest<ListingOffersResponse>(`/listings/${id}/offers?limit=${limit}`, {
+    auth: true
+  });
 }
 
 export async function requestOtp(phone: string, options?: { forSignup?: boolean }) {

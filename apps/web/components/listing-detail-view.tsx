@@ -45,6 +45,32 @@ function toLastOnline(timestamp?: string | null) {
   return `Online ${days}d ago`;
 }
 
+function getUserIdFromToken(token: string) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return "";
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))) as {
+      sub?: string;
+    };
+    return decoded.sub ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 function extractMetadataValue(description: string, key: "city" | "location") {
   const match = description.match(new RegExp(`\\b${key}\\s*:\\s*([^\\n]+)`, "i"));
   if (!match?.[1]) {
@@ -85,7 +111,10 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [reportReason, setReportReason] = useState("Fake or misleading listing");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportFeedback, setReportFeedback] = useState("");
+  const [openPublicContactFor, setOpenPublicContactFor] = useState("");
   const isLoggedIn = mounted && Boolean(token);
+  const currentUserId = useMemo(() => getUserIdFromToken(token), [token]);
+  const isListingOwner = Boolean(currentUserId && listing.user?.id && currentUserId === listing.user.id);
 
   const images = useMemo(
     () =>
@@ -140,6 +169,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
     setReportFeedback("");
     setReportReason("Fake or misleading listing");
     setSellerBlocked(isSellerBlockedLocal(listing.user?.id));
+    setOpenPublicContactFor("");
   }, [listing.id]);
 
   useEffect(() => {
@@ -297,11 +327,36 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               ) : (
                 <div className="stack">
                   {recentMessages.map((message) => (
-                    <div key={message.id} className="sellerTrustRow">
-                      <span className="pill">{message.senderName}</span>
-                      <span className="sellerTrustScore">
+                    <div key={message.id} className="publicMessageItem">
+                      <div className="sellerTrustRow">
+                        <button
+                          className="pill publicSenderBtn"
+                          type="button"
+                          onClick={() =>
+                            setOpenPublicContactFor((prev) =>
+                              prev === message.senderId ? "" : message.senderId ?? message.id
+                            )
+                          }
+                        >
+                          {message.senderName}
+                        </button>
+                        <span className="sellerTrustScore">
+                          <strong>{formatDateTime(message.createdAt)}</strong>
+                          {message.senderCity ? ` · ${message.senderCity}` : ""}
+                        </span>
+                      </div>
+                      <p className="publicMessageText">
                         {message.amount ? `Offer: PKR ${message.amount.toLocaleString()}` : message.content}
-                      </span>
+                      </p>
+                      {openPublicContactFor === (message.senderId ?? message.id) ? (
+                        isListingOwner && message.senderPhone ? (
+                          <p className="revealedContact">{message.senderPhone}</p>
+                        ) : (
+                          <p className="shareHint">
+                            Sender contact dekhne ke liye owner account se login karein.
+                          </p>
+                        )
+                      ) : null}
                     </div>
                   ))}
                 </div>
