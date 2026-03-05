@@ -20,37 +20,18 @@ import {
   toggleSavedListingId
 } from "../services/listing-preferences";
 import type { Listing, MarketplaceCategory } from "../types";
+import {
+  displayCategoryPath,
+  displayListedDate,
+  displayLocation,
+  displaySellerLastSeen,
+  displayRelativeTime
+} from "../theme/ui-contract";
+import { uiTheme } from "../theme/tokens";
 
 const urduTagline =
   "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 
-function formatRelativeTime(input?: string) {
-  if (!input) return "Just now";
-  const createdAt = new Date(input);
-  if (Number.isNaN(createdAt.getTime())) return "Just now";
-  const diffSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
-  if (diffSeconds < 60) return "Just now";
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-}
-
-function formatListedDate(input?: string) {
-  if (!input) return "Listed recently";
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "Listed recently";
-  return `Listed: ${date.toLocaleDateString("en-GB")}`;
-}
-
-function formatLastOnline(input?: string | null) {
-  if (!input) return "Seller last online: recently";
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "Seller last online: recently";
-  return `Seller last online: ${formatRelativeTime(date.toISOString())}`;
-}
 
 function dedupeByListingId(source: Listing[]) {
   const seen = new Set<string>();
@@ -69,15 +50,6 @@ function getTrustBadge(score: number) {
   if (score >= 80) return "Asli Banda";
   if (score >= 50) return "Trusted Asli Banda";
   return "New Member";
-}
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} • ${sub}`;
-  }
-  return main || sub || "";
 }
 
 function FeedSkeleton() {
@@ -180,16 +152,24 @@ function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
         <Text style={styles.title} numberOfLines={2}>
           {item.title}
         </Text>
-        {getCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
-          <Text style={styles.metaSub}>{getCategoryPath(item.mainCategoryName, item.subCategoryName)}</Text>
+        {displayCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+          <Text style={styles.metaSub}>
+            {displayCategoryPath(item.mainCategoryName, item.subCategoryName)}
+          </Text>
         ) : null}
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{item.city || "Pakistan"}</Text>
+          <Text style={styles.metaText}>
+            {displayLocation({
+              city: item.city,
+              exactLocation: item.exactLocation,
+              description: item.description
+            })}
+          </Text>
           <Text style={styles.metaDot}>|</Text>
-          <Text style={styles.metaText}>{formatRelativeTime(item.createdAt)}</Text>
+          <Text style={styles.metaText}>{displayRelativeTime(item.createdAt)}</Text>
         </View>
-        <Text style={styles.metaSub}>{formatListedDate(item.createdAt)}</Text>
-        <Text style={styles.metaSub}>{formatLastOnline(item.user?.lastSeenAt)}</Text>
+        <Text style={styles.metaSub}>{displayListedDate(item.createdAt)}</Text>
+        <Text style={styles.metaSub}>{displaySellerLastSeen(item.user?.lastSeenAt)}</Text>
         <View style={styles.trustPill}>
           <Text style={styles.trustText}>{trustBadge}</Text>
         </View>
@@ -438,7 +418,7 @@ export function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FDF6ED"
+    backgroundColor: uiTheme.colors.surfaceAlt
   },
   listContent: {
     paddingHorizontal: 14,
@@ -449,9 +429,9 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   heroCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     borderRadius: 18,
     padding: 16,
     marginBottom: 12
@@ -470,7 +450,7 @@ const styles = StyleSheet.create({
   heroBrandName: {
     fontSize: 18,
     lineHeight: 22,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "800"
   },
   heroLogoFull: {
@@ -486,19 +466,19 @@ const styles = StyleSheet.create({
   },
   heroSub: {
     marginTop: 6,
-    color: "#7A5544",
+    color: uiTheme.colors.textSoft,
     fontSize: 14,
     lineHeight: 20
   },
   heroUrdu: {
     marginTop: 8,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 15,
     lineHeight: 26,
     textAlign: "right"
   },
   kicker: {
-    color: "#C8603A",
+    color: uiTheme.colors.primary,
     fontSize: 11,
     letterSpacing: 1.6,
     fontWeight: "800",
@@ -512,17 +492,17 @@ const styles = StyleSheet.create({
   categoryCard: {
     width: "23%",
     minWidth: 72,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
     paddingHorizontal: 4
   },
   categoryCardActive: {
-    borderColor: "#C8603A",
+    borderColor: uiTheme.colors.primary,
     backgroundColor: "#FFF7F3"
   },
   categoryIcon: {
@@ -533,14 +513,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 10,
     lineHeight: 13,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "700"
   },
   subcatPanel: {
     marginTop: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     borderRadius: 14
   },
   viewAllRow: {
@@ -576,14 +556,14 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontSize: 34,
     lineHeight: 38,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "800"
   },
   collectionBlock: {
     marginTop: 14
   },
   collectionTitle: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 16,
     fontWeight: "800",
     marginBottom: 8
@@ -593,14 +573,14 @@ const styles = StyleSheet.create({
   },
   collectionCard: {
     width: 160,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     padding: 10
   },
   collectionPrice: {
-    color: "#C8603A",
+    color: uiTheme.colors.primary,
     fontSize: 14,
     fontWeight: "800"
   },
@@ -614,11 +594,11 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#ffffff",
+    backgroundColor: uiTheme.colors.surface,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    shadowColor: "#5C3D2E",
+    borderColor: uiTheme.colors.border,
+    shadowColor: uiTheme.colors.textStrong,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.09,
     shadowRadius: 14,
@@ -635,7 +615,7 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: "100%",
     height: 220,
-    backgroundColor: "#F5EAD8"
+    backgroundColor: uiTheme.colors.surfaceSoft
   },
   imageControls: {
     position: "absolute",
@@ -649,13 +629,13 @@ const styles = StyleSheet.create({
   imageControlBtn: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     backgroundColor: "rgba(255,255,255,0.95)",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   imageControlText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 11,
     fontWeight: "700"
   },
@@ -679,19 +659,19 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 24,
     lineHeight: 28,
-    color: "#C8603A",
+    color: uiTheme.colors.primary,
     fontWeight: "800"
   },
   saveBtn: {
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    backgroundColor: "#FFFFFF",
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4
   },
   saveBtnText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 11,
     fontWeight: "700"
   },
@@ -699,7 +679,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 16,
     lineHeight: 22,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "700"
   },
   metaRow: {
@@ -708,7 +688,7 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   metaText: {
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 13
   },
   metaDot: {
@@ -717,7 +697,7 @@ const styles = StyleSheet.create({
   },
   metaSub: {
     marginTop: 4,
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 12
   },
   trustPill: {
@@ -731,13 +711,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4
   },
   trustText: {
-    color: "#3D6B4F",
+    color: uiTheme.colors.success,
     fontSize: 11,
     letterSpacing: 1,
     fontWeight: "700"
   },
   error: {
-    color: "#b42040",
+    color: uiTheme.colors.danger,
     marginTop: 10
   },
   skeletonWrap: {
@@ -786,12 +766,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     marginTop: 16,
     fontSize: 18,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "700"
   },
   emptySub: {
     marginTop: 6,
-    color: "#9B8070"
+    color: uiTheme.colors.textMuted
   },
   refreshOverlay: {
     position: "absolute",

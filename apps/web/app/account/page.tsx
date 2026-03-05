@@ -18,6 +18,7 @@ import {
 import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { Listing, SellerOverviewMetrics } from "../../lib/types";
+import { displayCategoryPath, displayListedDate, displayLocation } from "../../lib/ui-contract";
 
 type ProfileState = {
   fullName: string;
@@ -31,21 +32,6 @@ function getImageCandidates(listing: Listing) {
     .filter((item) => item.type === "IMAGE" && Boolean(item.url?.trim()))
     .map((item) => resolveMediaUrl(item.url))
     .filter(Boolean);
-}
-
-function formatListedDate(timestamp?: string) {
-  if (!timestamp) {
-    return "Listed recently";
-  }
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return "Listed recently";
-  }
-  return `Listed ${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  })}`;
 }
 
 function statusLabel(status?: string) {
@@ -65,24 +51,6 @@ function statusTone(status?: string) {
     default:
       return "neutral";
   }
-}
-
-function extractLocationFromDescription(description: string) {
-  const cityMatch = description.match(/\bcity\s*:\s*([^\n]+)/i);
-  const areaMatch = description.match(/\b(location|area)\s*:\s*([^\n]+)/i);
-  return {
-    city: cityMatch?.[1]?.trim() ?? "",
-    exactLocation: areaMatch?.[2]?.trim() ?? ""
-  };
-}
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} · ${sub}`;
-  }
-  return main || sub || "";
 }
 
 function AccountListingMedia({ listing }: { listing: Listing }) {
@@ -320,9 +288,12 @@ export default function AccountPage() {
         {items.length > 0 ? (
           <div className="accountListingsGrid">
             {items.map((listing) => {
-              const parsed = extractLocationFromDescription(listing.description ?? "");
-              const cityLabel = (listing.city?.trim() || parsed.city || "Pakistan").trim();
-              const areaLabel = (listing.exactLocation?.trim() || parsed.exactLocation || "").trim();
+              const locationLabel = displayLocation({
+                city: listing.city,
+                exactLocation: listing.exactLocation,
+                description: listing.description
+              });
+              const [cityLabel, areaLabel] = locationLabel.split(" / ");
               return (
               <article className="accountListingCard" key={listing.id}>
                 <Link href={`/listing/${listing.id}`} className="accountListingMain">
@@ -337,15 +308,15 @@ export default function AccountPage() {
                         {listing.currency} {listing.price}
                       </span>
                     </div>
-                    <p className="helperText accountListedDate">{formatListedDate(listing.createdAt)}</p>
-                    {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+                    <p className="helperText accountListedDate">{displayListedDate(listing.createdAt)}</p>
+                    {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
                       <p className="helperText accountListedDate">
-                        Category: {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+                        Category: {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
                       </p>
                     ) : null}
                     <p className="helperText accountListedDate">
                       City: {cityLabel}
-                      {areaLabel ? ` · Area: ${areaLabel}` : ""}
+                      {areaLabel ? ` / Area: ${areaLabel}` : ""}
                     </p>
                   </div>
                 </Link>

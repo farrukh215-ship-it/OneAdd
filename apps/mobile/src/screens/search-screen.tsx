@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import {
   getCategoryCatalog,
+  getSearchSuggestions,
   semanticSearchListingsWithFilters
 } from "../services/api";
 import { StaggerInCard } from "../components/stagger-in-card";
@@ -21,7 +22,9 @@ import {
   resolveListingsByIds,
   toggleSavedListingId
 } from "../services/listing-preferences";
-import type { Listing, MarketplaceCategory } from "../types";
+import type { Listing, MarketplaceCategory, SearchSuggestion } from "../types";
+import { displayCategoryPath, displayLocation } from "../theme/ui-contract";
+import { uiTheme } from "../theme/tokens";
 
 const sortOptions = [
   { value: "relevance", label: "Best Match" },
@@ -43,15 +46,6 @@ function dedupeByListingId(source: Listing[]) {
   return unique;
 }
 
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} • ${sub}`;
-  }
-  return main || sub || "";
-}
-
 export function SearchScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [query, setQuery] = useState("");
@@ -63,6 +57,9 @@ export function SearchScreen({ navigation, route }: any) {
   const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState("");
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   const selectedRoot = useMemo(() => {
     const asRoot = categories.find((item) => item.slug === selectedCategorySlug);
@@ -97,6 +94,27 @@ export function SearchScreen({ navigation, route }: any) {
       setSelectedCategorySlug(presetCategory);
     }
   }, [route?.params?.presetCategory, route?.params?.presetQuery]);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setSuggestionsLoading(true);
+      void getSearchSuggestions(q, 8)
+        .then((rows) => {
+          setSuggestions(rows);
+        })
+        .catch(() => setSuggestions([]))
+        .finally(() => setSuggestionsLoading(false));
+    }, 140);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     const normalizedQuery = query.trim();
@@ -142,6 +160,38 @@ export function SearchScreen({ navigation, route }: any) {
     setSavedIds(nextSavedIds);
   }
 
+  function onSuggestionPress(item: SearchSuggestion) {
+    setSuggestionsOpen(false);
+    const href = item.href || "";
+    if (!href.includes("?")) {
+      if (item.type === "listing") {
+        const listingId = item.href.split("/").pop();
+        if (listingId) {
+          navigation.navigate("ListingDetail", { id: listingId });
+        }
+      }
+      setQuery(item.label);
+      return;
+    }
+
+    const queryString = href.split("?")[1] ?? "";
+    const parsed: Record<string, string> = {};
+    queryString.split("&").forEach((part) => {
+      const [rawKey, rawValue] = part.split("=");
+      if (!rawKey) return;
+      parsed[decodeURIComponent(rawKey)] = decodeURIComponent(rawValue ?? "");
+    });
+
+    const nextQuery = parsed.q ?? item.label;
+    const nextCategory = parsed.category ?? "";
+    const nextCity = parsed.city ?? "";
+    const nextArea = parsed.area ?? "";
+    setQuery(nextQuery);
+    setSelectedCategorySlug(nextCategory);
+    setCity(nextCity);
+    setArea(nextArea);
+  }
+
   return (
     <Animated.View style={[styles.screen, enterStyle]}>
       <View style={styles.hero}>
@@ -155,9 +205,33 @@ export function SearchScreen({ navigation, route }: any) {
           style={styles.input}
           placeholder="Dhundo listings..."
           value={query}
+          onFocus={() => setSuggestionsOpen(true)}
+          onBlur={() => {
+            setTimeout(() => setSuggestionsOpen(false), 120);
+          }}
           onChangeText={setQuery}
         />
       </View>
+      {suggestionsOpen && (suggestionsLoading || suggestions.length > 0) ? (
+        <View style={styles.suggestionMenu}>
+          {suggestionsLoading ? (
+            <Text style={styles.suggestionMeta}>Searching...</Text>
+          ) : (
+            suggestions.map((item) => (
+              <Pressable
+                key={`${item.type}-${item.id}`}
+                style={({ pressed }) => [styles.suggestionItem, pressed && styles.pressed]}
+                onPress={() => onSuggestionPress(item)}
+              >
+                <Text style={styles.suggestionLabel} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                <Text style={styles.suggestionMeta}>{item.meta || item.type}</Text>
+              </Pressable>
+            ))
+          )}
+        </View>
+      ) : null}
       <View style={styles.inlineFilters}>
         <TextInput
           style={[styles.input, styles.filterInput]}
@@ -295,12 +369,17 @@ export function SearchScreen({ navigation, route }: any) {
                 </Pressable>
               </View>
               <Text style={styles.title}>{item.title}</Text>
-              {getCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
-                <Text style={styles.meta}>{getCategoryPath(item.mainCategoryName, item.subCategoryName)}</Text>
+              {displayCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+                <Text style={styles.meta}>
+                  {displayCategoryPath(item.mainCategoryName, item.subCategoryName)}
+                </Text>
               ) : null}
               <Text style={styles.meta}>
-                {item.city || "Pakistan"}
-                {item.exactLocation ? ` - ${item.exactLocation}` : ""}
+                {displayLocation({
+                  city: item.city,
+                  exactLocation: item.exactLocation,
+                  description: item.description
+                })}
               </Text>
             </Pressable>
           </StaggerInCard>
@@ -315,27 +394,27 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 12,
-    backgroundColor: "#FDF6ED"
+    backgroundColor: uiTheme.colors.surfaceAlt
   },
   hero: {
     marginBottom: 10
   },
   heroTitle: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 30,
     lineHeight: 34,
     fontWeight: "800"
   },
   heroSub: {
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 13,
     marginTop: 4
   },
   searchRow: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -348,7 +427,32 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingVertical: 10,
-    color: "#5C3D2E"
+    color: uiTheme.colors.textStrong
+  },
+  suggestionMenu: {
+    marginTop: -4,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    borderRadius: 12,
+    backgroundColor: uiTheme.colors.surface,
+    overflow: "hidden"
+  },
+  suggestionItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: uiTheme.colors.border
+  },
+  suggestionLabel: {
+    color: uiTheme.colors.textStrong,
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  suggestionMeta: {
+    marginTop: 2,
+    color: uiTheme.colors.textMuted,
+    fontSize: 11
   },
   chipsRow: {
     gap: 8,
@@ -368,19 +472,19 @@ const styles = StyleSheet.create({
     paddingBottom: 10
   },
   chip: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 7
   },
   chipActive: {
-    borderColor: "#C8603A",
+    borderColor: uiTheme.colors.primary,
     backgroundColor: "#FFF7F3"
   },
   chipText: {
-    color: "#7A5544",
+    color: uiTheme.colors.textSoft,
     fontSize: 12,
     fontWeight: "700"
   },
@@ -389,19 +493,19 @@ const styles = StyleSheet.create({
     paddingBottom: 10
   },
   subchip: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     paddingHorizontal: 10,
     paddingVertical: 6
   },
   subchipActive: {
-    borderColor: "#C8603A",
+    borderColor: uiTheme.colors.primary,
     backgroundColor: "#FFF7F3"
   },
   subchipText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 12,
     fontWeight: "700"
   },
@@ -409,7 +513,7 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   quickTitle: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 16,
     fontWeight: "800",
     marginBottom: 8
@@ -419,20 +523,20 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     width: 164,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E8D5B7",
+    backgroundColor: uiTheme.colors.surface,
+    borderColor: uiTheme.colors.border,
     borderWidth: 1,
     borderRadius: 12,
     padding: 10
   },
   quickPrice: {
-    color: "#C8603A",
+    color: uiTheme.colors.primary,
     fontSize: 14,
     fontWeight: "800"
   },
   quickText: {
     marginTop: 6,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "600"
@@ -441,13 +545,13 @@ const styles = StyleSheet.create({
     paddingBottom: 18
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    shadowColor: "#5C3D2E",
+    borderColor: uiTheme.colors.border,
+    shadowColor: uiTheme.colors.textStrong,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -460,49 +564,49 @@ const styles = StyleSheet.create({
     gap: 8
   },
   price: {
-    color: "#C8603A",
+    color: uiTheme.colors.primary,
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 2
   },
   saveBtn: {
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    backgroundColor: "#FFFFFF",
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surface,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4
   },
   saveBtnText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 11,
     fontWeight: "700"
   },
   title: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#5C3D2E"
+    color: uiTheme.colors.textStrong
   },
   meta: {
     marginTop: 4,
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 12
   },
   emptyCard: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E8D5B7",
+    backgroundColor: uiTheme.colors.surface,
+    borderColor: uiTheme.colors.border,
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     marginTop: 8
   },
   emptyTitle: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 15,
     fontWeight: "700"
   },
   emptySub: {
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 12,
     marginTop: 4,
     lineHeight: 18

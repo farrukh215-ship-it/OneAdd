@@ -18,7 +18,9 @@ import {
   sendChatMessage,
   subscribeAuthToken
 } from "../services/api";
-import type { ChatMessage, ChatThread } from "../types";
+import { ChatMessage, ChatThread } from "../types";
+import { displayCategoryPath } from "../theme/ui-contract";
+import { uiTheme } from "../theme/tokens";
 
 function getUserIdFromToken(token: string) {
   try {
@@ -34,21 +36,20 @@ function getUserIdFromToken(token: string) {
   }
 }
 
-function formatTime(value: string) {
+function formatDateTime(value?: string) {
+  if (!value) {
+    return "";
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "";
   }
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} • ${sub}`;
-  }
-  return main || sub || "";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 export function ChatScreen({ navigation }: any) {
@@ -58,7 +59,7 @@ export function ChatScreen({ navigation }: any) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
-  const [activeThreadId, setActiveThreadId] = useState<string>("");
+  const [activeThreadId, setActiveThreadId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -113,7 +114,7 @@ export function ChatScreen({ navigation }: any) {
       setThreadsLoading(false);
       return;
     }
-    loadThreads();
+    void loadThreads();
   }, [token]);
 
   useEffect(() => {
@@ -144,8 +145,10 @@ export function ChatScreen({ navigation }: any) {
       }
     }
 
-    loadMessages();
-    const timer = setInterval(loadMessages, 5000);
+    void loadMessages();
+    const timer = setInterval(() => {
+      void loadMessages();
+    }, 5000);
     return () => {
       alive = false;
       clearInterval(timer);
@@ -188,18 +191,16 @@ export function ChatScreen({ navigation }: any) {
         <Text style={styles.headerTitle}>TGMG Chats</Text>
         <Text style={styles.headerSub}>
           {activeThread?.listing?.title
-            ? `Product: ${activeThread.listing.title} | Uploaded by ${(
-                activeThread.seller?.fullName || "Seller"
-              ).split(" ")[0]}`
+            ? `Product: ${activeThread.listing.title}`
             : "Asli buyers aur sellers ke sath direct baat karein."}
         </Text>
-        {getCategoryPath(
+        {displayCategoryPath(
           activeThread?.listing?.mainCategoryName,
           activeThread?.listing?.subCategoryName
         ) ? (
           <Text style={styles.headerSub}>
             Category:{" "}
-            {getCategoryPath(
+            {displayCategoryPath(
               activeThread?.listing?.mainCategoryName,
               activeThread?.listing?.subCategoryName
             )}
@@ -210,7 +211,7 @@ export function ChatScreen({ navigation }: any) {
       <View style={styles.threadRail}>
         {threadsLoading ? (
           <View style={styles.threadLoadingRow}>
-            <ActivityIndicator size="small" color="#C8603A" />
+            <ActivityIndicator size="small" color={uiTheme.colors.primary} />
             <Text style={styles.threadLoadingText}>Loading threads...</Text>
           </View>
         ) : null}
@@ -221,33 +222,35 @@ export function ChatScreen({ navigation }: any) {
 
         {!threadsLoading ? (
           <FlatList
-            horizontal
             data={threads}
             keyExtractor={(item) => item.id}
-            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.threadRailList}
-            renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [
-                  item.id === activeThreadId ? styles.threadActive : styles.thread,
-                  pressed && styles.pressed
-                ]}
-                onPress={() => setActiveThreadId(item.id)}
-              >
-                <Text style={styles.threadTitle} numberOfLines={1}>
-                  {item.listing?.title ?? "Conversation"}
-                </Text>
-                <Text style={styles.threadSub} numberOfLines={1}>
-                  Uploaded by {(item.seller?.fullName || "Seller").split(" ")[0]} |{" "}
-                  {item.status === "CLOSED" ? "Closed" : "Active"}
-                </Text>
-                {getCategoryPath(item.listing?.mainCategoryName, item.listing?.subCategoryName) ? (
+            renderItem={({ item }) => {
+              const active = item.id === activeThreadId;
+              return (
+                <Pressable
+                  style={({ pressed }) => [active ? styles.threadActive : styles.thread, pressed && styles.pressed]}
+                  onPress={() => setActiveThreadId(item.id)}
+                >
+                  <View style={styles.threadHeadRow}>
+                    <Text style={styles.threadTitle} numberOfLines={1}>
+                      {item.listing?.title ?? "Conversation"}
+                    </Text>
+                    <Text style={styles.threadTime}>{formatDateTime(item.lastMessageAt)}</Text>
+                  </View>
                   <Text style={styles.threadSub} numberOfLines={1}>
-                    {getCategoryPath(item.listing?.mainCategoryName, item.listing?.subCategoryName)}
+                    Uploaded by {(item.seller?.fullName || "Seller").split(" ")[0]} |{" "}
+                    {item.status === "CLOSED" ? "Closed" : "Active"}
                   </Text>
-                ) : null}
-              </Pressable>
-            )}
+                  {displayCategoryPath(item.listing?.mainCategoryName, item.listing?.subCategoryName) ? (
+                    <Text style={styles.threadSub} numberOfLines={1}>
+                      {displayCategoryPath(item.listing?.mainCategoryName, item.listing?.subCategoryName)}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              );
+            }}
           />
         ) : null}
       </View>
@@ -269,15 +272,11 @@ export function ChatScreen({ navigation }: any) {
           const mine = item.senderId === currentUserId;
           return (
             <View style={mine ? styles.bubbleMine : styles.bubbleOther}>
-              <Text style={mine ? styles.timeMine : styles.timeOther}>
+              <Text style={mine ? styles.senderMine : styles.senderOther}>
                 {mine ? "You" : activePeerName.split(" ")[0]}
               </Text>
-              <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>
-                {item.content}
-              </Text>
-              <Text style={mine ? styles.timeMine : styles.timeOther}>
-                {formatTime(item.createdAt)}
-              </Text>
+              <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.content}</Text>
+              <Text style={mine ? styles.timeMine : styles.timeOther}>{formatDateTime(item.createdAt)}</Text>
             </View>
           );
         }}
@@ -292,7 +291,8 @@ export function ChatScreen({ navigation }: any) {
       <View style={styles.chatBox}>
         <TextInput
           style={styles.input}
-          placeholder={isClosed ? "Chat closed" : "Message likho... (Offer: 120000)"}
+          placeholder={isClosed ? "Chat closed" : "Type a message"}
+          placeholderTextColor={uiTheme.colors.textMuted}
           value={text}
           onChangeText={setText}
           editable={!isClosed && !sending && Boolean(activeThreadId)}
@@ -306,7 +306,7 @@ export function ChatScreen({ navigation }: any) {
           onPress={onSend}
           disabled={!activeThreadId || isClosed || sending}
         >
-          <Text style={styles.sendText}>{sending ? "..." : "Bhejo"}</Text>
+          <Text style={styles.sendText}>{sending ? "..." : "Send"}</Text>
         </Pressable>
       </View>
       {sendError ? <Text style={styles.error}>{sendError}</Text> : null}
@@ -317,175 +317,193 @@ export function ChatScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FDF6ED"
+    backgroundColor: uiTheme.colors.surfaceAlt
   },
   header: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingHorizontal: uiTheme.spacing.lg,
+    paddingTop: uiTheme.spacing.md,
+    paddingBottom: uiTheme.spacing.sm,
     gap: 4
   },
   headerTitle: {
     fontSize: 26,
     lineHeight: 30,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "800"
   },
   headerSub: {
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 13
   },
   threadRail: {
-    minHeight: 78
+    maxHeight: 220
   },
   threadRailList: {
-    paddingHorizontal: 10,
-    paddingBottom: 8
+    paddingHorizontal: uiTheme.spacing.md,
+    gap: uiTheme.spacing.sm,
+    paddingBottom: uiTheme.spacing.sm
   },
   thread: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    marginHorizontal: 4,
-    minWidth: 132,
+    backgroundColor: uiTheme.colors.surface,
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingVertical: uiTheme.spacing.sm,
+    borderRadius: uiTheme.radius.md,
     borderWidth: 1,
-    borderColor: "#E8D5B7"
+    borderColor: uiTheme.colors.border
   },
   threadActive: {
-    backgroundColor: "#F5EAD8",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    marginHorizontal: 4,
-    minWidth: 132,
+    backgroundColor: uiTheme.colors.surfaceSoft,
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingVertical: uiTheme.spacing.sm,
+    borderRadius: uiTheme.radius.md,
     borderWidth: 1,
-    borderColor: "#D4B896"
+    borderColor: uiTheme.colors.borderStrong
+  },
+  threadHeadRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: uiTheme.spacing.sm
   },
   threadTitle: {
-    color: "#5C3D2E",
-    fontWeight: "700"
+    color: uiTheme.colors.textStrong,
+    fontWeight: "700",
+    flexShrink: 1
+  },
+  threadTime: {
+    color: uiTheme.colors.textMuted,
+    fontSize: 11
   },
   threadSub: {
     marginTop: 2,
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 12
   },
   threadLoadingRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: uiTheme.spacing.lg,
+    paddingVertical: uiTheme.spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    gap: uiTheme.spacing.sm
   },
   threadLoadingText: {
-    color: "#9B8070"
+    color: uiTheme.colors.textMuted
   },
   messages: {
     flex: 1
   },
   messagesContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 8
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingVertical: uiTheme.spacing.md,
+    gap: uiTheme.spacing.sm
   },
   bubbleMine: {
     alignSelf: "flex-end",
-    maxWidth: "82%",
-    backgroundColor: "#C8603A",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 6
+    maxWidth: "84%",
+    backgroundColor: uiTheme.colors.primary,
+    borderRadius: uiTheme.radius.md,
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingVertical: uiTheme.spacing.sm
   },
   bubbleOther: {
     alignSelf: "flex-start",
-    maxWidth: "82%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 6,
+    maxWidth: "84%",
+    backgroundColor: uiTheme.colors.surface,
+    borderRadius: uiTheme.radius.md,
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingVertical: uiTheme.spacing.sm,
     borderWidth: 1,
-    borderColor: "#E8D5B7"
+    borderColor: uiTheme.colors.border
+  },
+  senderMine: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 11,
+    fontWeight: "700"
+  },
+  senderOther: {
+    color: uiTheme.colors.textSoft,
+    fontSize: 11,
+    fontWeight: "700"
   },
   bubbleTextMine: {
-    color: "#ffffff",
+    marginTop: 4,
+    color: uiTheme.colors.white,
     fontSize: 15,
     lineHeight: 20
   },
   bubbleTextOther: {
-    color: "#5C3D2E",
+    marginTop: 4,
+    color: uiTheme.colors.textStrong,
     fontSize: 15,
     lineHeight: 20
   },
   timeMine: {
     marginTop: 4,
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.85)",
     fontSize: 11,
     alignSelf: "flex-end"
   },
   timeOther: {
     marginTop: 4,
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 11,
     alignSelf: "flex-end"
   },
   chatBox: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    gap: uiTheme.spacing.sm,
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingVertical: uiTheme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: "#E8D5B7",
-    backgroundColor: "rgba(253,246,237,0.95)"
+    borderTopColor: uiTheme.colors.border,
+    backgroundColor: "rgba(253,246,237,0.96)"
   },
   input: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    backgroundColor: uiTheme.colors.surface,
+    borderRadius: uiTheme.radius.md,
+    paddingHorizontal: uiTheme.spacing.md,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    color: "#5C3D2E"
+    borderColor: uiTheme.colors.border,
+    color: uiTheme.colors.textStrong
   },
   sendButton: {
-    backgroundColor: "#C8603A",
-    borderRadius: 12,
+    backgroundColor: uiTheme.colors.primary,
+    borderRadius: uiTheme.radius.md,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 14,
-    minWidth: 58
+    minWidth: 64
   },
   sendButtonDisabled: {
     opacity: 0.5
   },
   sendText: {
-    color: "#fff",
+    color: uiTheme.colors.white,
     fontWeight: "700"
   },
   systemBanner: {
-    marginHorizontal: 10,
-    marginBottom: 8,
-    backgroundColor: "#F5EAD8",
-    borderRadius: 999,
+    marginHorizontal: uiTheme.spacing.md,
+    marginBottom: uiTheme.spacing.sm,
+    backgroundColor: uiTheme.colors.surfaceSoft,
+    borderRadius: uiTheme.radius.pill,
     paddingVertical: 7,
     paddingHorizontal: 12,
     alignSelf: "center"
   },
   systemText: {
-    color: "#7A5544",
+    color: uiTheme.colors.textSoft,
     fontSize: 12
   },
   emptyText: {
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     textAlign: "center",
-    marginTop: 8
+    marginTop: uiTheme.spacing.sm
   },
   error: {
-    color: "#B83A2A",
+    color: uiTheme.colors.danger,
     marginTop: 4,
-    marginHorizontal: 12
+    marginHorizontal: uiTheme.spacing.md
   },
   pressed: {
     opacity: 0.92,

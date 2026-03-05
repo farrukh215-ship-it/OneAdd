@@ -11,6 +11,7 @@ import {
 import { LiveSearchInput } from "../../components/live-search-input";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
+import { displayCategoryPath, displayLocation } from "../../lib/ui-contract";
 
 const conditions = ["ANY", "NEW", "USED"];
 const sortOptions = [
@@ -21,15 +22,6 @@ const sortOptions = [
   { value: "date_asc", label: "Date Posted: Oldest" }
 ] as const;
 type SortBy = (typeof sortOptions)[number]["value"];
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} · ${sub}`;
-  }
-  return main || sub || "";
-}
 
 function parsePositiveNumber(value: string) {
   if (!value.trim()) {
@@ -512,15 +504,18 @@ export default function SearchPage() {
                       {listing.currency} {listing.price}
                     </p>
                     <h3>{listing.title}</h3>
-                    {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+                    {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
                       <p className="searchResultMeta">
-                        {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+                        {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
                       </p>
                     ) : null}
                     <p className="searchResultMeta">
-                      {(listing.city || "Pakistan") +
-                        (listing.exactLocation ? ` - ${listing.exactLocation}` : "") +
-                        ` - ${listing.status}`}
+                      {displayLocation({
+                        city: listing.city,
+                        exactLocation: listing.exactLocation,
+                        description: listing.description
+                      })}{" "}
+                      - {listing.status}
                     </p>
                   </div>
                 </Link>

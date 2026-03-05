@@ -15,35 +15,17 @@ import {
 } from "../lib/listing-preferences";
 import { resolveMediaUrl } from "../lib/media-url";
 import { useAuthToken } from "../lib/use-auth-token";
+import {
+  displayCategoryPath,
+  displayListedDate,
+  displayLocation,
+  displaySellerLastSeen,
+  displayTrustScoreNote
+} from "../lib/ui-contract";
 
 type ListingDetailViewProps = {
   listing: Listing;
 };
-
-function toListedDate(timestamp?: string) {
-  if (!timestamp) return "Listed recently";
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "Listed recently";
-  return `Listed on ${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  })}`;
-}
-
-function toLastOnline(timestamp?: string | null) {
-  if (!timestamp) return "Last online recently";
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "Last online recently";
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "Online just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `Online ${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Online ${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `Online ${days}d ago`;
-}
 
 function getUserIdFromToken(token: string) {
   try {
@@ -97,15 +79,6 @@ function cleanDescriptionMetadata(description: string) {
     .trim();
 }
 
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} · ${sub}`;
-  }
-  return main || sub || "";
-}
-
 export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const router = useRouter();
   const { mounted, token } = useAuthToken();
@@ -149,10 +122,15 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   const phone = listing.user?.phone ?? "";
   const description = cleanDescriptionMetadata(listing.description ?? "");
-  const extractedCity = extractMetadataValue(listing.description ?? "", "city");
   const exactLocation = extractMetadataValue(listing.description ?? "", "location");
   const conditionLabel = extractConditionValue(listing.description ?? "");
-  const cityLabel = (listing.city?.trim() || extractedCity || "Pakistan").trim();
+  const locationLabel = displayLocation({
+    city: listing.city,
+    exactLocation: listing.exactLocation || exactLocation,
+    description: listing.description
+  });
+  const [cityLabel, areaLabelFromLocation] = locationLabel.split(" / ");
+  const normalizedAreaLabel = exactLocation || areaLabelFromLocation || "";
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const trustLabel =
     trustScore >= 80 ? "Highly Trusted" : trustScore >= 50 ? "Trusted Seller" : "New Seller";
@@ -351,7 +329,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
                         </button>
                         <span className="sellerTrustScore">
                           <strong>{formatDateTime(message.createdAt)}</strong>
-                          {message.senderCity ? ` · ${message.senderCity}` : ""}
+                          {message.senderCity ? ` - ${message.senderCity}` : ""}
                         </span>
                       </div>
                       <p className="publicMessageText">
@@ -384,9 +362,10 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <section className="listingFactsCard">
             <p className="listingFactLabel">Description</p>
             <p className="listingDescription">{description || "No description available."}</p>
-            {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+            {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
               <p className="listingFactLine">
-                <strong>Category:</strong> {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+                <strong>Category:</strong>{" "}
+                {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
               </p>
             ) : null}
             {conditionLabel ? (
@@ -397,13 +376,13 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             <p className="listingFactLine">
               <strong>City:</strong> {cityLabel}
             </p>
-            {exactLocation ? (
+            {normalizedAreaLabel ? (
               <p className="listingFactLine">
-                <strong>Area:</strong> {exactLocation}
+                <strong>Area:</strong> {normalizedAreaLabel}
               </p>
             ) : null}
             <p className="listingFactLine">
-              <strong>{toListedDate(listing.createdAt)}</strong>
+              <strong>{displayListedDate(listing.createdAt)}</strong>
             </p>
           </section>
 
@@ -413,9 +392,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               <span className="trustPill high">{trustLabel}</span>
               <span className="sellerTrustScore">Trust score: {trustScore}</span>
             </div>
-            <p className="shareHint">{toLastOnline(listing.user?.lastSeenAt)}</p>
+            <p className="shareHint">{displaySellerLastSeen(listing.user?.lastSeenAt)}</p>
             <p className="shareHint">
-              Note: Trust score 0 ka matlab new seller profile hai; verified details, fast replies aur successful deals se score barhta hai.
+              Note: {displayTrustScoreNote(trustScore)}
             </p>
           </section>
 

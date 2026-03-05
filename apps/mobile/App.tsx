@@ -8,6 +8,7 @@ import { ListingDetailScreen } from "./src/screens/listing-detail-screen";
 import { RecentlyViewedScreen } from "./src/screens/recently-viewed-screen";
 import { useEffect, useState } from "react";
 import { getAuthToken, hydrateAuthToken, subscribeAuthToken } from "./src/services/api";
+import { uiTheme } from "./src/theme/tokens";
 
 const RootStack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef<any>();
@@ -65,10 +66,10 @@ export default function App() {
         initialRouteName={isAuthenticated ? "Tabs" : "Login"}
         screenOptions={{
           headerBackTitle: "Back",
-          headerStyle: { backgroundColor: "#FDF6ED" },
-          headerTitleStyle: { color: "#5C3D2E", fontWeight: "700" },
-          headerTintColor: "#5C3D2E",
-          contentStyle: { backgroundColor: "#FDF6ED" }
+          headerStyle: { backgroundColor: uiTheme.colors.surfaceAlt },
+          headerTitleStyle: { color: uiTheme.colors.textStrong, fontWeight: "700" },
+          headerTintColor: uiTheme.colors.textStrong,
+          contentStyle: { backgroundColor: uiTheme.colors.surfaceAlt }
         }}
       >
         <RootStack.Screen name="Login" options={{ title: "TGMG mein Khush Aamdeed" }}>

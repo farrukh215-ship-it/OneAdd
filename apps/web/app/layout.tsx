@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { ReactNode } from "react";
 import { MainNav } from "../components/main-nav";
 import { SiteFooter } from "../components/site-footer";
+import { isPremiumUiEnabled } from "../lib/ui-flags";
 
 export const metadata: Metadata = {
   title: "TGMG - Tera Ghar Mera Ghar | Pakistan ka Asli Used Marketplace",
@@ -42,6 +43,7 @@ type RootLayoutProps = {
 };
 
 export default function RootLayout({ children }: RootLayoutProps) {
+  const premiumUiEnabled = isPremiumUiEnabled();
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -72,7 +74,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           rel="stylesheet"
         />
       </head>
-      <body>
+      <body className={premiumUiEnabled ? "uiPremiumV1" : "uiClassic"}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

@@ -29,41 +29,30 @@ import {
 import type {
   Listing,
   ListingMedia,
-  ListingOffer,
   ListingPublicMessage
 } from "../types";
+import {
+  displayCategoryPath,
+  displayListedDate,
+  displayLocation,
+  displaySellerLastSeen
+} from "../theme/ui-contract";
+import { uiTheme } from "../theme/tokens";
 
 const { width } = Dimensions.get("window");
 const GALLERY_HEIGHT = 300;
 
-function formatRelativeTime(input?: string | null) {
-  if (!input) return "recently";
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "recently";
-  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (diffSeconds < 60) return "just now";
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
-}
-
-function formatListedDate(input?: string) {
-  if (!input) return "Listed recently";
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "Listed recently";
-  return `Listed on ${date.toLocaleDateString("en-GB")}`;
-}
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} • ${sub}`;
-  }
-  return main || sub || "";
+function formatDateTime(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function getUserIdFromToken(token: string) {
@@ -118,7 +107,6 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const [chatLoading, setChatLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [contactVisible, setContactVisible] = useState(false);
-  const [offers, setOffers] = useState<ListingOffer[]>([]);
   const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const listingId = String(route.params?.id ?? "");
   const galleryRef = useRef<FlatList<ListingMedia> | null>(null);
@@ -135,11 +123,9 @@ export function ListingDetailScreen({ route, navigation }: any) {
 
     getListingOffers(listingId, 12)
       .then((result) => {
-        setOffers(result.offers);
         setRecentMessages(result.recentMessages ?? []);
       })
       .catch(() => {
-        setOffers([]);
         setRecentMessages([]);
       });
   }, [listingId]);
@@ -244,6 +230,12 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const isOwner = Boolean(currentUserId && listing.user?.id === currentUserId);
   const canShowContact = Boolean(listing.showPhone && phone);
   const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, "")}`;
+  const locationText = displayLocation({
+    city: listing.city,
+    exactLocation: listing.exactLocation,
+    description: listing.description
+  });
+  const [cityLabel, areaLabel] = locationText.split(" / ");
 
   return (
     <View style={styles.screen}>
@@ -307,20 +299,20 @@ export function ListingDetailScreen({ route, navigation }: any) {
             {listing.currency} {listing.price}
           </Text>
           <Text style={styles.description}>{listing.description}</Text>
-          {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+          {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
             <Text style={styles.metaLine}>
-              Category: {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+              Category: {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
             </Text>
           ) : null}
-          <Text style={styles.metaLine}>{formatListedDate(listing.createdAt)}</Text>
+          <Text style={styles.metaLine}>City: {cityLabel}</Text>
+          {areaLabel ? <Text style={styles.metaLine}>Area: {areaLabel}</Text> : null}
+          <Text style={styles.metaLine}>{displayListedDate(listing.createdAt)}</Text>
 
           <View style={styles.trustCard}>
             <Text style={styles.sellerName}>{listing.user?.fullName || "Asli Seller"}</Text>
             <Text style={styles.trustText}>{trustBadge}</Text>
             <Text style={styles.trustSub}>Trust score: {trustScore}</Text>
-            <Text style={styles.trustSub}>
-              Seller last online: {formatRelativeTime(listing.user?.lastSeenAt)}
-            </Text>
+            <Text style={styles.trustSub}>{displaySellerLastSeen(listing.user?.lastSeenAt)}</Text>
             <Text style={styles.trustSub}>
               Note: Trust score 0 ka matlab new seller profile hai.
             </Text>
@@ -342,26 +334,14 @@ export function ListingDetailScreen({ route, navigation }: any) {
           </View>
 
           <View style={styles.trustCard}>
-            <Text style={styles.sellerName}>Live Buyer Offers</Text>
-            {offers.length === 0 ? (
-              <Text style={styles.trustText}>Chat me likhein: Offer: 120000</Text>
-            ) : (
-              offers.slice(0, 6).map((offer) => (
-                <Text key={offer.id} style={styles.trustText}>
-                  {offer.senderName}: {offer.amount ? `PKR ${offer.amount.toLocaleString()}` : offer.content}
-                </Text>
-              ))
-            )}
-          </View>
-
-          <View style={styles.trustCard}>
             <Text style={styles.sellerName}>Public Chat on this Product</Text>
             {recentMessages.length === 0 ? (
-              <Text style={styles.trustText}>Abhi public chat visible nahi hai.</Text>
+              <Text style={styles.trustSub}>Abhi public chat visible nahi hai.</Text>
             ) : (
               recentMessages.map((message) => (
-                <Text key={message.id} style={styles.trustText}>
+                <Text key={message.id} style={styles.trustSub}>
                   {message.senderName}: {message.content}
+                  {message.createdAt ? ` • ${formatDateTime(message.createdAt)}` : ""}
                 </Text>
               ))
             )}
@@ -426,14 +406,6 @@ export function ListingDetailScreen({ route, navigation }: any) {
             <Text style={styles.secondaryCtaText}>Show Contact</Text>
           </Pressable>
         ) : null}
-        {canShowContact && contactVisible && listing.allowCall ? (
-          <Pressable
-            style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
-            onPress={() => Linking.openURL(`tel:${phone}`)}
-          >
-            <Text style={styles.secondaryCtaText}>Call</Text>
-          </Pressable>
-        ) : null}
         {canShowContact && contactVisible && listing.allowSMS ? (
           <Pressable
             style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
@@ -450,7 +422,7 @@ export function ListingDetailScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FDF6ED"
+    backgroundColor: uiTheme.colors.surfaceAlt
   },
   container: {
     paddingBottom: 110
@@ -459,7 +431,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FDF6ED"
+    backgroundColor: uiTheme.colors.surfaceAlt
   },
   loadingText: {
     marginTop: 12,
@@ -467,7 +439,7 @@ const styles = StyleSheet.create({
   },
   errorScreen: {
     flex: 1,
-    backgroundColor: "#FDF6ED",
+    backgroundColor: uiTheme.colors.surfaceAlt,
     justifyContent: "center",
     alignItems: "center",
     padding: 24
@@ -475,11 +447,11 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#5C3D2E"
+    color: uiTheme.colors.textStrong
   },
   errorText: {
     marginTop: 8,
-    color: "#9B8070"
+    color: uiTheme.colors.textMuted
   },
   gallerySlide: {
     width,
@@ -491,14 +463,14 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 18,
-    backgroundColor: "#F5EAD8"
+    backgroundColor: uiTheme.colors.surfaceSoft
   },
   galleryFallback: {
     height: GALLERY_HEIGHT,
     marginHorizontal: 14,
     marginTop: 12,
     borderRadius: 18,
-    backgroundColor: "#F5EAD8"
+    backgroundColor: uiTheme.colors.surfaceSoft
   },
   dotsRow: {
     marginTop: 8,
@@ -544,7 +516,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 18,
-    backgroundColor: "#C8603A"
+    backgroundColor: uiTheme.colors.primary
   },
   body: {
     paddingHorizontal: 16,
@@ -570,18 +542,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 30,
     fontWeight: "800",
-    color: "#5C3D2E"
+    color: uiTheme.colors.textStrong
   },
   price: {
     marginTop: 8,
     fontSize: 30,
     lineHeight: 34,
     fontWeight: "800",
-    color: "#C8603A"
+    color: uiTheme.colors.primary
   },
   description: {
     marginTop: 12,
-    color: "#7A5544",
+    color: uiTheme.colors.textSoft,
     lineHeight: 22,
     fontSize: 15
   },
@@ -593,25 +565,25 @@ const styles = StyleSheet.create({
   trustCard: {
     marginTop: 16,
     borderRadius: 14,
-    backgroundColor: "#F5EAD8",
+    backgroundColor: uiTheme.colors.surfaceSoft,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     padding: 12
   },
   sellerName: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "700",
     fontSize: 15
   },
   trustText: {
     marginTop: 4,
-    color: "#3D6B4F",
+    color: uiTheme.colors.success,
     fontWeight: "700",
     fontSize: 13
   },
   trustSub: {
     marginTop: 4,
-    color: "#7A5544",
+    color: uiTheme.colors.textSoft,
     fontSize: 12
   },
   contactRow: {
@@ -627,14 +599,14 @@ const styles = StyleSheet.create({
   quickActionBtn: {
     minWidth: 120,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     paddingVertical: 12,
     alignItems: "center"
   },
   quickActionText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "700"
   },
   inlineError: {
@@ -653,13 +625,13 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: "rgba(253,246,237,0.96)",
     borderTopWidth: 1,
-    borderTopColor: "#E8D5B7"
+    borderTopColor: uiTheme.colors.border
   },
   primaryCta: {
     flex: 1.2,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#C8603A",
+    backgroundColor: uiTheme.colors.primary,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -672,14 +644,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
+    borderColor: uiTheme.colors.border,
     alignItems: "center",
     justifyContent: "center"
   },
   secondaryCtaText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontWeight: "700"
   },
   disabledPill: {

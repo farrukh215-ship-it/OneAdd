@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -21,6 +22,34 @@ import {
   subscribeAuthToken
 } from "../services/api";
 import type { Listing } from "../types";
+import { displayCategoryPath, displayListedDate, displayLocation } from "../theme/ui-contract";
+import { uiTheme } from "../theme/tokens";
+
+const LEGACY_MEDIA_HOSTS = new Set(["zaroratbazar.shop", "www.zaroratbazar.shop", "api", "localhost"]);
+const FALLBACK_ORIGIN = "https://www.teragharmeraghar.com";
+
+function resolveMediaUrl(rawUrl?: string | null) {
+  const trimmed = rawUrl?.trim?.() ?? "";
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    return `${FALLBACK_ORIGIN}${trimmed}`;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (LEGACY_MEDIA_HOSTS.has(parsed.hostname.toLowerCase())) {
+      return `${FALLBACK_ORIGIN}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    return parsed.toString();
+  } catch {
+    return trimmed;
+  }
+}
 
 function dedupeByListingId(source: Listing[]) {
   const seen = new Set<string>();
@@ -35,20 +64,8 @@ function dedupeByListingId(source: Listing[]) {
   return unique;
 }
 
-function formatListedDate(input?: string) {
-  if (!input) return "Listed recently";
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "Listed recently";
-  return `Listed: ${date.toLocaleDateString("en-GB")}`;
-}
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} • ${sub}`;
-  }
-  return main || sub || "";
+function statusLabel(status?: string) {
+  return (status || "ACTIVE").replace(/_/g, " ");
 }
 
 export function MyAdsScreen({ navigation }: any) {
@@ -174,7 +191,7 @@ export function MyAdsScreen({ navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#C8603A" />
+        <ActivityIndicator size="large" color={uiTheme.colors.primary} />
       </View>
     );
   }
@@ -183,9 +200,7 @@ export function MyAdsScreen({ navigation }: any) {
     <View style={[styles.screen, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.title}>Mere Ads</Text>
-        <Text style={styles.sub}>
-          Active, sold, paused aur expired ads yahan se manage karein.
-        </Text>
+        <Text style={styles.sub}>Active, sold, paused aur expired ads yahan se manage karein.</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -197,7 +212,7 @@ export function MyAdsScreen({ navigation }: any) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => void loadMyAds("refresh")}
-            tintColor="#C8603A"
+            tintColor={uiTheme.colors.primary}
           />
         }
         contentContainerStyle={styles.listContent}
@@ -208,40 +223,54 @@ export function MyAdsScreen({ navigation }: any) {
           </View>
         }
         renderItem={({ item }) => {
-          const thumb = item.media.find((media) => media.type === "IMAGE")?.url;
+          const thumbRaw = item.media.find((media) => media.type === "IMAGE")?.url;
+          const thumb = resolveMediaUrl(thumbRaw);
           const isBusy = busyListingId === item.id;
+          const location = displayLocation({
+            city: item.city,
+            exactLocation: item.exactLocation,
+            description: item.description
+          });
 
           return (
             <Pressable
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
               onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
             >
-              <View style={styles.cardHeader}>
-                <Text style={styles.price}>
-                  {item.currency} {item.price}
-                </Text>
-                <Text style={styles.statusPill}>{item.status}</Text>
+              <View style={styles.cardTopRow}>
+                <View style={styles.thumbWrap}>
+                  {thumb ? (
+                    <Image source={{ uri: thumb }} style={styles.thumbImage} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.thumbFallback} />
+                  )}
+                </View>
+                <View style={styles.mainInfo}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.price} numberOfLines={1}>
+                      {item.currency} {item.price}
+                    </Text>
+                    <Text style={styles.statusPill}>{statusLabel(item.status)}</Text>
+                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  {displayCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {displayCategoryPath(item.mainCategoryName, item.subCategoryName)}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.meta} numberOfLines={1}>
+                    {location}
+                  </Text>
+                  <Text style={styles.meta}>{displayListedDate(item.createdAt)}</Text>
+                </View>
               </View>
-
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {item.title}
-              </Text>
-              {getCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
-                <Text style={styles.meta}>{getCategoryPath(item.mainCategoryName, item.subCategoryName)}</Text>
-              ) : null}
-              <Text style={styles.meta}>
-                {item.city || "Pakistan"} | {formatListedDate(item.createdAt)}
-              </Text>
-              <Text style={styles.meta} numberOfLines={1}>
-                Image: {thumb || "No image"}
-              </Text>
 
               <View style={styles.actionsRow}>
                 <Pressable
                   style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-                  onPress={() =>
-                    navigation.navigate("Becho", { editListingId: item.id })
-                  }
+                  onPress={() => navigation.navigate("Becho", { editListingId: item.id })}
                 >
                   <Text style={styles.actionBtnText}>Edit</Text>
                 </Pressable>
@@ -296,113 +325,140 @@ export function MyAdsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FDF6ED",
-    paddingHorizontal: 12,
-    paddingTop: 12
+    backgroundColor: uiTheme.colors.surfaceAlt,
+    paddingHorizontal: uiTheme.spacing.md,
+    paddingTop: uiTheme.spacing.md
   },
   loading: {
     flex: 1,
-    backgroundColor: "#FDF6ED",
+    backgroundColor: uiTheme.colors.surfaceAlt,
     alignItems: "center",
     justifyContent: "center"
   },
   header: {
-    marginBottom: 10
+    marginBottom: uiTheme.spacing.sm
   },
   title: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 30,
     lineHeight: 34,
     fontWeight: "800"
   },
   sub: {
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     marginTop: 4,
     fontSize: 13
   },
   error: {
-    color: "#B83A2A",
-    marginBottom: 8
+    color: uiTheme.colors.danger,
+    marginBottom: uiTheme.spacing.sm
   },
   listContent: {
-    paddingBottom: 18
+    paddingBottom: uiTheme.spacing.lg
   },
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: uiTheme.colors.surface,
+    borderRadius: uiTheme.radius.md,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    padding: 12,
-    marginBottom: 10
+    borderColor: uiTheme.colors.border,
+    padding: uiTheme.spacing.md,
+    marginBottom: uiTheme.spacing.sm
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    gap: uiTheme.spacing.md
+  },
+  thumbWrap: {
+    width: 96,
+    aspectRatio: 4 / 3,
+    borderRadius: uiTheme.radius.sm,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceSoft
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%"
+  },
+  thumbFallback: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: uiTheme.colors.surfaceSoft
+  },
+  mainInfo: {
+    flex: 1
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    gap: uiTheme.spacing.sm
   },
   price: {
-    color: "#C8603A",
+    color: uiTheme.colors.primary,
     fontSize: 18,
-    fontWeight: "800"
+    fontWeight: "800",
+    flexShrink: 1
   },
   statusPill: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 11,
     fontWeight: "700",
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    backgroundColor: "#FDF6ED",
-    borderRadius: 999,
-    paddingHorizontal: 8,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceAlt,
+    borderRadius: uiTheme.radius.pill,
+    paddingHorizontal: uiTheme.spacing.sm,
     paddingVertical: 4
   },
   cardTitle: {
     marginTop: 6,
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "700"
   },
   meta: {
     marginTop: 4,
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 12
   },
   actionsRow: {
-    marginTop: 10,
+    marginTop: uiTheme.spacing.md,
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8
+    gap: uiTheme.spacing.sm
   },
   actionBtn: {
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 999,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surface,
+    borderRadius: uiTheme.radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6
   },
   actionBtnText: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 12,
     fontWeight: "700"
   },
   emptyCard: {
     marginTop: 6,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: uiTheme.colors.surface,
     borderWidth: 1,
-    borderColor: "#E8D5B7",
-    borderRadius: 12,
-    padding: 14
+    borderColor: uiTheme.colors.border,
+    borderRadius: uiTheme.radius.md,
+    padding: uiTheme.spacing.md
   },
   emptyTitle: {
-    color: "#5C3D2E",
+    color: uiTheme.colors.textStrong,
     fontSize: 15,
     fontWeight: "700"
   },
   emptySub: {
     marginTop: 4,
-    color: "#9B8070",
+    color: uiTheme.colors.textMuted,
     fontSize: 12
   },
   pressed: {

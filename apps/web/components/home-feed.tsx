@@ -16,6 +16,13 @@ import {
 } from "../lib/listing-preferences";
 import { resolveMediaUrl } from "../lib/media-url";
 import { Listing, MarketplaceCategory } from "../lib/types";
+import {
+  displayCategoryPath,
+  displayListedDate,
+  displayLocation,
+  displayRelativeTime,
+  displaySellerLastSeen
+} from "../lib/ui-contract";
 import { useAuthToken } from "../lib/use-auth-token";
 import { LiveSearchInput } from "./live-search-input";
 
@@ -65,70 +72,6 @@ function getPrimaryImage(listing: Listing) {
   return resolveMediaUrl(url);
 }
 
-function getCategoryPath(listing: Listing) {
-  const main = listing.mainCategoryName?.trim();
-  const sub = listing.subCategoryName?.trim();
-  if (main && sub) {
-    return `${main} · ${sub}`;
-  }
-  return main || sub || "";
-}
-
-function extractLocationFromDescription(description: string) {
-  const cityMatch = description.match(/\bcity\s*:\s*([^\n]+)/i);
-  const areaMatch = description.match(/\b(location|area)\s*:\s*([^\n]+)/i);
-  return {
-    city: cityMatch?.[1]?.trim() ?? "",
-    exactLocation: areaMatch?.[2]?.trim() ?? ""
-  };
-}
-
-function toRelativeTime(timestamp?: string) {
-  if (!timestamp) {
-    return "Just now";
-  }
-
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return "Just now";
-  }
-
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "Just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function toListedDate(timestamp?: string) {
-  if (!timestamp) {
-    return "Listed recently";
-  }
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return "Listed recently";
-  }
-  return `Listed on ${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  })}`;
-}
-
-function toLastOnline(timestamp?: string | null) {
-  if (!timestamp) {
-    return "Last online recently";
-  }
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return "Last online recently";
-  }
-  return `Seller online ${toRelativeTime(timestamp)}`;
-}
-
 function dedupeById(listings: Listing[]) {
   const seen = new Set<string>();
   const unique: Listing[] = [];
@@ -147,10 +90,14 @@ function heroCardsFromListings(listings: Listing[]) {
     icon: "\ud83c\udfe1",
     title: item.title,
     desc: item.description,
-    city: item.city || "Pakistan",
+    city: displayLocation({
+      city: item.city,
+      exactLocation: item.exactLocation,
+      description: item.description
+    }),
     price: `${item.currency} ${item.price}`,
     createdAt: item.createdAt,
-    categoryPath: getCategoryPath(item)
+    categoryPath: displayCategoryPath(item.mainCategoryName, item.subCategoryName)
   }));
 
   if (fromListings.length < 3) {
@@ -186,12 +133,15 @@ function ListingCard({ listing }: ListingCardProps) {
   const [saved, setSaved] = useState(false);
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
-  const parsedLocation = useMemo(
-    () => extractLocationFromDescription(listing.description ?? ""),
-    [listing.description]
+  const locationLabel = useMemo(
+    () =>
+      displayLocation({
+        city: listing.city,
+        exactLocation: listing.exactLocation,
+        description: listing.description
+      }),
+    [listing.city, listing.description, listing.exactLocation]
   );
-  const cityLabel = (listing.city?.trim() || parsedLocation.city || "Pakistan").trim();
-  const areaLabel = (listing.exactLocation?.trim() || parsedLocation.exactLocation || "").trim();
 
   useEffect(() => {
     setSaved(getSavedListingIdsLocal().includes(listing.id));
@@ -266,18 +216,20 @@ function ListingCard({ listing }: ListingCardProps) {
         {visibleImageIndexes.length > 1 ? (
           <div className="listingSlideControls">
             <button className="listingSlideBtn" onClick={goToPrevImage} type="button">
-              ‹
+              {"<"}
             </button>
             <button className="listingSlideBtn" onClick={goToNextImage} type="button">
-              ›
+              {">"}
             </button>
           </div>
         ) : null}
       </div>
       <div className="listing-body">
         <p className="listing-cat">TGMG Verified</p>
-        {getCategoryPath(listing) ? (
-          <p className="listing-cat">{getCategoryPath(listing)}</p>
+        {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+          <p className="listing-cat">
+            {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+          </p>
         ) : null}
         <h3 className="listing-title">{listing.title}</h3>
         <p className="listing-desc">{listing.description}</p>
@@ -286,12 +238,12 @@ function ListingCard({ listing }: ListingCardProps) {
           <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
         </p>
         <div className="listing-footer">
-          <span className="listing-loc">{areaLabel ? `${cityLabel} · ${areaLabel}` : cityLabel}</span>
+          <span className="listing-loc">{locationLabel}</span>
           <span className="badge-verified">Asli Banda</span>
         </div>
         <p className="listing-desc">{responseBadge}</p>
-        <p className="listing-desc">{toListedDate(listing.createdAt)}</p>
-        <p className="listing-desc">{toLastOnline(listing.user?.lastSeenAt)}</p>
+        <p className="listing-desc">{displayListedDate(listing.createdAt)}</p>
+        <p className="listing-desc">{displaySellerLastSeen(listing.user?.lastSeenAt)}</p>
       </div>
     </Link>
   );
@@ -642,7 +594,7 @@ export function HomeFeed() {
                   </div>
                   <div className="hcard-footer">
                     <span className="badge-verified">Asli Banda</span>
-                    <span className="hcard-time">{toRelativeTime(item.createdAt)}</span>
+                    <span className="hcard-time">{displayRelativeTime(item.createdAt)}</span>
                   </div>
                 </>
               );

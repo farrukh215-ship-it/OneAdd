@@ -13,6 +13,7 @@ import {
   getMe,
   subscribeAuthToken
 } from "../services/api";
+import { uiTheme } from "../theme/tokens";
 
 const Tab = createBottomTabNavigator();
 
@@ -76,7 +77,7 @@ function AnimatedTabIcon({
           top: -6,
           bottom: -6,
           borderRadius: 999,
-          backgroundColor: "#C8603A",
+          backgroundColor: uiTheme.colors.primary,
           opacity: glowOpacity
         }}
       />
@@ -104,7 +105,7 @@ function TabBarGlassBackdrop({ pulse }: { pulse: Animated.Value }) {
           right: 0,
           top: -18,
           height: 46,
-          backgroundColor: "#F5EAD8",
+          backgroundColor: uiTheme.colors.surfaceSoft,
           opacity: pulse.interpolate({
             inputRange: [0, 1],
             outputRange: [0.2, 0.52]
@@ -186,32 +187,32 @@ export function TabsNavigator() {
         }
       }}
       screenOptions={({ route, navigation }) => ({
-        headerStyle: { backgroundColor: "#FDF6ED" },
-        headerTitleStyle: { color: "#5C3D2E", fontWeight: "700" },
-        headerTintColor: "#5C3D2E",
+        headerStyle: { backgroundColor: uiTheme.colors.surfaceAlt },
+        headerTitleStyle: { color: uiTheme.colors.textStrong, fontWeight: "700" },
+        headerTintColor: uiTheme.colors.textStrong,
         headerRight: () => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {isAuthenticated && loggedInName ? (
               <View
                 style={{
                   borderWidth: 1,
-                  borderColor: "#E8D5B7",
-                  backgroundColor: "#FFFFFF",
+                  borderColor: uiTheme.colors.border,
+                  backgroundColor: uiTheme.colors.surface,
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 6
                 }}
               >
-                <Text style={{ color: "#5C3D2E", fontSize: 11, fontWeight: "700" }}>
-                  Logged in: {loggedInName}
-                </Text>
+                  <Text style={{ color: uiTheme.colors.textStrong, fontSize: 11, fontWeight: "700" }}>
+                    Logged in: {loggedInName}
+                  </Text>
               </View>
             ) : null}
             <Pressable
               style={{
                 borderWidth: 1,
-                borderColor: "#E8D5B7",
-                backgroundColor: "#FFFFFF",
+                borderColor: uiTheme.colors.border,
+                backgroundColor: uiTheme.colors.surface,
                 borderRadius: 999,
                 paddingHorizontal: 12,
                 paddingVertical: 6
@@ -224,7 +225,7 @@ export function TabsNavigator() {
                 navigation.getParent()?.navigate("Login", { tab: "signin" });
               }}
             >
-              <Text style={{ color: "#5C3D2E", fontSize: 12, fontWeight: "700" }}>
+              <Text style={{ color: uiTheme.colors.textStrong, fontSize: 12, fontWeight: "700" }}>
                 {isAuthenticated ? "Sign Out" : "Login"}
               </Text>
             </Pressable>
@@ -232,20 +233,20 @@ export function TabsNavigator() {
         ),
         tabBarStyle: {
           backgroundColor: "transparent",
-          borderTopColor: "#E8D5B7",
+          borderTopColor: uiTheme.colors.border,
           borderTopWidth: 0,
           height: 62,
           paddingBottom: 6,
           paddingTop: 6,
-          shadowColor: "#5C3D2E",
+          shadowColor: uiTheme.colors.textStrong,
           shadowOffset: { width: 0, height: -6 },
           shadowOpacity: 0.1,
           shadowRadius: 18,
           elevation: 10
         },
         tabBarBackground: () => <TabBarGlassBackdrop pulse={tabPulse} />,
-        tabBarActiveTintColor: "#C8603A",
-        tabBarInactiveTintColor: "#9B8070",
+        tabBarActiveTintColor: uiTheme.colors.primary,
+        tabBarInactiveTintColor: uiTheme.colors.textMuted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
         tabBarIcon: ({ color, focused }) => (
           <AnimatedTabIcon icon={iconMap[route.name] ?? "\u2022"} color={color} focused={focused} />

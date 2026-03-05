@@ -11,6 +11,7 @@ import {
 } from "../../lib/api";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { ChatMessage, ChatThread } from "../../lib/types";
+import { displayCategoryPath } from "../../lib/ui-contract";
 
 function getUserIdFromToken(token: string) {
   try {
@@ -38,18 +39,10 @@ function formatDateTime(value?: string) {
   return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit"
   });
-}
-
-function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
-  const main = mainCategory?.trim();
-  const sub = subCategory?.trim();
-  if (main && sub) {
-    return `${main} · ${sub}`;
-  }
-  return main || sub || "";
 }
 
 export default function ChatPage() {
@@ -227,13 +220,13 @@ export default function ChatPage() {
                       Uploaded by {(thread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                       {peerName.split(" ")[0]}
                     </p>
-                    {getCategoryPath(
+                    {displayCategoryPath(
                       thread.listing?.mainCategoryName,
                       thread.listing?.subCategoryName
                     ) ? (
                       <p className="chatThreadMeta">
                         Category:{" "}
-                        {getCategoryPath(
+                        {displayCategoryPath(
                           thread.listing?.mainCategoryName,
                           thread.listing?.subCategoryName
                         )}
@@ -261,13 +254,13 @@ export default function ChatPage() {
                 Uploaded by {(activeThread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                 {activePeerName.split(" ")[0]}
               </p>
-              {getCategoryPath(
+              {displayCategoryPath(
                 activeThread.listing?.mainCategoryName,
                 activeThread.listing?.subCategoryName
               ) ? (
                 <p className="chatThreadMeta">
                   Category:{" "}
-                  {getCategoryPath(
+                  {displayCategoryPath(
                     activeThread.listing?.mainCategoryName,
                     activeThread.listing?.subCategoryName
                   )}

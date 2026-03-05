@@ -24,6 +24,23 @@
   --radius-lg: 20px;
   --radius-full: 100px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-24: 24px;
+  --motion-fast: 160ms;
+  --motion-normal: 240ms;
+  --motion-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasis: cubic-bezier(0.2, 0.9, 0.25, 1);
 }
 
 * {
@@ -40,6 +57,22 @@ body {
   background: var(--cream);
   color: var(--brown);
   overflow-x: hidden;
+}
+
+body.uiPremiumV1 {
+  --surface-raised: #ffffff;
+  --surface-soft: #fffaf3;
+  --border-soft: rgba(212, 184, 150, 0.7);
+  --text-strong: #5c3d2e;
+  --text-muted: #8d7363;
+}
+
+body.uiClassic {
+  --surface-raised: #ffffff;
+  --surface-soft: #fdf6ed;
+  --border-soft: var(--sand);
+  --text-strong: var(--brown);
+  --text-muted: var(--muted);
 }
 
 main {
@@ -100,6 +133,17 @@ textarea {
 *:focus-visible {
   outline: 2px solid var(--clay);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .announce-bar {
@@ -4033,4 +4077,84 @@ textarea {
   .cmdItemMeta {
     display: none;
   }
+}
+
+body.uiPremiumV1 .hero-search-box,
+body.uiPremiumV1 .searchFilters,
+body.uiPremiumV1 .searchResults,
+body.uiPremiumV1 .listingDetailLayout > section,
+body.uiPremiumV1 .listingDetailLayout > aside,
+body.uiPremiumV1 .accountListingCard,
+body.uiPremiumV1 .chatThreadsPanel,
+body.uiPremiumV1 .chatConversationPanel {
+  background: var(--surface-raised);
+  border-color: var(--border-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+body.uiPremiumV1 .listing-card,
+body.uiPremiumV1 .searchResultCard,
+body.uiPremiumV1 .accountListingCard {
+  border-radius: var(--radius-16);
+}
+
+body.uiPremiumV1 .listing-img,
+body.uiPremiumV1 .listing-img-inner,
+body.uiPremiumV1 .listingMainMedia,
+body.uiPremiumV1 .wizardMediaPreviewFrame,
+body.uiPremiumV1 .accountListingMediaWrap,
+body.uiPremiumV1 .searchResultImage,
+body.uiPremiumV1 .searchResultImagePlaceholder {
+  background: var(--surface-soft);
+  border-color: var(--border-soft);
+}
+
+body.uiPremiumV1 .listingMainImage,
+body.uiPremiumV1 .accountListingMedia,
+body.uiPremiumV1 .searchResultImage,
+body.uiPremiumV1 .listingThumb img,
+body.uiPremiumV1 .premiumMedia {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+body.uiPremiumV1 .wizardMediaPreview {
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+}
+
+body.uiPremiumV1 .listing-title,
+body.uiPremiumV1 .searchResultBody h3,
+body.uiPremiumV1 .accountListingTitle,
+body.uiPremiumV1 .chatThreadTitle {
+  color: var(--text-strong);
+}
+
+body.uiPremiumV1 .listing-desc,
+body.uiPremiumV1 .searchResultMeta,
+body.uiPremiumV1 .helperText,
+body.uiPremiumV1 .chatThreadMeta,
+body.uiPremiumV1 .chatBubbleTime {
+  color: var(--text-muted);
+}
+
+body.uiPremiumV1 .btn,
+body.uiPremiumV1 .searchSubmitBtn,
+body.uiPremiumV1 .search-btn,
+body.uiPremiumV1 .btn-primary,
+body.uiPremiumV1 .btn-ghost {
+  transition: transform var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-normal) var(--ease-standard);
+}
+
+body.uiPremiumV1 .btn:hover,
+body.uiPremiumV1 .searchSubmitBtn:hover,
+body.uiPremiumV1 .search-btn:hover,
+body.uiPremiumV1 .btn-primary:hover,
+body.uiPremiumV1 .btn-ghost:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
