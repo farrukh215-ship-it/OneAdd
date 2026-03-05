@@ -42,6 +42,15 @@ function formatListedDate(input?: string) {
   return `Listed: ${date.toLocaleDateString("en-GB")}`;
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} • ${sub}`;
+  }
+  return main || sub || "";
+}
+
 export function MyAdsScreen({ navigation }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 12, duration: 300 });
   const [token, setToken] = useState(getAuthToken());
@@ -217,6 +226,9 @@ export function MyAdsScreen({ navigation }: any) {
               <Text style={styles.cardTitle} numberOfLines={2}>
                 {item.title}
               </Text>
+              {getCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+                <Text style={styles.meta}>{getCategoryPath(item.mainCategoryName, item.subCategoryName)}</Text>
+              ) : null}
               <Text style={styles.meta}>
                 {item.city || "Pakistan"} | {formatListedDate(item.createdAt)}
               </Text>
@@ -398,4 +410,3 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }]
   }
 });
-

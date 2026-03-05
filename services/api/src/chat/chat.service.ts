@@ -116,16 +116,56 @@ export class ChatService {
   }
 
   async getMyThreads(userId: string) {
-    return this.prisma.chatThread.findMany({
+    const threads = await this.prisma.chatThread.findMany({
       where: {
         OR: [{ buyerId: userId }, { sellerId: userId }]
       },
       include: {
         buyer: { select: { id: true, fullName: true, phone: true, city: true } },
         seller: { select: { id: true, fullName: true, phone: true, city: true } },
-        listing: { select: { id: true, title: true, status: true } }
+        listing: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            category: {
+              select: {
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    name: true,
+                    slug: true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { lastMessageAt: "desc" }
+    });
+
+    return threads.map((thread) => {
+      if (!thread.listing) {
+        return thread;
+      }
+
+      const mainCategory = thread.listing.category.parent ?? thread.listing.category;
+      const subCategory = thread.listing.category.parent ? thread.listing.category : null;
+
+      return {
+        ...thread,
+        listing: {
+          id: thread.listing.id,
+          title: thread.listing.title,
+          status: thread.listing.status,
+          mainCategoryName: mainCategory.name,
+          mainCategorySlug: mainCategory.slug,
+          subCategoryName: subCategory?.name ?? null,
+          subCategorySlug: subCategory?.slug ?? null
+        }
+      };
     });
   }
 

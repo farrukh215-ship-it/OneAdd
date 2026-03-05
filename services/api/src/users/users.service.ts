@@ -53,6 +53,20 @@ export class UsersService {
         listing: {
           include: {
             media: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                  }
+                }
+              }
+            },
             user: {
               select: {
                 id: true,
@@ -67,7 +81,7 @@ export class UsersService {
     });
 
     const items = rows
-      .map((row) => row.listing)
+      .map((row) => this.attachCategorySummary(row.listing))
       .filter((listing): listing is NonNullable<typeof listing> => Boolean(listing));
 
     return { items, total: items.length };
@@ -117,6 +131,20 @@ export class UsersService {
         listing: {
           include: {
             media: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true
+                  }
+                }
+              }
+            },
             user: {
               select: {
                 id: true,
@@ -131,7 +159,7 @@ export class UsersService {
     });
 
     const items = rows
-      .map((row) => row.listing)
+      .map((row) => this.attachCategorySummary(row.listing))
       .filter((listing): listing is NonNullable<typeof listing> => Boolean(listing));
 
     return { items, total: items.length };
@@ -152,5 +180,44 @@ export class UsersService {
       return DEFAULT_LIMIT;
     }
     return Math.min(Math.max(limit, 1), MAX_LIMIT);
+  }
+
+  private attachCategorySummary<
+    T extends {
+      category?: {
+        name: string;
+        slug: string;
+        parent?: {
+          name: string;
+          slug: string;
+        } | null;
+      } | null;
+    } | null
+  >(listing: T) {
+    if (!listing) {
+      return listing;
+    }
+
+    const category = listing.category;
+    if (!category) {
+      return {
+        ...listing,
+        mainCategoryName: null,
+        mainCategorySlug: null,
+        subCategoryName: null,
+        subCategorySlug: null
+      };
+    }
+
+    const mainCategory = category.parent ?? category;
+    const subCategory = category.parent ? category : null;
+
+    return {
+      ...listing,
+      mainCategoryName: mainCategory.name,
+      mainCategorySlug: mainCategory.slug,
+      subCategoryName: subCategory?.name ?? null,
+      subCategorySlug: subCategory?.slug ?? null
+    };
   }
 }

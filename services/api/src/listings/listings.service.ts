@@ -78,7 +78,23 @@ export class ListingsService {
           }))
         }
       },
-      include: { media: true }
+      include: {
+        media: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      }
     });
   }
 
@@ -173,6 +189,20 @@ export class ListingsService {
         include: {
           media: {
             orderBy: { sortOrder: "asc" }
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true
+                }
+              }
+            }
           }
         }
       });
@@ -253,7 +283,23 @@ export class ListingsService {
             }))
           }
         },
-        include: { media: true }
+        include: {
+          media: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        }
       });
 
       await tx.userCategoryActiveListing.create({
@@ -538,6 +584,20 @@ export class ListingsService {
         media: {
           orderBy: { sortOrder: "asc" }
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        },
         user: {
           select: {
             id: true,
@@ -711,6 +771,20 @@ export class ListingsService {
       include: {
         media: {
           orderBy: { sortOrder: "asc" }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
         },
         user: {
           select: {
@@ -947,6 +1021,20 @@ export class ListingsService {
         media: {
           orderBy: { sortOrder: "asc" }
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        },
         user: {
           select: {
             id: true,
@@ -1061,15 +1149,30 @@ export class ListingsService {
   }
 
   async getMyListings(userId: string) {
-    return this.prisma.listing.findMany({
+    const listings = await this.prisma.listing.findMany({
       where: { userId },
       include: {
         media: {
           orderBy: { sortOrder: "asc" }
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
         }
       },
       orderBy: { createdAt: "desc" }
     });
+    return listings.map((item) => this.normalizeListingForClient(item));
   }
 
   private normalizeListingForClient<
@@ -1078,8 +1181,35 @@ export class ListingsService {
         deviceFingerprints?: Array<{ lastSeenAt: Date }>;
         updatedAt?: Date;
       } | null;
+      category?: {
+        id: string;
+        name: string;
+        slug: string;
+        parent?: {
+          id: string;
+          name: string;
+          slug: string;
+        } | null;
+      } | null;
     }
   >(listing: T) {
+    const categoryLabels = this.resolveCategoryLabels(
+      listing.category
+        ? {
+            id: listing.category.id,
+            name: listing.category.name,
+            slug: listing.category.slug,
+            parent: listing.category.parent
+              ? {
+                  id: listing.category.parent.id,
+                  name: listing.category.parent.name,
+                  slug: listing.category.parent.slug
+                }
+              : null
+          }
+        : null
+    );
+
     if (!listing.user) {
       const descriptionRaw = (listing as { description?: unknown }).description;
       const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
@@ -1088,7 +1218,8 @@ export class ListingsService {
       return {
         ...listing,
         city: city || null,
-        exactLocation: exactLocation || null
+        exactLocation: exactLocation || null,
+        ...categoryLabels
       };
     }
 
@@ -1106,10 +1237,46 @@ export class ListingsService {
       ...listing,
       city: this.extractMetadataValue(description, "city") || null,
       exactLocation: this.extractMetadataValue(description, "location") || null,
+      ...categoryLabels,
       user: {
         ...restUser,
         lastSeenAt
       }
+    };
+  }
+
+  private resolveCategoryLabels(
+    category:
+      | {
+          id: string;
+          name: string;
+          slug: string;
+          parent?: {
+            id: string;
+            name: string;
+            slug: string;
+          } | null;
+        }
+      | null
+      | undefined
+  ) {
+    if (!category) {
+      return {
+        mainCategoryName: null,
+        mainCategorySlug: null,
+        subCategoryName: null,
+        subCategorySlug: null
+      };
+    }
+
+    const mainCategory = category.parent ?? category;
+    const subCategory = category.parent ? category : null;
+
+    return {
+      mainCategoryName: mainCategory.name,
+      mainCategorySlug: mainCategory.slug,
+      subCategoryName: subCategory?.name ?? null,
+      subCategorySlug: subCategory?.slug ?? null
     };
   }
 

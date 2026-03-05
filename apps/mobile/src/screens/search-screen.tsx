@@ -43,6 +43,15 @@ function dedupeByListingId(source: Listing[]) {
   return unique;
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} • ${sub}`;
+  }
+  return main || sub || "";
+}
+
 export function SearchScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [query, setQuery] = useState("");
@@ -286,6 +295,9 @@ export function SearchScreen({ navigation, route }: any) {
                 </Pressable>
               </View>
               <Text style={styles.title}>{item.title}</Text>
+              {getCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+                <Text style={styles.meta}>{getCategoryPath(item.mainCategoryName, item.subCategoryName)}</Text>
+              ) : null}
               <Text style={styles.meta}>
                 {item.city || "Pakistan"}
                 {item.exactLocation ? ` - ${item.exactLocation}` : ""}

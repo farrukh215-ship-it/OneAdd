@@ -71,6 +71,15 @@ function getTrustBadge(score: number) {
   return "New Member";
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} • ${sub}`;
+  }
+  return main || sub || "";
+}
+
 function FeedSkeleton() {
   return (
     <View style={styles.skeletonWrap} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -171,6 +180,9 @@ function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
         <Text style={styles.title} numberOfLines={2}>
           {item.title}
         </Text>
+        {getCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+          <Text style={styles.metaSub}>{getCategoryPath(item.mainCategoryName, item.subCategoryName)}</Text>
+        ) : null}
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>{item.city || "Pakistan"}</Text>
           <Text style={styles.metaDot}>|</Text>

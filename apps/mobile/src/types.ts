@@ -8,6 +8,10 @@ export type ListingMedia = {
 export type Listing = {
   id: string;
   categoryId?: string;
+  mainCategoryName?: string | null;
+  mainCategorySlug?: string | null;
+  subCategoryName?: string | null;
+  subCategorySlug?: string | null;
   title: string;
   description: string;
   price: string | number;
@@ -41,6 +45,10 @@ export type ChatThread = {
     id: string;
     title: string;
     status?: string;
+    mainCategoryName?: string | null;
+    mainCategorySlug?: string | null;
+    subCategoryName?: string | null;
+    subCategorySlug?: string | null;
   } | null;
   buyer?: {
     id: string;

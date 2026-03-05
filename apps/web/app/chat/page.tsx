@@ -43,6 +43,15 @@ function formatDateTime(value?: string) {
   });
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} · ${sub}`;
+  }
+  return main || sub || "";
+}
+
 export default function ChatPage() {
   const { mounted, token } = useAuthToken();
   const currentUserId = useMemo(() => getUserIdFromToken(token), [token]);
@@ -218,6 +227,18 @@ export default function ChatPage() {
                       Uploaded by {(thread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                       {peerName.split(" ")[0]}
                     </p>
+                    {getCategoryPath(
+                      thread.listing?.mainCategoryName,
+                      thread.listing?.subCategoryName
+                    ) ? (
+                      <p className="chatThreadMeta">
+                        Category:{" "}
+                        {getCategoryPath(
+                          thread.listing?.mainCategoryName,
+                          thread.listing?.subCategoryName
+                        )}
+                      </p>
+                    ) : null}
                     <p className="chatThreadSnippet">
                       {thread.status === "CLOSED"
                         ? "Listing closed, read-only thread."
@@ -240,6 +261,18 @@ export default function ChatPage() {
                 Uploaded by {(activeThread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                 {activePeerName.split(" ")[0]}
               </p>
+              {getCategoryPath(
+                activeThread.listing?.mainCategoryName,
+                activeThread.listing?.subCategoryName
+              ) ? (
+                <p className="chatThreadMeta">
+                  Category:{" "}
+                  {getCategoryPath(
+                    activeThread.listing?.mainCategoryName,
+                    activeThread.listing?.subCategoryName
+                  )}
+                </p>
+              ) : null}
               {activePeer?.city ? <p className="chatThreadMeta">City: {activePeer.city}</p> : null}
               {activePeer?.phone ? (
                 <div className="chatPeerActions">

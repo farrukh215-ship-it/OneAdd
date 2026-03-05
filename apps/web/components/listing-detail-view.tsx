@@ -97,6 +97,15 @@ function cleanDescriptionMetadata(description: string) {
     .trim();
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} · ${sub}`;
+  }
+  return main || sub || "";
+}
+
 export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const router = useRouter();
   const { mounted, token } = useAuthToken();
@@ -375,6 +384,11 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <section className="listingFactsCard">
             <p className="listingFactLabel">Description</p>
             <p className="listingDescription">{description || "No description available."}</p>
+            {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+              <p className="listingFactLine">
+                <strong>Category:</strong> {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+              </p>
+            ) : null}
             {conditionLabel ? (
               <p className="listingFactLine">
                 <strong>Condition:</strong> {conditionLabel.replace(/_/g, " ")}

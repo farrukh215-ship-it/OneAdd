@@ -21,6 +21,15 @@ const sortOptions = [
 ] as const;
 type SortBy = (typeof sortOptions)[number]["value"];
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} · ${sub}`;
+  }
+  return main || sub || "";
+}
+
 function parsePositiveNumber(value: string) {
   if (!value.trim()) {
     return undefined;
@@ -502,6 +511,11 @@ export default function SearchPage() {
                       {listing.currency} {listing.price}
                     </p>
                     <h3>{listing.title}</h3>
+                    {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+                      <p className="searchResultMeta">
+                        {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+                      </p>
+                    ) : null}
                     <p className="searchResultMeta">
                       {(listing.city || "Pakistan") +
                         (listing.exactLocation ? ` - ${listing.exactLocation}` : "") +

@@ -32,6 +32,7 @@ type HeroCard = {
   city: string;
   price: string;
   createdAt?: string;
+  categoryPath?: string;
 };
 
 const heroFallback: HeroCard[] = [
@@ -61,6 +62,15 @@ const heroFallback: HeroCard[] = [
 function getPrimaryImage(listing: Listing) {
   const url = listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
   return resolveMediaUrl(url);
+}
+
+function getCategoryPath(listing: Listing) {
+  const main = listing.mainCategoryName?.trim();
+  const sub = listing.subCategoryName?.trim();
+  if (main && sub) {
+    return `${main} · ${sub}`;
+  }
+  return main || sub || "";
 }
 
 function extractLocationFromDescription(description: string) {
@@ -138,7 +148,8 @@ function heroCardsFromListings(listings: Listing[]) {
     desc: item.description,
     city: item.city || "Pakistan",
     price: `${item.currency} ${item.price}`,
-    createdAt: item.createdAt
+    createdAt: item.createdAt,
+    categoryPath: getCategoryPath(item)
   }));
 
   if (fromListings.length < 3) {
@@ -264,6 +275,9 @@ function ListingCard({ listing }: ListingCardProps) {
       </div>
       <div className="listing-body">
         <p className="listing-cat">TGMG Verified</p>
+        {getCategoryPath(listing) ? (
+          <p className="listing-cat">{getCategoryPath(listing)}</p>
+        ) : null}
         <h3 className="listing-title">{listing.title}</h3>
         <p className="listing-desc">{listing.description}</p>
         <p className="listing-price">
@@ -622,6 +636,7 @@ export function HomeFeed() {
                     </div>
                     <div className="hcard-meta">
                       <h3 className="hcard-title">{item.title}</h3>
+                      {item.categoryPath ? <p className="listing-cat">{item.categoryPath}</p> : null}
                       <p className="hcard-desc">{item.desc}</p>
                       <p className="hcard-location">{item.city}</p>
                     </div>

@@ -57,6 +57,15 @@ function formatListedDate(input?: string) {
   return `Listed on ${date.toLocaleDateString("en-GB")}`;
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} • ${sub}`;
+  }
+  return main || sub || "";
+}
+
 function getUserIdFromToken(token: string) {
   try {
     const payload = token.split(".")[1];
@@ -298,6 +307,11 @@ export function ListingDetailScreen({ route, navigation }: any) {
             {listing.currency} {listing.price}
           </Text>
           <Text style={styles.description}>{listing.description}</Text>
+          {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+            <Text style={styles.metaLine}>
+              Category: {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+            </Text>
+          ) : null}
           <Text style={styles.metaLine}>{formatListedDate(listing.createdAt)}</Text>
 
           <View style={styles.trustCard}>

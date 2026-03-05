@@ -76,6 +76,15 @@ function extractLocationFromDescription(description: string) {
   };
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} · ${sub}`;
+  }
+  return main || sub || "";
+}
+
 function AccountListingMedia({ listing }: { listing: Listing }) {
   const candidates = getImageCandidates(listing);
   const [failedIndexes, setFailedIndexes] = useState<Set<number>>(new Set());
@@ -329,6 +338,11 @@ export default function AccountPage() {
                       </span>
                     </div>
                     <p className="helperText accountListedDate">{formatListedDate(listing.createdAt)}</p>
+                    {getCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
+                      <p className="helperText accountListedDate">
+                        Category: {getCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
+                      </p>
+                    ) : null}
                     <p className="helperText accountListedDate">
                       City: {cityLabel}
                       {areaLabel ? ` · Area: ${areaLabel}` : ""}

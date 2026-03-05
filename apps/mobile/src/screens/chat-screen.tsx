@@ -42,6 +42,15 @@ function formatTime(value: string) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function getCategoryPath(mainCategory?: string | null, subCategory?: string | null) {
+  const main = mainCategory?.trim();
+  const sub = subCategory?.trim();
+  if (main && sub) {
+    return `${main} • ${sub}`;
+  }
+  return main || sub || "";
+}
+
 export function ChatScreen({ navigation }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 12, duration: 300 });
   const [token, setToken] = useState(getAuthToken());
@@ -184,6 +193,18 @@ export function ChatScreen({ navigation }: any) {
               ).split(" ")[0]}`
             : "Asli buyers aur sellers ke sath direct baat karein."}
         </Text>
+        {getCategoryPath(
+          activeThread?.listing?.mainCategoryName,
+          activeThread?.listing?.subCategoryName
+        ) ? (
+          <Text style={styles.headerSub}>
+            Category:{" "}
+            {getCategoryPath(
+              activeThread?.listing?.mainCategoryName,
+              activeThread?.listing?.subCategoryName
+            )}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.threadRail}>
@@ -220,6 +241,11 @@ export function ChatScreen({ navigation }: any) {
                   Uploaded by {(item.seller?.fullName || "Seller").split(" ")[0]} |{" "}
                   {item.status === "CLOSED" ? "Closed" : "Active"}
                 </Text>
+                {getCategoryPath(item.listing?.mainCategoryName, item.listing?.subCategoryName) ? (
+                  <Text style={styles.threadSub} numberOfLines={1}>
+                    {getCategoryPath(item.listing?.mainCategoryName, item.listing?.subCategoryName)}
+                  </Text>
+                ) : null}
               </Pressable>
             )}
           />
