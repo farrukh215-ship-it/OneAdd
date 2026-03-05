@@ -67,6 +67,15 @@ function statusTone(status?: string) {
   }
 }
 
+function extractLocationFromDescription(description: string) {
+  const cityMatch = description.match(/\bcity\s*:\s*([^\n]+)/i);
+  const areaMatch = description.match(/\b(location|area)\s*:\s*([^\n]+)/i);
+  return {
+    city: cityMatch?.[1]?.trim() ?? "",
+    exactLocation: areaMatch?.[2]?.trim() ?? ""
+  };
+}
+
 function AccountListingMedia({ listing }: { listing: Listing }) {
   const candidates = getImageCandidates(listing);
   const [failedIndexes, setFailedIndexes] = useState<Set<number>>(new Set());
@@ -301,7 +310,11 @@ export default function AccountPage() {
 
         {items.length > 0 ? (
           <div className="accountListingsGrid">
-            {items.map((listing) => (
+            {items.map((listing) => {
+              const parsed = extractLocationFromDescription(listing.description ?? "");
+              const cityLabel = (listing.city?.trim() || parsed.city || "Pakistan").trim();
+              const areaLabel = (listing.exactLocation?.trim() || parsed.exactLocation || "").trim();
+              return (
               <article className="accountListingCard" key={listing.id}>
                 <Link href={`/listing/${listing.id}`} className="accountListingMain">
                   <AccountListingMedia listing={listing} />
@@ -316,7 +329,10 @@ export default function AccountPage() {
                       </span>
                     </div>
                     <p className="helperText accountListedDate">{formatListedDate(listing.createdAt)}</p>
-                    <p className="helperText accountListedDate">City: {listing.city || "Pakistan"}</p>
+                    <p className="helperText accountListedDate">
+                      City: {cityLabel}
+                      {areaLabel ? ` · Area: ${areaLabel}` : ""}
+                    </p>
                   </div>
                 </Link>
                 <div className="accountListingActions">
@@ -373,7 +389,8 @@ export default function AccountPage() {
                   ) : null}
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         ) : null}
       </section>

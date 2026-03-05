@@ -620,16 +620,19 @@ export class ListingsService {
       minPrice?: number;
       maxPrice?: number;
       city?: string;
+      area?: string;
       isNegotiable?: boolean;
     }
   ) {
     const q = query.trim();
     const city = filters?.city?.trim() ?? "";
+    const area = filters?.area?.trim() ?? "";
     const hasPriceFilter =
       typeof filters?.minPrice === "number" || typeof filters?.maxPrice === "number";
     const hasCategoryFilter = Boolean(filters?.category?.trim());
+    const hasAreaFilter = Boolean(area);
 
-    if (!q && !city && !hasPriceFilter && !hasCategoryFilter) {
+    if (!q && !city && !hasAreaFilter && !hasPriceFilter && !hasCategoryFilter) {
       return [];
     }
 
@@ -647,9 +650,16 @@ export class ListingsService {
     if (city) {
       andFilters.push({
         OR: [
+          { user: { city: { contains: city, mode: "insensitive" } } },
           { title: { contains: city, mode: "insensitive" } },
           { description: { contains: city, mode: "insensitive" } }
         ]
+      });
+    }
+
+    if (area) {
+      andFilters.push({
+        description: { contains: area, mode: "insensitive" }
       });
     }
 
@@ -720,10 +730,16 @@ export class ListingsService {
       minPrice?: number;
       maxPrice?: number;
       city?: string;
+      area?: string;
       isNegotiable?: boolean;
     }
   ) {
-    const base = await this.search(query, limit, filters);
+    const semanticTerms = this.expandSemanticTerms(query);
+    const hasQuery = semanticTerms.length > 0;
+    let base = await this.search(query, limit, filters);
+    if (base.length === 0 && hasQuery && (filters?.category || filters?.city || filters?.area)) {
+      base = await this.search("", limit, filters);
+    }
     const q = query.trim().toLowerCase();
     if (!q) {
       return base;
@@ -733,10 +749,28 @@ export class ListingsService {
       const aText = `${a.title} ${a.description}`.toLowerCase();
       const bText = `${b.title} ${b.description}`.toLowerCase();
 
-      const aTitleBoost = a.title.toLowerCase().includes(q) ? 2 : 0;
-      const bTitleBoost = b.title.toLowerCase().includes(q) ? 2 : 0;
-      const aDescBoost = aText.includes(q) ? 1 : 0;
-      const bDescBoost = bText.includes(q) ? 1 : 0;
+      let aTitleBoost = a.title.toLowerCase().includes(q) ? 2 : 0;
+      let bTitleBoost = b.title.toLowerCase().includes(q) ? 2 : 0;
+      let aDescBoost = aText.includes(q) ? 1 : 0;
+      let bDescBoost = bText.includes(q) ? 1 : 0;
+
+      for (const term of semanticTerms) {
+        if (term.length < 2) {
+          continue;
+        }
+        if (a.title.toLowerCase().includes(term)) {
+          aTitleBoost += 0.8;
+        }
+        if (b.title.toLowerCase().includes(term)) {
+          bTitleBoost += 0.8;
+        }
+        if (aText.includes(term)) {
+          aDescBoost += 0.4;
+        }
+        if (bText.includes(term)) {
+          bDescBoost += 0.4;
+        }
+      }
       const aTrust = a.user?.trustScore?.score ?? 0;
       const bTrust = b.user?.trustScore?.score ?? 0;
       const aFreshness =
@@ -894,7 +928,15 @@ export class ListingsService {
     }
   >(listing: T) {
     if (!listing.user) {
-      return listing;
+      const descriptionRaw = (listing as { description?: unknown }).description;
+      const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
+      const city = this.extractMetadataValue(description, "city");
+      const exactLocation = this.extractMetadataValue(description, "location");
+      return {
+        ...listing,
+        city: city || null,
+        exactLocation: exactLocation || null
+      };
     }
 
     const user = listing.user as {
@@ -905,13 +947,52 @@ export class ListingsService {
     const { deviceFingerprints, ...restUser } = user;
     const lastSeenAt = deviceFingerprints?.[0]?.lastSeenAt ?? user.updatedAt ?? null;
 
+    const descriptionRaw = (listing as { description?: unknown }).description;
+    const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
     return {
       ...listing,
+      city: this.extractMetadataValue(description, "city") || null,
+      exactLocation: this.extractMetadataValue(description, "location") || null,
       user: {
         ...restUser,
         lastSeenAt
       }
     };
+  }
+
+  private extractMetadataValue(description: string, key: "city" | "location") {
+    const match = description.match(new RegExp(`\\b${key}\\s*:\\s*([^\\n]+)`, "i"));
+    return match?.[1]?.trim() ?? "";
+  }
+
+  private expandSemanticTerms(query: string) {
+    const tokens = query
+      .toLowerCase()
+      .split(/[\s,./\\\-_:;]+/)
+      .map((token) => token.trim())
+      .filter(Boolean);
+    const expanded = new Set(tokens);
+
+    const synonymMap: Record<string, string[]> = {
+      bicycle: ["cycle", "bike", "cycles"],
+      cycles: ["cycle", "bicycle", "bike"],
+      cycle: ["bicycle", "bike", "cycles"],
+      bike: ["bicycle", "cycle"],
+      mobile: ["phone", "smartphone", "cell"],
+      phone: ["mobile", "smartphone", "cellphone"],
+      laptop: ["notebook", "computer"],
+      sofa: ["couch", "settee"],
+      tv: ["television", "led"]
+    };
+
+    for (const token of tokens) {
+      const synonyms = synonymMap[token] ?? [];
+      for (const synonym of synonyms) {
+        expanded.add(synonym);
+      }
+    }
+
+    return Array.from(expanded);
   }
 
   private validateMediaConstraints(

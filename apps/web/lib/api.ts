@@ -297,6 +297,7 @@ export type SearchFilters = {
   query: string;
   category: string;
   city: string;
+  area?: string;
   minPrice?: number;
   maxPrice?: number;
   condition: string;
@@ -312,6 +313,9 @@ export async function searchListingsWithFilters(filters: SearchFilters) {
 
   if (filters.city.trim()) {
     params.set("city", filters.city.trim());
+  }
+  if (filters.area?.trim()) {
+    params.set("area", filters.area.trim());
   }
   if (typeof filters.minPrice === "number") {
     params.set("minPrice", String(filters.minPrice));
@@ -338,6 +342,9 @@ export async function semanticSearchListingsWithFilters(filters: SearchFilters) 
 
   if (filters.city.trim()) {
     params.set("city", filters.city.trim());
+  }
+  if (filters.area?.trim()) {
+    params.set("area", filters.area.trim());
   }
   if (typeof filters.minPrice === "number") {
     params.set("minPrice", String(filters.minPrice));

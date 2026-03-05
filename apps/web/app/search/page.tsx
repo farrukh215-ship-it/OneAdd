@@ -51,6 +51,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");
+  const [area, setArea] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [condition, setCondition] = useState("ANY");
@@ -98,6 +99,7 @@ export default function SearchPage() {
     const initialCategory = params.get("category") ?? "";
     const initialSubcategory = params.get("subcategory") ?? "";
     const initialCity = params.get("city") ?? "";
+    const initialArea = params.get("area") ?? "";
     const initialMinPrice = params.get("minPrice") ?? "";
     const initialMaxPrice = params.get("maxPrice") ?? "";
     const initialCondition = params.get("condition") ?? "ANY";
@@ -112,6 +114,9 @@ export default function SearchPage() {
     }
     if (initialCity) {
       setCity(initialCity);
+    }
+    if (initialArea) {
+      setArea(initialArea);
     }
     if (initialMinPrice) {
       setMinPrice(initialMinPrice);
@@ -133,6 +138,7 @@ export default function SearchPage() {
       initialQ ||
       resolvedCategory ||
       initialCity ||
+      initialArea ||
       initialMinPrice ||
       initialMaxPrice ||
       initialNegotiable
@@ -141,6 +147,7 @@ export default function SearchPage() {
         query: initialQ,
         category: resolvedCategory,
         city: initialCity,
+        area: initialArea,
         minPrice: Number.isNaN(parsedInitialMin) ? undefined : parsedInitialMin,
         maxPrice: Number.isNaN(parsedInitialMax) ? undefined : parsedInitialMax,
         condition: conditions.includes(initialCondition) ? initialCondition : "ANY",
@@ -163,13 +170,14 @@ export default function SearchPage() {
       list.push(matchedSub?.name ?? matchedRoot?.name ?? category);
     }
     if (city.trim()) list.push(city.trim());
+    if (area.trim()) list.push(area.trim());
     if (minPrice.trim()) list.push(`Min ${minPrice}`);
     if (maxPrice.trim()) list.push(`Max ${maxPrice}`);
     if (condition !== "ANY") list.push(condition);
     if (negotiableOnly) list.push("Negotiable Only");
     list.push(searchMode === "semantic" ? "Smart Ranking" : "Exact Match");
     return list;
-  }, [catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query, searchMode]);
+  }, [area, catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query, searchMode]);
 
   function updateUrlFromSearch(payload: SearchFilters, mode: SearchMode) {
     if (typeof window === "undefined") {
@@ -180,6 +188,7 @@ export default function SearchPage() {
     const cleanQuery = payload.query.trim();
     const cleanCategory = payload.category.trim();
     const cleanCity = payload.city.trim();
+    const cleanArea = payload.area?.trim() ?? "";
 
     if (cleanQuery) {
       params.set("q", cleanQuery);
@@ -189,6 +198,9 @@ export default function SearchPage() {
     }
     if (cleanCity) {
       params.set("city", cleanCity);
+    }
+    if (cleanArea) {
+      params.set("area", cleanArea);
     }
     if (typeof payload.minPrice === "number") {
       params.set("minPrice", String(payload.minPrice));
@@ -257,6 +269,7 @@ export default function SearchPage() {
       query,
       category,
       city,
+      area,
       minPrice: min,
       maxPrice: max,
       condition,
@@ -324,6 +337,15 @@ export default function SearchPage() {
                 placeholder="Karachi"
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
+              />
+            </label>
+            <label className="filterLabel">
+              Area
+              <input
+                className="input"
+                placeholder="Johar Town, DHA..."
+                value={area}
+                onChange={(event) => setArea(event.target.value)}
               />
             </label>
             <div className="priceRow">
@@ -400,6 +422,7 @@ export default function SearchPage() {
                   query,
                   category: item.slug,
                   city,
+                  area,
                   minPrice: Number.isNaN(parsedMin) ? undefined : parsedMin,
                   maxPrice: Number.isNaN(parsedMax) ? undefined : parsedMax,
                   condition,
@@ -455,7 +478,9 @@ export default function SearchPage() {
                     </p>
                     <h3>{listing.title}</h3>
                     <p className="searchResultMeta">
-                      {listing.city || "Pakistan"} - {listing.status}
+                      {(listing.city || "Pakistan") +
+                        (listing.exactLocation ? ` · ${listing.exactLocation}` : "") +
+                        ` - ${listing.status}`}
                     </p>
                   </div>
                 </Link>
@@ -530,6 +555,15 @@ export default function SearchPage() {
                   placeholder="Karachi"
                   value={city}
                   onChange={(event) => setCity(event.target.value)}
+                />
+              </label>
+              <label className="filterLabel">
+                Area
+                <input
+                  className="input"
+                  placeholder="Johar Town, DHA..."
+                  value={area}
+                  onChange={(event) => setArea(event.target.value)}
                 />
               </label>
               <div className="priceRow">

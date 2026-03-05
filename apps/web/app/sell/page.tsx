@@ -18,6 +18,7 @@ import {
 import { MarketplaceCategory } from "../../lib/types";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { resolveMediaUrl } from "../../lib/media-url";
+import { getAreasForCity } from "../../lib/pk-location";
 
 type WizardStep = 1 | 2 | 3 | 4;
 type Condition = "NEW" | "USED" | "LIKE_NEW";
@@ -37,6 +38,8 @@ type SellFormState = {
   condition: Condition;
   city: string;
   exactLocation: string;
+  mapLat: string;
+  mapLng: string;
   isNegotiable: boolean;
   media: MediaItem[];
   showPhone: boolean;
@@ -53,6 +56,8 @@ const initialState: SellFormState = {
   condition: "USED",
   city: "",
   exactLocation: "",
+  mapLat: "",
+  mapLng: "",
   isNegotiable: false,
   media: [],
   showPhone: true,
@@ -101,11 +106,20 @@ function extractExactLocationFromDescription(description: string) {
   return match?.[1]?.trim() ?? "";
 }
 
+function extractMapCoordsFromDescription(description: string) {
+  const match = description.match(/\n\s*map\s*:\s*([-.\d]+)\s*,\s*([-.\d]+)\s*$/im);
+  return {
+    lat: match?.[1]?.trim() ?? "",
+    lng: match?.[2]?.trim() ?? ""
+  };
+}
+
 function cleanDescriptionMetadata(description: string) {
   return description
     .replace(/\n\s*condition\s*:\s*(NEW|USED|LIKE_NEW)\s*$/gim, "")
     .replace(/\n\s*city\s*:\s*.+$/gim, "")
     .replace(/\n\s*location\s*:\s*.+$/gim, "")
+    .replace(/\n\s*map\s*:\s*[-.\d]+\s*,\s*[-.\d]+\s*$/gim, "")
     .trim();
 }
 
@@ -137,6 +151,8 @@ export default function SellPage() {
   const [editQueryId, setEditQueryId] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
   const [failedMediaIds, setFailedMediaIds] = useState<Set<string>>(new Set());
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
 
   const draftHydratedRef = useRef(false);
 
@@ -226,6 +242,15 @@ export default function SellPage() {
     () => selectedMainCategory?.subcategories ?? [],
     [selectedMainCategory]
   );
+  const cityAreaOptions = useMemo(() => getAreasForCity(form.city), [form.city]);
+  const areaSelectValue = useMemo(() => {
+    if (!form.exactLocation.trim()) {
+      return "";
+    }
+    return cityAreaOptions.includes(form.exactLocation.trim())
+      ? form.exactLocation.trim()
+      : "__other__";
+  }, [cityAreaOptions, form.exactLocation]);
   const hasActiveCategoryLock = useMemo(
     () =>
       Boolean(
@@ -317,6 +342,7 @@ export default function SellPage() {
         const parsedCity = listing.city?.trim() || extractCityFromDescription(listing.description);
         const parsedCondition = extractConditionFromDescription(listing.description);
         const parsedExactLocation = extractExactLocationFromDescription(listing.description);
+        const parsedMap = extractMapCoordsFromDescription(listing.description);
         const root = catalog.find((entry) =>
           entry.subcategories.some((sub) => sub.id === listing.categoryId)
         );
@@ -332,6 +358,8 @@ export default function SellPage() {
           condition: parsedCondition,
           city: parsedCity,
           exactLocation: parsedExactLocation,
+          mapLat: parsedMap.lat,
+          mapLng: parsedMap.lng,
           isNegotiable: Boolean(listing.isNegotiable),
           media: normalizeMediaItems([...imageMedia, ...videoMedia]),
           showPhone: listing.showPhone,
@@ -608,6 +636,43 @@ export default function SellPage() {
     );
   }
 
+  function mapQueryText() {
+    return [form.exactLocation.trim(), form.city.trim(), "Pakistan"]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  async function useCurrentLocationFromBrowser() {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setError("Browser geolocation support available nahi hai.");
+      return;
+    }
+
+    setMapLoading(true);
+    setError("");
+    setSuccess("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        setForm((prev) => ({
+          ...prev,
+          mapLat: lat,
+          mapLng: lng,
+          exactLocation: prev.exactLocation.trim() || `Lat ${lat}, Lng ${lng}`
+        }));
+        setMapLoading(false);
+        setSuccess("Map location set ho gayi.");
+      },
+      () => {
+        setMapLoading(false);
+        setError("Current location access deny ho gaya ya unavailable hai.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
   async function publishListing() {
     setPublishing(true);
     try {
@@ -625,7 +690,9 @@ export default function SellPage() {
       const payload = {
         categoryId: form.categoryId,
         title: form.title,
-        description: `${form.description}\n\nCondition: ${form.condition}\nLocation: ${form.exactLocation}`,
+        description: `${form.description}\n\nCondition: ${form.condition}\nCity: ${form.city}\nLocation: ${form.exactLocation}${
+          form.mapLat && form.mapLng ? `\nMap: ${form.mapLat}, ${form.mapLng}` : ""
+        }`,
         city: form.city,
         price: Number(form.price),
         showPhone: form.showPhone,
@@ -843,28 +910,86 @@ export default function SellPage() {
               </label>
               <label className="filterLabel">
                 Aap kahan hain? (Location)
-                <input
+                <select
                   className="input"
-                  list="pakistan-city-options"
-                  placeholder="City select ya search karein"
                   value={form.city}
-                  onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
-                />
-                <datalist id="pakistan-city-options">
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      city: event.target.value,
+                      exactLocation: ""
+                    }))
+                  }
+                >
+                  <option value="">City select karein</option>
                   {pakistanCities.map((city) => (
-                    <option key={city} value={city} />
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </label>
               <label className="filterLabel">
-                Exact location (Area / Mohalla / Near landmark)
-                <input
+                Area (Commercial / Residential)
+                <select
                   className="input"
-                  placeholder="e.g. Johar Town Block H3, Near Emporium"
-                  value={form.exactLocation}
-                  onChange={(event) => setForm((prev) => ({ ...prev, exactLocation: event.target.value }))}
-                />
+                  value={areaSelectValue}
+                  disabled={!form.city.trim()}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    if (next === "__other__") {
+                      setForm((prev) => ({ ...prev, exactLocation: "" }));
+                      return;
+                    }
+                    setForm((prev) => ({ ...prev, exactLocation: next }));
+                  }}
+                >
+                  <option value="">
+                    {form.city.trim() ? "Area select karein" : "Pehle city select karein"}
+                  </option>
+                  {cityAreaOptions.map((areaName) => (
+                    <option key={areaName} value={areaName}>
+                      {areaName}
+                    </option>
+                  ))}
+                  <option value="__other__">Other (khud likhein)</option>
+                </select>
               </label>
+              {areaSelectValue === "__other__" || cityAreaOptions.length === 0 ? (
+                <label className="filterLabel">
+                  Exact location (Area / Mohalla / Near landmark)
+                  <input
+                    className="input"
+                    placeholder="e.g. Johar Town Block H3, Near Emporium"
+                    value={form.exactLocation}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, exactLocation: event.target.value }))
+                    }
+                  />
+                </label>
+              ) : null}
+              <div className="mapPickerRow">
+                <button
+                  type="button"
+                  className="searchSubmitBtn ghost"
+                  onClick={() => setMapPickerOpen(true)}
+                >
+                  Open Map Picker
+                </button>
+                <button
+                  type="button"
+                  className="searchSubmitBtn ghost"
+                  onClick={() => void useCurrentLocationFromBrowser()}
+                  disabled={mapLoading}
+                >
+                  {mapLoading ? "Locating..." : "Use Current Location"}
+                </button>
+                {form.mapLat && form.mapLng ? (
+                  <span className="shareHint">
+                    Map: {form.mapLat}, {form.mapLng}
+                  </span>
+                ) : null}
+              </div>
               <label className="filterLabel">
                 Apni cheez ke baare mein batao
                 <textarea
@@ -1048,6 +1173,9 @@ export default function SellPage() {
                   <strong>Exact location:</strong> {form.exactLocation || "-"}
                 </p>
                 <p>
+                  <strong>Map:</strong> {form.mapLat && form.mapLng ? `${form.mapLat}, ${form.mapLng}` : "-"}
+                </p>
+                <p>
                   <strong>Negotiable:</strong> {form.isNegotiable ? "Yes" : "No"}
                 </p>
                 <p>
@@ -1111,6 +1239,55 @@ export default function SellPage() {
             </div>
           ) : null}
         </section>
+
+        {mapPickerOpen ? (
+          <div className="mapPickerBackdrop" onClick={() => setMapPickerOpen(false)}>
+            <section className="mapPickerModal" onClick={(event) => event.stopPropagation()}>
+              <div className="mapPickerHead">
+                <h3>Map Location Picker</h3>
+                <button
+                  type="button"
+                  className="searchSubmitBtn ghost"
+                  onClick={() => setMapPickerOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+              <p className="shareHint">
+                Query: {mapQueryText() || "City / area select karein to map update ho ga."}
+              </p>
+              <iframe
+                className="mapPickerFrame"
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                  mapQueryText() || "Pakistan"
+                )}&z=14&output=embed`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Location map preview"
+              />
+              <div className="mapPickerMeta">
+                <label className="filterLabel">
+                  Latitude
+                  <input
+                    className="input"
+                    value={form.mapLat}
+                    onChange={(event) => setForm((prev) => ({ ...prev, mapLat: event.target.value }))}
+                    placeholder="31.5204"
+                  />
+                </label>
+                <label className="filterLabel">
+                  Longitude
+                  <input
+                    className="input"
+                    value={form.mapLng}
+                    onChange={(event) => setForm((prev) => ({ ...prev, mapLng: event.target.value }))}
+                    placeholder="74.3587"
+                  />
+                </label>
+              </div>
+            </section>
+          </div>
+        ) : null}
 
         <footer className="wizardFooter">
           {step > 1 ? (

@@ -38,6 +38,7 @@ export class ListingsController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
     @Query("category") category?: string,
     @Query("city") city?: string,
+    @Query("area") area?: string,
     @Query("minPrice") minPrice?: string,
     @Query("maxPrice") maxPrice?: string,
     @Query("negotiable") negotiable?: string
@@ -54,6 +55,7 @@ export class ListingsController {
     return this.listingsService.search(query ?? "", limit, {
       category,
       city,
+      area,
       minPrice:
         typeof parsedMinPrice === "number" && Number.isFinite(parsedMinPrice)
           ? parsedMinPrice
@@ -73,6 +75,7 @@ export class ListingsController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
     @Query("category") category?: string,
     @Query("city") city?: string,
+    @Query("area") area?: string,
     @Query("minPrice") minPrice?: string,
     @Query("maxPrice") maxPrice?: string,
     @Query("negotiable") negotiable?: string
@@ -89,6 +92,7 @@ export class ListingsController {
     return this.listingsService.semanticSearch(query ?? "", limit, {
       category,
       city,
+      area,
       minPrice:
         typeof parsedMinPrice === "number" && Number.isFinite(parsedMinPrice)
           ? parsedMinPrice

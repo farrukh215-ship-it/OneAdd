@@ -2909,6 +2909,60 @@ textarea {
   gap: 10px;
 }
 
+.mapPickerRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mapPickerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  background: rgba(30, 20, 16, 0.52);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.mapPickerModal {
+  width: min(920px, 100%);
+  background: #fff;
+  border: 1px solid var(--sand);
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.mapPickerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mapPickerHead h3 {
+  font-size: 1.1rem;
+}
+
+.mapPickerFrame {
+  width: 100%;
+  height: min(52vh, 440px);
+  border: 1px solid var(--sand);
+  border-radius: 12px;
+  background: #f7eee3;
+}
+
+.mapPickerMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .chatInboxScreen {
   max-width: 1180px;
   margin: 0 auto;
@@ -3573,6 +3627,10 @@ textarea {
 
   .listingActionGrid,
   .shareActionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapPickerMeta {
     grid-template-columns: 1fr;
   }
 }

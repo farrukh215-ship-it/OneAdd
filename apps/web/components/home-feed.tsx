@@ -62,6 +62,15 @@ function getPrimaryImage(listing: Listing) {
   return resolveMediaUrl(url);
 }
 
+function extractLocationFromDescription(description: string) {
+  const cityMatch = description.match(/\bcity\s*:\s*([^\n]+)/i);
+  const areaMatch = description.match(/\b(location|area)\s*:\s*([^\n]+)/i);
+  return {
+    city: cityMatch?.[1]?.trim() ?? "",
+    exactLocation: areaMatch?.[2]?.trim() ?? ""
+  };
+}
+
 function toRelativeTime(timestamp?: string) {
   if (!timestamp) {
     return "Just now";
@@ -164,6 +173,12 @@ function ListingCard({ listing }: ListingCardProps) {
   const [saved, setSaved] = useState(false);
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
+  const parsedLocation = useMemo(
+    () => extractLocationFromDescription(listing.description ?? ""),
+    [listing.description]
+  );
+  const cityLabel = (listing.city?.trim() || parsedLocation.city || "Pakistan").trim();
+  const areaLabel = (listing.exactLocation?.trim() || parsedLocation.exactLocation || "").trim();
 
   useEffect(() => {
     setSaved(getSavedListingIdsLocal().includes(listing.id));
@@ -255,7 +270,7 @@ function ListingCard({ listing }: ListingCardProps) {
           <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
         </p>
         <div className="listing-footer">
-          <span className="listing-loc">{listing.city || "Pakistan"}</span>
+          <span className="listing-loc">{areaLabel ? `${cityLabel} · ${areaLabel}` : cityLabel}</span>
           <span className="badge-verified">Asli Banda</span>
         </div>
         <p className="listing-desc">{responseBadge}</p>
