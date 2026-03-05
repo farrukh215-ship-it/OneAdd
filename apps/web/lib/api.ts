@@ -4,7 +4,9 @@ import {
   ChatThread,
   Listing,
   ListingOffersResponse,
-  MarketplaceCategory
+  MarketplaceCategory,
+  SearchSuggestion,
+  SellerOverviewMetrics
 } from "./types";
 
 const API_BASE_URL =
@@ -292,6 +294,39 @@ export async function searchListingsWithFilters(filters: SearchFilters) {
   return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
 }
 
+export async function semanticSearchListingsWithFilters(filters: SearchFilters) {
+  const params = new URLSearchParams();
+  params.set("q", filters.query.trim());
+  params.set("category", filters.category);
+
+  if (filters.city.trim()) {
+    params.set("city", filters.city.trim());
+  }
+  if (typeof filters.minPrice === "number") {
+    params.set("minPrice", String(filters.minPrice));
+  }
+  if (typeof filters.maxPrice === "number") {
+    params.set("maxPrice", String(filters.maxPrice));
+  }
+  if (typeof filters.negotiable === "boolean") {
+    params.set("negotiable", String(filters.negotiable));
+  }
+
+  return apiRequest<Listing[]>(`/listings/semantic-search?${params.toString()}`);
+}
+
+export async function getSearchSuggestions(query: string, limit = 20) {
+  const params = new URLSearchParams();
+  params.set("q", query.trim());
+  params.set("limit", String(limit));
+
+  const result = await apiRequest<{ query: string; items: SearchSuggestion[] }>(
+    `/search/suggestions?${params.toString()}`,
+    { auth: true }
+  );
+  return result.items;
+}
+
 export async function fetchListingById(id: string) {
   return apiRequest<Listing>(`/listings/${id}`);
 }
@@ -527,8 +562,54 @@ export async function activateListing(listingId: string) {
   });
 }
 
+export async function relistListing(listingId: string) {
+  return apiRequest<Listing>(`/listings/${listingId}/relist`, {
+    method: "POST",
+    auth: true
+  });
+}
+
 export async function getMyListings() {
   return apiRequest<Listing[]>("/listings/me", {
+    auth: true
+  });
+}
+
+export async function getSavedListings(limit = 40) {
+  return apiRequest<{ items: Listing[]; total: number }>(`/users/me/saved?limit=${limit}`, {
+    auth: true
+  });
+}
+
+export async function saveListing(listingId: string) {
+  return apiRequest<{ saved: boolean }>(`/users/me/saved/${listingId}`, {
+    method: "POST",
+    auth: true
+  });
+}
+
+export async function unsaveListing(listingId: string) {
+  return apiRequest<{ saved: boolean }>(`/users/me/saved/${listingId}`, {
+    method: "DELETE",
+    auth: true
+  });
+}
+
+export async function getRecentlyViewedListings(limit = 40) {
+  return apiRequest<{ items: Listing[]; total: number }>(`/users/me/recent?limit=${limit}`, {
+    auth: true
+  });
+}
+
+export async function trackRecentlyViewedListing(listingId: string) {
+  return apiRequest<{ tracked: boolean; viewedAt: string }>(`/users/me/recent/${listingId}`, {
+    method: "POST",
+    auth: true
+  });
+}
+
+export async function getSellerOverviewMetrics() {
+  return apiRequest<SellerOverviewMetrics>("/analytics/seller/overview", {
     auth: true
   });
 }

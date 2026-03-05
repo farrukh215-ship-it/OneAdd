@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getVideoFeed, VideoFeedItem } from "../../lib/api";
+import {
+  getSavedListingIdsLocal,
+  toggleSavedListingPreference
+} from "../../lib/listing-preferences";
+import { useAuthToken } from "../../lib/use-auth-token";
 
 function ReelsLoadingState() {
   return (
@@ -22,14 +27,11 @@ function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }
   const [muted, setMuted] = useState(true);
   const [progress, setProgress] = useState(0);
   const [saved, setSaved] = useState(false);
+  const { mounted, token } = useAuthToken();
+  const isLoggedIn = mounted && Boolean(token);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
-    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
-    setSaved(savedIds.includes(item.listingId));
+    setSaved(getSavedListingIdsLocal().includes(item.listingId));
   }, [item.listingId]);
 
   useEffect(() => {
@@ -69,18 +71,7 @@ function ReelCard({ item, isActive }: { item: VideoFeedItem; isActive: boolean }
   }, []);
 
   function toggleSave() {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
-    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
-    const nextSaved = saved
-      ? savedIds.filter((entry) => entry !== item.listingId)
-      : [item.listingId, ...savedIds.filter((entry) => entry !== item.listingId)];
-
-    localStorage.setItem("tgmg_saved_listing_ids", JSON.stringify(nextSaved.slice(0, 200)));
-    setSaved(!saved);
+    void toggleSavedListingPreference(item.listingId, isLoggedIn).then(setSaved);
   }
 
   async function shareListing() {

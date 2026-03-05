@@ -4,7 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { CSSProperties, FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCatalog, getRecentListingsPage } from "../lib/api";
+import {
+  getSavedListingIdsLocal,
+  resolveListingsByIds,
+  syncRecentlyViewedListings,
+  syncSavedListings,
+  toggleSavedListingPreference
+} from "../lib/listing-preferences";
 import { Listing, MarketplaceCategory } from "../lib/types";
+import { useAuthToken } from "../lib/use-auth-token";
 
 const INITIAL_SKELETON_COUNT = 8;
 const urduTagline =
@@ -86,26 +94,17 @@ function ListingCard({ listing }: ListingCardProps) {
   const responseBadge =
     trustScore >= 80 ? "Replies < 10m" : trustScore >= 60 ? "Replies < 30m" : "Replies < 2h";
   const [saved, setSaved] = useState(false);
+  const { mounted, token } = useAuthToken();
+  const isLoggedIn = mounted && Boolean(token);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("tgmg_saved_listing_ids");
-    const ids = raw ? (JSON.parse(raw) as string[]) : [];
-    setSaved(ids.includes(listing.id));
+    setSaved(getSavedListingIdsLocal().includes(listing.id));
   }, [listing.id]);
 
   function toggleSaved(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    if (typeof window === "undefined") return;
-
-    const raw = localStorage.getItem("tgmg_saved_listing_ids");
-    const ids = raw ? (JSON.parse(raw) as string[]) : [];
-    const nextIds = saved
-      ? ids.filter((id) => id !== listing.id)
-      : [listing.id, ...ids.filter((id) => id !== listing.id)];
-    localStorage.setItem("tgmg_saved_listing_ids", JSON.stringify(nextIds.slice(0, 200)));
-    setSaved(!saved);
+    void toggleSavedListingPreference(listing.id, isLoggedIn).then(setSaved);
   }
 
   return (
@@ -168,6 +167,8 @@ function categoryHref(slug: string) {
 }
 
 export function HomeFeed() {
+  const { mounted, token } = useAuthToken();
+  const isLoggedIn = mounted && Boolean(token);
   const [items, setItems] = useState<Listing[]>([]);
   const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -237,24 +238,17 @@ export function HomeFeed() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (!mounted) {
       return;
     }
 
-    const recentRaw = localStorage.getItem("tgmg_recently_viewed");
-    const recentIds = recentRaw ? (JSON.parse(recentRaw) as string[]) : [];
-    if (recentIds.length === 0) {
-      setRecentItems([]);
-      return;
-    }
-
-    const map = new Map(items.map((item) => [item.id, item]));
-    const nextRecent = recentIds
-      .map((id) => map.get(id))
-      .filter((item): item is Listing => Boolean(item))
-      .slice(0, 6);
-    setRecentItems(nextRecent);
-  }, [items]);
+    void (async () => {
+      await syncSavedListings(isLoggedIn);
+      const recentIds = await syncRecentlyViewedListings(isLoggedIn);
+      const resolved = await resolveListingsByIds(recentIds.slice(0, 6), items);
+      setRecentItems(resolved);
+    })();
+  }, [isLoggedIn, items, mounted]);
 
   useEffect(() => {
     if (!canLoadMore || !sentinelRef.current) {

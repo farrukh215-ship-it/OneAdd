@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clearToken, getMe } from "../lib/api";
 import { useAuthToken } from "../lib/use-auth-token";
+import { CommandPalette } from "./command-palette";
 
 const links = [
   { href: "/", label: "Home", icon: "\ud83c\udfe0" },
@@ -75,6 +76,7 @@ export function MainNav() {
         </ul>
 
         <div className="nav-actions">
+          <CommandPalette />
           {!mounted ? (
             <span className="btn-ghost">Login</span>
           ) : isLoggedIn ? (

@@ -101,3 +101,19 @@ export type MarketplaceCategory = {
   subcategoryCount: number;
   subcategories: MarketplaceSubcategory[];
 };
+
+export type SearchSuggestion = {
+  id: string;
+  type: "page" | "category" | "listing" | "chat" | "saved";
+  label: string;
+  href: string;
+  meta?: string;
+};
+
+export type SellerOverviewMetrics = {
+  totalAds: number;
+  activeAds: number;
+  totalViews: number;
+  chatStarts: number;
+  offersCount: number;
+};

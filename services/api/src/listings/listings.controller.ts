@@ -65,6 +65,41 @@ export class ListingsController {
     });
   }
 
+  @Get("semantic-search")
+  semanticSearch(
+    @Query("q") query: string,
+    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
+    @Query("category") category?: string,
+    @Query("city") city?: string,
+    @Query("minPrice") minPrice?: string,
+    @Query("maxPrice") maxPrice?: string,
+    @Query("negotiable") negotiable?: string
+  ) {
+    const parsedMinPrice =
+      typeof minPrice === "string" && minPrice.length > 0
+        ? Number(minPrice)
+        : undefined;
+    const parsedMaxPrice =
+      typeof maxPrice === "string" && maxPrice.length > 0
+        ? Number(maxPrice)
+        : undefined;
+
+    return this.listingsService.semanticSearch(query ?? "", limit, {
+      category,
+      city,
+      minPrice:
+        typeof parsedMinPrice === "number" && Number.isFinite(parsedMinPrice)
+          ? parsedMinPrice
+          : undefined,
+      maxPrice:
+        typeof parsedMaxPrice === "number" && Number.isFinite(parsedMaxPrice)
+          ? parsedMaxPrice
+          : undefined,
+      isNegotiable:
+        negotiable === "true" ? true : negotiable === "false" ? false : undefined
+    });
+  }
+
   @Get("me")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -117,5 +152,12 @@ export class ListingsController {
       String(request.user?.sub),
       listingId
     );
+  }
+
+  @Post(":id/relist")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  relist(@Req() request: Request, @Param("id") listingId: string) {
+    return this.listingsService.relistListing(String(request.user?.sub), listingId);
   }
 }

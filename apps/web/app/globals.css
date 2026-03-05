@@ -3087,11 +3087,141 @@ textarea {
 }
 
 /* Final override for UTF-safe checkmark in all environments. */
-.badge-verified.badge-verified::before {
+.badge-verified.badge-verified::before,
+.badge-verified::before {
   content: "\2713" !important;
 }
 
-/* Hard override to avoid mojibake glyph in older blocks above. */
+/* Keep the checkmark glyph stable across all render paths. */
 .badge-verified::before {
-  content: "✓" !important;
+  content: "\2713" !important;
+}
+
+/* Command palette */
+.cmdTrigger {
+  min-width: 150px;
+  justify-content: center;
+}
+
+.cmdBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  background: rgba(30, 20, 16, 0.52);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: start center;
+  padding: 84px 18px 20px;
+}
+
+.cmdCard {
+  width: min(780px, 100%);
+  border: 1px solid rgba(232, 213, 183, 0.7);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(30, 20, 16, 0.28);
+  overflow: hidden;
+}
+
+.cmdInputWrap {
+  border-bottom: 1px solid #e8d5b7;
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.cmdInput {
+  width: 100%;
+  border: 1px solid #e8d5b7;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-family: "DM Sans", sans-serif;
+  color: #5c3d2e;
+}
+
+.cmdInput:focus {
+  outline: none;
+  border-color: #c8603a;
+  box-shadow: 0 0 0 3px rgba(200, 96, 58, 0.12);
+}
+
+.cmdHint {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #9b8070;
+  text-transform: uppercase;
+}
+
+.cmdList {
+  max-height: min(56vh, 460px);
+  overflow: auto;
+}
+
+.cmdItem {
+  width: 100%;
+  border: none;
+  background: #fff;
+  border-bottom: 1px solid rgba(232, 213, 183, 0.65);
+  padding: 11px 14px;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cmdItem:last-child {
+  border-bottom: none;
+}
+
+.cmdItem:hover,
+.cmdItem.active {
+  background: rgba(200, 96, 58, 0.08);
+}
+
+.cmdItemType {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9b8070;
+}
+
+.cmdItemLabel {
+  color: #5c3d2e;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.cmdItemMeta {
+  color: #9b8070;
+  font-size: 11px;
+}
+
+.cmdEmpty {
+  padding: 16px 14px;
+  margin: 0;
+  color: #9b8070;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .cmdTrigger {
+    display: none;
+  }
+
+  .cmdBackdrop {
+    padding-top: 76px;
+  }
+
+  .cmdItem {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .cmdItemMeta {
+    display: none;
+  }
 }

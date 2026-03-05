@@ -41,6 +41,27 @@ type AuthPayload = {
   };
 };
 
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "10minutemail.com",
+  "guerrillamail.com",
+  "mailinator.com",
+  "temp-mail.org",
+  "tempmail.com",
+  "yopmail.com",
+  "getnada.com",
+  "throwawaymail.com",
+  "sharklasers.com",
+  "dispostable.com",
+  "maildrop.cc",
+  "trashmail.com",
+  "fakeinbox.com",
+  "mintemail.com",
+  "mytemp.email",
+  "tmpmail.org",
+  "emailondeck.com",
+  "tempmailo.com"
+]);
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -51,7 +72,7 @@ export class AuthService {
   ) {}
 
   async signup(dto: SignupDto, request: Request): Promise<AuthPayload> {
-    const email = dto.email.trim().toLowerCase();
+    const email = this.normalizeAndValidateEmail(dto.email);
     const phone = dto.phone.trim();
     const cnic = dto.cnic.trim();
     this.assertAdult(dto.dateOfBirth);
@@ -409,7 +430,7 @@ export class AuthService {
     if (!phone) {
       throw new UnauthorizedException("Phone number is missing in Firebase token.");
     }
-    const normalizedEmail = dto.email?.trim().toLowerCase();
+    const normalizedEmail = this.normalizeAndValidateEmail(dto.email);
     if (!normalizedEmail) {
       throw new BadRequestException("Email is required for Firebase login.");
     }
@@ -591,6 +612,36 @@ export class AuthService {
         "Age less than 18 ka account nahi ban sakta. Ask your mama papa to create account."
       );
     }
+  }
+
+  private normalizeAndValidateEmail(rawEmail: string | undefined | null) {
+    const email = String(rawEmail ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      throw new BadRequestException("Valid email required hai.");
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailPattern.test(email)) {
+      throw new BadRequestException("Valid email required hai.");
+    }
+
+    const [localPart, domain] = email.split("@");
+    if (!localPart || !domain) {
+      throw new BadRequestException("Valid email required hai.");
+    }
+    if (localPart.length > 64 || domain.length > 253) {
+      throw new BadRequestException("Valid email required hai.");
+    }
+    if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+      throw new BadRequestException(
+        "Disposable email allowed nahi hai. Apna original email use karein."
+      );
+    }
+
+    return email;
   }
 
   private async assertFirebasePhoneMatch(idToken: string, phone: string) {

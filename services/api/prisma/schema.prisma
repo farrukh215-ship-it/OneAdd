@@ -106,6 +106,9 @@ model User {
   reportsAgainst     Report[]                    @relation("ReportTargetUser")
   adminAuditLogs     AuditLog[]                  @relation("AuditAdmin")
   notifications      Notification[]
+  savedListings      SavedListing[]
+  recentlyViewedListings RecentlyViewedListing[]
+  listingViewEvents  ListingViewEvent[]
   trustScore         TrustScore?
 }
 
@@ -217,6 +220,9 @@ model Listing {
   chatThreads ChatThread[]
   reports     Report[]                  @relation("ReportTargetListing")
   activeLock  UserCategoryActiveListing?
+  savedBy     SavedListing[]
+  recentlyViewedBy RecentlyViewedListing[]
+  viewEvents  ListingViewEvent[]
 
   @@index([title], map: "idx_listing_search_title")
   @@index([title, description], map: "idx_listing_search_title_description")
@@ -224,6 +230,44 @@ model Listing {
   @@index([categoryId, status, createdAt(sort: Desc)], map: "idx_listing_feed_category_status_created")
   @@index([userId, status], map: "idx_listing_user_status")
   @@index([expiresAt], map: "idx_listing_lifecycle_expires_at")
+}
+
+model SavedListing {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId], map: "uq_saved_listing_user_listing")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_saved_listing_user_created")
+  @@index([listingId, createdAt(sort: Desc)], map: "idx_saved_listing_listing_created")
+}
+
+model RecentlyViewedListing {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  viewedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId], map: "uq_recent_listing_user_listing")
+  @@index([userId, viewedAt(sort: Desc)], map: "idx_recent_listing_user_viewed")
+  @@index([listingId, viewedAt(sort: Desc)], map: "idx_recent_listing_listing_viewed")
+}
+
+model ListingViewEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  viewedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, viewedAt(sort: Desc)], map: "idx_listing_view_event_listing_viewed")
+  @@index([userId, viewedAt(sort: Desc)], map: "idx_listing_view_event_user_viewed")
 }
 
 model ListingMedia {

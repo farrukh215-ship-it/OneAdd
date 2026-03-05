@@ -1,5 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getListingById } from "./api";
+import {
+  getAuthToken,
+  getListingById,
+  getRecentlyViewedListings,
+  getSavedListings,
+  saveListing,
+  trackRecentlyViewedListing,
+  unsaveListing
+} from "./api";
 import type { Listing } from "../types";
 
 const SAVED_LISTING_IDS_KEY = "tgmg_saved_listing_ids";
@@ -29,7 +37,24 @@ async function writeIds(key: string, ids: string[]) {
 }
 
 export async function getSavedListingIds() {
-  return readIds(SAVED_LISTING_IDS_KEY);
+  const localIds = await readIds(SAVED_LISTING_IDS_KEY);
+  if (!getAuthToken()) {
+    return localIds;
+  }
+
+  try {
+    await Promise.allSettled(localIds.slice(0, MAX_SAVED_IDS).map((id) => saveListing(id)));
+    const server = await getSavedListings(MAX_SAVED_IDS);
+    const serverIds = server.items.map((item) => item.id);
+    const merged = [...serverIds, ...localIds.filter((id) => !serverIds.includes(id))].slice(
+      0,
+      MAX_SAVED_IDS
+    );
+    await writeIds(SAVED_LISTING_IDS_KEY, merged);
+    return merged;
+  } catch {
+    return localIds;
+  }
 }
 
 export async function isListingSaved(listingId: string) {
@@ -45,6 +70,17 @@ export async function toggleSavedListingId(listingId: string) {
     : [listingId, ...savedIds.filter((item) => item !== listingId)].slice(0, MAX_SAVED_IDS);
 
   await writeIds(SAVED_LISTING_IDS_KEY, nextIds);
+  if (getAuthToken()) {
+    try {
+      if (isSaved) {
+        await unsaveListing(listingId);
+      } else {
+        await saveListing(listingId);
+      }
+    } catch {
+      // Keep local fallback if server sync fails.
+    }
+  }
   return !isSaved;
 }
 
@@ -52,10 +88,34 @@ export async function addRecentlyViewedListingId(listingId: string) {
   const recentIds = await readIds(RECENTLY_VIEWED_IDS_KEY);
   const nextIds = [listingId, ...recentIds.filter((item) => item !== listingId)].slice(0, MAX_RECENT_IDS);
   await writeIds(RECENTLY_VIEWED_IDS_KEY, nextIds);
+  if (getAuthToken()) {
+    try {
+      await trackRecentlyViewedListing(listingId);
+    } catch {
+      // Keep local fallback if server sync fails.
+    }
+  }
 }
 
 export async function getRecentlyViewedListingIds() {
-  return readIds(RECENTLY_VIEWED_IDS_KEY);
+  const localIds = await readIds(RECENTLY_VIEWED_IDS_KEY);
+  if (!getAuthToken()) {
+    return localIds;
+  }
+
+  try {
+    await Promise.allSettled(localIds.slice(0, MAX_RECENT_IDS).map((id) => trackRecentlyViewedListing(id)));
+    const server = await getRecentlyViewedListings(MAX_RECENT_IDS);
+    const serverIds = server.items.map((item) => item.id);
+    const merged = [...serverIds, ...localIds.filter((id) => !serverIds.includes(id))].slice(
+      0,
+      MAX_RECENT_IDS
+    );
+    await writeIds(RECENTLY_VIEWED_IDS_KEY, merged);
+    return merged;
+  } catch {
+    return localIds;
+  }
 }
 
 export async function clearRecentlyViewedListingIds() {

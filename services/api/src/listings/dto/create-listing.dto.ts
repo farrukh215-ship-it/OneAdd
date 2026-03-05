@@ -1,4 +1,5 @@
 import {
+  ArrayMinSize,
   ArrayMaxSize,
   IsArray,
   IsBoolean,
@@ -37,8 +38,13 @@ export class CreateListingDto {
   @IsString()
   description: string;
 
+  @IsOptional()
   @IsString()
-  publishOtpVerificationToken: string;
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  publishOtpVerificationToken?: string;
 
   @IsNumber()
   @Min(0)
@@ -65,6 +71,7 @@ export class CreateListingDto {
   isNegotiable?: boolean;
 
   @IsArray()
+  @ArrayMinSize(2)
   @ArrayMaxSize(7)
   @ValidateNested({ each: true })
   @Type(() => CreateListingMediaDto)

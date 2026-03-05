@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { ShareActions } from "./share-actions";
 import { Listing, ListingOffer, ListingPublicMessage } from "../lib/types";
 import { fetchListingOffers, upsertChatThread } from "../lib/api";
+import {
+  getSavedListingIdsLocal,
+  toggleSavedListingPreference,
+  trackRecentlyViewedPreference
+} from "../lib/listing-preferences";
 import { useAuthToken } from "../lib/use-auth-token";
 
 type ListingDetailViewProps = {
@@ -41,17 +46,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
     trustScore >= 80 ? "Highly Trusted" : trustScore >= 50 ? "Trusted Seller" : "New Seller";
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
-    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
-    setSaved(savedIds.includes(listing.id));
-
-    const recentRaw = localStorage.getItem("tgmg_recently_viewed");
-    const recentIds = recentRaw ? (JSON.parse(recentRaw) as string[]) : [];
-    const nextRecent = [listing.id, ...recentIds.filter((item) => item !== listing.id)].slice(0, 20);
-    localStorage.setItem("tgmg_recently_viewed", JSON.stringify(nextRecent));
-  }, [listing.id]);
+    setSaved(getSavedListingIdsLocal().includes(listing.id));
+    void trackRecentlyViewedPreference(listing.id, isLoggedIn);
+  }, [isLoggedIn, listing.id]);
 
   useEffect(() => {
     fetchListingOffers(listing.id, 12)
@@ -66,16 +63,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   }, [listing.id]);
 
   function toggleSaved() {
-    if (typeof window === "undefined") return;
-    const savedRaw = localStorage.getItem("tgmg_saved_listing_ids");
-    const savedIds = savedRaw ? (JSON.parse(savedRaw) as string[]) : [];
-
-    const nextSaved = saved
-      ? savedIds.filter((item) => item !== listing.id)
-      : [listing.id, ...savedIds.filter((item) => item !== listing.id)];
-
-    localStorage.setItem("tgmg_saved_listing_ids", JSON.stringify(nextSaved.slice(0, 200)));
-    setSaved(!saved);
+    void toggleSavedListingPreference(listing.id, isLoggedIn).then(setSaved);
   }
 
   async function startChat() {

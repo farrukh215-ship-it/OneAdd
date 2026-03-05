@@ -1,11 +1,6 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ConfirmationResult,
-  RecaptchaVerifier,
-  signInWithPhoneNumber
-} from "firebase/auth";
 import { OtpLoginCard } from "../../components/otp-login-card";
 import { SignupCard } from "../../components/signup-card";
 import { pakistanCities } from "@aikad/shared";
@@ -15,12 +10,9 @@ import {
   createListing,
   getCategoryCatalog,
   getMyListings,
-  requestListingPublishOtp,
   uploadMediaFile,
-  uploadListingMedia,
-  verifyListingPublishOtp
+  uploadListingMedia
 } from "../../lib/api";
-import { getFirebaseAuth, isFirebaseConfigured } from "../../lib/firebase";
 import { MarketplaceCategory } from "../../lib/types";
 import { useAuthToken } from "../../lib/use-auth-token";
 
@@ -113,15 +105,8 @@ export default function SellPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [publishOtpModalOpen, setPublishOtpModalOpen] = useState(false);
-  const [publishOtpCode, setPublishOtpCode] = useState("");
-  const [publishOtpPhone, setPublishOtpPhone] = useState("");
-  const [publishOtpResendIn, setPublishOtpResendIn] = useState(0);
   const [draftStatus, setDraftStatus] = useState("");
 
-  const recaptchaElementRef = useRef<HTMLDivElement | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const publishConfirmationRef = useRef<ConfirmationResult | null>(null);
   const draftHydratedRef = useRef(false);
 
   useEffect(() => {
@@ -188,32 +173,6 @@ export default function SellPage() {
     setDraftStatus("Draft auto-saved");
   }, [form, mainCategoryId, mounted, step]);
 
-  useEffect(() => {
-    if (!isFirebaseConfigured() || !recaptchaElementRef.current) {
-      return;
-    }
-
-    const auth = getFirebaseAuth();
-    recaptchaVerifierRef.current = new RecaptchaVerifier(
-      auth,
-      recaptchaElementRef.current,
-      { size: "invisible" }
-    );
-
-    return () => {
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (publishOtpResendIn <= 0) return;
-    const timer = window.setTimeout(() => {
-      setPublishOtpResendIn((prev) => prev - 1);
-    }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [publishOtpResendIn]);
-
   const images = form.media.filter((item) => item.type === "IMAGE");
   const video = form.media.find((item) => item.type === "VIDEO");
   const progress = (step / 4) * 100;
@@ -261,7 +220,6 @@ export default function SellPage() {
     if (!form.title.trim()) errs.push("Title required hai.");
     if (!form.price.trim() || Number(form.price) <= 0) errs.push("Price valid numeric honi chahiye.");
     if (!form.city.trim()) errs.push("Location select karna zaroori hai.");
-    if (countWords(form.description) < 50) errs.push("Description minimum 50 words hona zaroori hai.");
     if (images.length < 2) errs.push("Kam az kam 2 images upload karni zaroori hain.");
     if (images.length > 6) errs.push("Max 6 images allow hain.");
     if (video && (video.durationSec ?? 0) > 30) errs.push("Video duration 30 sec se kam honi chahiye.");
@@ -296,10 +254,6 @@ export default function SellPage() {
       }
       if (!form.city.trim()) {
         setError("Location select karna zaroori hai.");
-        return;
-      }
-      if (countWords(form.description) < 50) {
-        setError("Description minimum 50 words hona zaroori hai.");
         return;
       }
     }
@@ -547,43 +501,20 @@ export default function SellPage() {
     );
   }
 
-  async function requestPublishOtp() {
-    if (!isFirebaseConfigured()) {
-      throw new Error("Firebase config missing hai. apps/web/.env.local set karein.");
-    }
-    if (!recaptchaVerifierRef.current) {
-      throw new Error("reCAPTCHA initialize nahi hua. Page refresh karein.");
-    }
-
-    const otpRequest = await requestListingPublishOtp();
-    const auth = getFirebaseAuth();
-    const confirmation = await signInWithPhoneNumber(
-      auth,
-      otpRequest.phone,
-      recaptchaVerifierRef.current
-    );
-
-    publishConfirmationRef.current = confirmation;
-    setPublishOtpPhone(otpRequest.phone);
-    setPublishOtpCode("");
-    setPublishOtpResendIn(60);
-    setPublishOtpModalOpen(true);
-  }
-
-  async function publishWithOtpToken(publishOtpVerificationToken: string) {
+  async function publishListing() {
     setPublishing(true);
     try {
       const created = await createListing({
         categoryId: form.categoryId,
         title: form.title,
-        description: `${form.description}\n\nCondition: ${form.condition}\nCity: ${form.city}`,
+        description: `${form.description}\n\nCondition: ${form.condition}`,
+        city: form.city,
         price: Number(form.price),
         showPhone: form.showPhone,
         allowChat: form.allowChat,
         allowCall: form.allowCall,
         allowSMS: form.allowSMS,
         isNegotiable: form.isNegotiable,
-        publishOtpVerificationToken,
         media: form.media.map((item) => ({
           type: item.type,
           url: item.url,
@@ -609,8 +540,6 @@ export default function SellPage() {
       setForm(initialState);
       setMainCategoryId("");
       setStep(1);
-      setPublishOtpModalOpen(false);
-      setPublishOtpCode("");
       localStorage.removeItem(SELL_DRAFT_KEY);
       setDraftStatus("Draft clear ho gaya.");
     } catch (err) {
@@ -637,69 +566,15 @@ export default function SellPage() {
     }
 
     try {
-      await requestPublishOtp();
-      setSuccess("OTP send ho gaya. Verify karke listing post karein.");
+      await publishListing();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("OTP request fail ho gaya. Dobara try karein.");
+        setError("Publish fail ho gaya. Dobara try karein.");
       }
-    }
-  }
-
-  async function onResendPublishOtp() {
-    if (publishOtpResendIn > 0 || publishing) {
-      return;
-    }
-    setError("");
-    setSuccess("");
-    try {
-      await requestPublishOtp();
-      setSuccess("Naya OTP send kar diya gaya.");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("OTP resend fail ho gaya.");
-      }
-    }
-  }
-
-  async function onVerifyPublishOtp(event: FormEvent) {
-    event.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (!publishConfirmationRef.current) {
-      setError("Pehle OTP request karein.");
-      return;
-    }
-    if (publishOtpCode.trim().length !== 6) {
-      setError("6-digit OTP required hai.");
-      return;
-    }
-
-    setPublishing(true);
-    try {
-      const credential = await publishConfirmationRef.current.confirm(publishOtpCode.trim());
-      const idToken = await credential.user.getIdToken(true);
-      const verification = await verifyListingPublishOtp({ idToken });
-      await publishWithOtpToken(verification.publishOtpVerificationToken);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("OTP verify fail ho gaya.");
-      }
-    } finally {
-      setPublishing(false);
     }
   }
 
@@ -809,7 +684,7 @@ export default function SellPage() {
           {!stepLoading && step === 2 ? (
             <div className="stack">
               <label className="filterLabel">
-                Kya bech rahe ho? (Tittle)
+                Kya bech rahe ho? (Title)
                 <input
                   className="input"
                   value={form.title}
@@ -855,7 +730,7 @@ export default function SellPage() {
                 </datalist>
               </label>
               <label className="filterLabel">
-                Apni cheez ke baare mein batao (Minimum 50 words)
+                Apni cheez ke baare mein batao
                 <textarea
                   className="input"
                   rows={5}
@@ -863,7 +738,7 @@ export default function SellPage() {
                   onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
                 />
               </label>
-              <p className="shareHint">Word count: {descriptionWordCount}/50</p>
+              <p className="shareHint">Word count: {descriptionWordCount}</p>
               <div className="priceSuggestionRow">
                 {priceSuggestions.map((price) => (
                   <button
@@ -1083,7 +958,7 @@ export default function SellPage() {
             </button>
           ) : (
             <button className="searchSubmitBtn" disabled={publishing} type="submit">
-              {publishing ? "Please wait..." : "Post Karo (OTP Verify)"}
+              {publishing ? "Please wait..." : "Post Karo"}
             </button>
           )}
         </footer>
@@ -1100,52 +975,6 @@ export default function SellPage() {
         ) : null}
         {success ? <p className="success">{success}</p> : null}
       </form>
-
-      {publishOtpModalOpen ? (
-        <div className="modalBackdrop" role="dialog" aria-modal="true">
-          <div className="modalCard">
-            <h3>Publish OTP Verification</h3>
-            <p className="shareHint">
-              Product post karne ke liye OTP verify zaroori hai. OTP: {publishOtpPhone}
-            </p>
-            <form className="stack" onSubmit={onVerifyPublishOtp}>
-              <input
-                className="input"
-                placeholder="6-digit OTP"
-                value={publishOtpCode}
-                onChange={(event) => setPublishOtpCode(event.target.value)}
-                maxLength={6}
-                autoComplete="one-time-code"
-                required
-              />
-              <div className="modalActions">
-                <button
-                  className="btn secondary"
-                  type="button"
-                  onClick={onResendPublishOtp}
-                  disabled={publishOtpResendIn > 0 || publishing}
-                >
-                  {publishOtpResendIn > 0
-                    ? `Resend in ${publishOtpResendIn}s`
-                    : "Resend OTP"}
-                </button>
-                <button className="btn" type="submit" disabled={publishing}>
-                  {publishing ? "Verifying..." : "Verify OTP & Post"}
-                </button>
-              </div>
-            </form>
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={() => setPublishOtpModalOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div ref={recaptchaElementRef} />
     </main>
   );
 }

@@ -43,6 +43,71 @@ const defaultFeatureFlags = [
     key: "REPORTING_ENABLED",
     enabled: true,
     description: "Allow users to submit moderation reports."
+  },
+  {
+    key: "COMMAND_PALETTE",
+    enabled: true,
+    description: "Enable global command palette quick navigation."
+  },
+  {
+    key: "RELIST_ENABLED",
+    enabled: true,
+    description: "Enable one-tap relist action for sold/expired listings."
+  },
+  {
+    key: "SAVED_SYNC",
+    enabled: true,
+    description: "Sync saved listings across devices."
+  },
+  {
+    key: "RECENT_SYNC",
+    enabled: true,
+    description: "Sync recently viewed listings across devices."
+  },
+  {
+    key: "SELLER_ANALYTICS",
+    enabled: true,
+    description: "Enable seller mini analytics metrics."
+  },
+  {
+    key: "SEMANTIC_SEARCH",
+    enabled: false,
+    description: "Enable semantic search ranking."
+  },
+  {
+    key: "AI_COPILOT",
+    enabled: false,
+    description: "Enable AI listing copilot features."
+  },
+  {
+    key: "AI_FRAUD_RISK",
+    enabled: false,
+    description: "Enable AI fraud risk scoring and moderation assist."
+  },
+  {
+    key: "AI_CHAT_COPILOT",
+    enabled: false,
+    description: "Enable AI chat suggestions."
+  },
+  {
+    key: "RECOMMENDATIONS_FEED",
+    enabled: false,
+    description: "Enable personalized recommendation feed."
+  },
+  {
+    key: "PRICE_INTELLIGENCE",
+    enabled: false,
+    description: "Enable dynamic price suggestion ranges."
+  },
+  {
+    key: "FORECAST_ANALYTICS",
+    enabled: false,
+    description: "Enable forecast and demand analytics APIs."
+  },
+  {
+    key: "AB_EXPERIMENTS",
+    enabled: false,
+    description: "Enable A/B experimentation framework hooks."
   }
 ];
 

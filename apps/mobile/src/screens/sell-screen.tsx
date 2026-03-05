@@ -3,7 +3,6 @@ import {
   Animated,
   Alert,
   Easing,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,21 +12,16 @@ import {
   View
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { AuthRequiredCard } from "../components/auth-required-card";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
-import { firebaseAppForRecaptcha, firebaseAuth } from "../services/firebase";
 import { pakistanCities } from "@aikad/shared";
 import {
   activateListing,
   createListing,
   getAuthToken,
   getCategoryCatalog,
-  requestListingPublishOtp,
   subscribeAuthToken,
-  uploadMediaFile,
-  verifyListingPublishOtp
+  uploadMediaFile
 } from "../services/api";
 import type { MarketplaceCategory } from "../types";
 
@@ -40,6 +34,13 @@ function isValidHttpUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function parseImageUrls(value: string) {
+  return value
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function SellScreen({ navigation }: any) {
@@ -65,15 +66,9 @@ export function SellScreen({ navigation }: any) {
   const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [publishing, setPublishing] = useState(false);
-  const [otpModalVisible, setOtpModalVisible] = useState(false);
-  const [publishPhone, setPublishPhone] = useState("");
-  const [publishOtpCode, setPublishOtpCode] = useState("");
-  const [verificationId, setVerificationId] = useState("");
   const heroAnim = useRef(new Animated.Value(0)).current;
   const detailsAnim = useRef(new Animated.Value(0)).current;
   const controlsAnim = useRef(new Animated.Value(0)).current;
-
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const selectedRoot = useMemo(
     () => catalog.find((item) => item.slug === categoryRootSlug) ?? catalog[0] ?? null,
@@ -176,12 +171,13 @@ export function SellScreen({ navigation }: any) {
       durationSec?: number;
     }> = [];
 
-    if (imageUrl.trim()) {
-      if (!isValidHttpUrl(imageUrl.trim())) {
+    const imageUrls = parseImageUrls(imageUrl);
+    imageUrls.forEach((url) => {
+      if (!isValidHttpUrl(url)) {
         throw new Error("Image URL valid http/https honi chahiye.");
       }
-      media.push({ type: "IMAGE", url: imageUrl.trim() });
-    }
+      media.push({ type: "IMAGE", url });
+    });
     if (videoUrl.trim()) {
       if (!isValidHttpUrl(videoUrl.trim())) {
         throw new Error("Video URL valid http/https honi chahiye.");
@@ -196,8 +192,12 @@ export function SellScreen({ navigation }: any) {
         durationSec: duration
       });
     }
-    if (media.filter((item) => item.type === "IMAGE").length < 1) {
-      throw new Error("Kam az kam 1 image upload karni zaroori hai.");
+    const imageCount = media.filter((item) => item.type === "IMAGE").length;
+    if (imageCount < 2) {
+      throw new Error("Kam az kam 2 images upload karni zaroori hain.");
+    }
+    if (imageCount > 6) {
+      throw new Error("Max 6 images allow hain.");
     }
     return media;
   }
@@ -280,7 +280,10 @@ export function SellScreen({ navigation }: any) {
         mediaType: "IMAGE"
       });
 
-      setImageUrl(upload.url);
+      setImageUrl((prev) => {
+        const merged = [upload.url, ...parseImageUrls(prev)].slice(0, 6);
+        return merged.join("\n");
+      });
       Alert.alert("Uploaded", "Image upload ho gayi.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Image upload fail ho gayi.";
@@ -333,19 +336,6 @@ export function SellScreen({ navigation }: any) {
     }
   }
 
-  async function requestPublishOtp() {
-    const response = await requestListingPublishOtp();
-    const provider = new PhoneAuthProvider(firebaseAuth);
-    const id = await provider.verifyPhoneNumber(
-      response.phone,
-      recaptchaVerifier.current as any
-    );
-    setPublishPhone(response.phone);
-    setVerificationId(id);
-    setPublishOtpCode("");
-    setOtpModalVisible(true);
-  }
-
   async function onSubmit() {
     if (!categoryId.trim() || !title.trim() || !description.trim()) {
       Alert.alert("Missing fields", "Category, title aur description required hain.");
@@ -362,33 +352,6 @@ export function SellScreen({ navigation }: any) {
 
     setPublishing(true);
     try {
-      buildMedia();
-      await requestPublishOtp();
-      Alert.alert("OTP Sent", `OTP ${publishPhone || "registered phone"} par bhej diya gaya.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not request publish OTP.";
-      Alert.alert("Error", message);
-    } finally {
-      setPublishing(false);
-    }
-  }
-
-  async function onVerifyAndPublish() {
-    if (!verificationId) {
-      Alert.alert("Error", "Pehle OTP request karein.");
-      return;
-    }
-    if (publishOtpCode.trim().length !== 6) {
-      Alert.alert("Error", "6-digit OTP required.");
-      return;
-    }
-
-    setPublishing(true);
-    try {
-      const credential = PhoneAuthProvider.credential(verificationId, publishOtpCode.trim());
-      const userCredential = await signInWithCredential(firebaseAuth, credential);
-      const idToken = await userCredential.user.getIdToken(true);
-      const otpVerification = await verifyListingPublishOtp({ idToken });
       const media = buildMedia();
 
       const created = await createListing({
@@ -403,12 +366,10 @@ export function SellScreen({ navigation }: any) {
         allowCall,
         allowSMS,
         isNegotiable,
-        publishOtpVerificationToken: otpVerification.publishOtpVerificationToken,
         media
       });
 
       await activateListing(created.id);
-      setOtpModalVisible(false);
       resetForm();
       Alert.alert("Success", "Listing post ho gayi.");
     } catch (error) {
@@ -424,7 +385,7 @@ export function SellScreen({ navigation }: any) {
       <AuthRequiredCard
         navigation={navigation}
         title="Bechne ke liye pehle account banao"
-        subtitle="Apna saaman post karne aur OTP publish verification ke liye login ya create account karein."
+        subtitle="Apna saaman post karne ke liye login ya create account karein."
       />
     );
   }
@@ -434,12 +395,6 @@ export function SellScreen({ navigation }: any) {
       style={[styles.screen, enterStyle]}
       contentContainerStyle={styles.container}
     >
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseAppForRecaptcha.options}
-        attemptInvisibleVerification
-      />
-
       <Animated.View
         style={[
           styles.heroCard,
@@ -536,6 +491,7 @@ export function SellScreen({ navigation }: any) {
           multiline
           onChangeText={setDescription}
         />
+        <Text style={styles.aiHintText}>Asli condition, faults aur accessories clearly likhein.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.aiActionRow}>
           <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={() => runAiAssist("TITLE")}>
             <Text style={styles.secondaryButtonText}>AI Title</Text>
@@ -601,10 +557,13 @@ export function SellScreen({ navigation }: any) {
 
         <TextInput
           style={styles.input}
-          placeholder="Image URL (fallback)"
+          placeholder="Image URLs (fallback, comma/new line separated)"
           value={imageUrl}
           onChangeText={setImageUrl}
         />
+        <Text style={styles.aiHintText}>
+          Uploaded images: {parseImageUrls(imageUrl).length} (minimum 2, max 6)
+        </Text>
         <Pressable
           style={({ pressed }) => [
             styles.secondaryButton,
@@ -684,52 +643,10 @@ export function SellScreen({ navigation }: any) {
           disabled={publishing}
         >
           <Text style={styles.buttonText}>
-            {publishing ? "Please wait..." : "Post Karo (OTP Verify)"}
+            {publishing ? "Please wait..." : "Post Karo"}
           </Text>
         </Pressable>
       </Animated.View>
-
-      <Modal transparent visible={otpModalVisible} animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Publish OTP Verification</Text>
-            <Text style={styles.modalSubtitle}>
-              Listing post karne ke liye OTP verify karein. OTP: {publishPhone}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="6-digit OTP"
-              value={publishOtpCode}
-              onChangeText={setPublishOtpCode}
-              keyboardType="number-pad"
-              maxLength={6}
-            />
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.secondaryButton, publishing ? styles.buttonDisabled : null]}
-                onPress={() => {
-                  void requestPublishOtp();
-                }}
-                disabled={publishing}
-              >
-                <Text style={styles.secondaryButtonText}>Resend OTP</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.button, publishing ? styles.buttonDisabled : null]}
-                onPress={() => {
-                  void onVerifyAndPublish();
-                }}
-                disabled={publishing}
-              >
-                <Text style={styles.buttonText}>Verify & Post</Text>
-              </Pressable>
-            </View>
-            <Pressable onPress={() => setOtpModalVisible(false)}>
-              <Text style={styles.closeLinkText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </AnimatedScrollView>
   );
 }

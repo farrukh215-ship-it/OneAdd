@@ -35,19 +35,26 @@ export class ListingsService {
     if (!user) {
       throw new ForbiddenException("User not found.");
     }
-    await this.authService.validateListingPublishOtpToken(
-      dto.publishOtpVerificationToken,
-      user
-    );
+    if (dto.publishOtpVerificationToken) {
+      await this.authService.validateListingPublishOtpToken(
+        dto.publishOtpVerificationToken,
+        user
+      );
+    }
     this.validateMediaConstraints(dto.media);
+    this.assertListingContentQuality(dto.description, dto.city);
     const resolvedCategoryId = await this.resolveCategoryReference(dto.categoryId);
+    const normalizedDescription = this.buildNormalizedDescription(
+      dto.description,
+      dto.city
+    );
 
     return this.prisma.listing.create({
       data: {
         userId,
         categoryId: resolvedCategoryId,
         title: dto.title.trim(),
-        description: dto.description.trim(),
+        description: normalizedDescription,
         price: new Prisma.Decimal(dto.price),
         currency: dto.currency?.trim().toUpperCase() ?? "PKR",
         showPhone: dto.showPhone,
@@ -65,6 +72,95 @@ export class ListingsService {
         }
       },
       include: { media: true }
+    });
+  }
+
+  async relistListing(userId: string, listingId: string) {
+    const source = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: {
+        media: {
+          orderBy: { sortOrder: "asc" }
+        }
+      }
+    });
+
+    if (!source) {
+      throw new NotFoundException("Listing not found.");
+    }
+    if (source.userId !== userId) {
+      throw new ForbiddenException("You can only relist your own listing.");
+    }
+    const relistableStatus =
+      source.status === ListingStatus.SOLD ||
+      source.status === ListingStatus.EXPIRED ||
+      source.status === ListingStatus.PAUSED;
+    if (!relistableStatus) {
+      throw new BadRequestException(
+        "Only sold, expired or paused listings can be relisted."
+      );
+    }
+
+    const hasLock = await this.prisma.userCategoryActiveListing.findUnique({
+      where: {
+        userId_categoryId: {
+          userId,
+          categoryId: source.categoryId
+        }
+      }
+    });
+    if (hasLock) {
+      throw new ConflictException(
+        "An active listing already exists for this category."
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { shadowBanned: true }
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const relisted = await tx.listing.create({
+        data: {
+          userId,
+          categoryId: source.categoryId,
+          title: source.title,
+          description: source.description,
+          price: source.price,
+          currency: source.currency,
+          showPhone: source.showPhone,
+          allowChat: source.allowChat,
+          allowCall: source.allowCall,
+          allowSMS: source.allowSMS,
+          isNegotiable: source.isNegotiable,
+          status: ListingStatus.ACTIVE,
+          publishedAt: new Date(),
+          expiresAt: this.nextExpiryDate(),
+          rankingScore: user?.shadowBanned
+            ? new Prisma.Decimal(0)
+            : new Prisma.Decimal(1),
+          media: {
+            create: source.media.map((item, index) => ({
+              type: item.type,
+              url: item.url,
+              durationSec: item.durationSec,
+              sortOrder: index
+            }))
+          }
+        },
+        include: { media: true }
+      });
+
+      await tx.userCategoryActiveListing.create({
+        data: {
+          userId,
+          categoryId: relisted.categoryId,
+          listingId: relisted.id
+        }
+      });
+
+      return relisted;
     });
   }
 
@@ -501,6 +597,47 @@ export class ListingsService {
     return this.sortByTrustWeightedRanking(listings);
   }
 
+  async semanticSearch(
+    query: string,
+    limit = 20,
+    filters?: {
+      category?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      city?: string;
+      isNegotiable?: boolean;
+    }
+  ) {
+    const base = await this.search(query, limit, filters);
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      return base;
+    }
+
+    return [...base].sort((a, b) => {
+      const aText = `${a.title} ${a.description}`.toLowerCase();
+      const bText = `${b.title} ${b.description}`.toLowerCase();
+
+      const aTitleBoost = a.title.toLowerCase().includes(q) ? 2 : 0;
+      const bTitleBoost = b.title.toLowerCase().includes(q) ? 2 : 0;
+      const aDescBoost = aText.includes(q) ? 1 : 0;
+      const bDescBoost = bText.includes(q) ? 1 : 0;
+      const aTrust = a.user?.trustScore?.score ?? 0;
+      const bTrust = b.user?.trustScore?.score ?? 0;
+      const aFreshness =
+        a.createdAt ? Date.now() - new Date(a.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const bFreshness =
+        b.createdAt ? Date.now() - new Date(b.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+
+      const aScore = aTitleBoost + aDescBoost + aTrust / 100;
+      const bScore = bTitleBoost + bDescBoost + bTrust / 100;
+      if (aScore !== bScore) {
+        return bScore - aScore;
+      }
+      return aFreshness - bFreshness;
+    });
+  }
+
   async getListingById(listingId: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
@@ -607,6 +744,11 @@ export class ListingsService {
     const images = media.filter((item) => item.type === ListingMediaType.IMAGE);
     const videos = media.filter((item) => item.type === ListingMediaType.VIDEO);
 
+    if (images.length < 2) {
+      throw new UnprocessableEntityException(
+        "Kam az kam 2 images upload karni zaroori hain."
+      );
+    }
     if (images.length > 6) {
       throw new UnprocessableEntityException("Maximum 6 images are allowed.");
     }
@@ -618,6 +760,36 @@ export class ListingsService {
         "Video duration must be 30 seconds or less."
       );
     }
+  }
+
+  private assertListingContentQuality(description: string, city?: string) {
+    const cleanDescription = description.trim();
+    const hasCityInput = Boolean(city?.trim());
+    const hasLocationHint =
+      /\b(city|location)\b/i.test(cleanDescription) ||
+      /\n\s*city\s*:/i.test(cleanDescription) ||
+      /\n\s*location\s*:/i.test(cleanDescription);
+
+    if (!hasCityInput && !hasLocationHint) {
+      throw new UnprocessableEntityException(
+        "Location required hai. Aap kahan hain? field fill karein."
+      );
+    }
+  }
+
+  private buildNormalizedDescription(description: string, city?: string) {
+    const cleanDescription = description.trim();
+    const cleanCity = city?.trim();
+
+    if (!cleanCity) {
+      return cleanDescription;
+    }
+
+    if (/\n\s*city\s*:/i.test(cleanDescription)) {
+      return cleanDescription;
+    }
+
+    return `${cleanDescription}\n\nCity: ${cleanCity}`;
   }
 
   private async resolveCategoryIds(categoryFilter: string) {

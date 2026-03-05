@@ -4,7 +4,9 @@ import type {
   ChatThread,
   Listing,
   ListingOffersResponse,
-  MarketplaceCategory
+  MarketplaceCategory,
+  SearchSuggestion,
+  SellerOverviewMetrics
 } from "../types";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -265,6 +267,42 @@ export function searchListingsWithFilters(filters: MobileSearchFilters) {
   return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
 }
 
+export function semanticSearchListingsWithFilters(filters: MobileSearchFilters) {
+  const params = new URLSearchParams();
+  if (filters.query?.trim()) {
+    params.set("q", filters.query.trim());
+  } else {
+    params.set("q", "");
+  }
+  if (filters.category?.trim()) {
+    params.set("category", filters.category.trim());
+  }
+  if (filters.city?.trim()) {
+    params.set("city", filters.city.trim());
+  }
+  if (typeof filters.minPrice === "number") {
+    params.set("minPrice", String(filters.minPrice));
+  }
+  if (typeof filters.maxPrice === "number") {
+    params.set("maxPrice", String(filters.maxPrice));
+  }
+  if (typeof filters.negotiable === "boolean") {
+    params.set("negotiable", String(filters.negotiable));
+  }
+
+  return apiRequest<Listing[]>(`/listings/semantic-search?${params.toString()}`);
+}
+
+export async function getSearchSuggestions(query: string, limit = 20) {
+  const params = new URLSearchParams();
+  params.set("q", query.trim());
+  params.set("limit", String(limit));
+  const result = await apiRequest<{ query: string; items: SearchSuggestion[] }>(
+    `/search/suggestions?${params.toString()}`
+  );
+  return result.items;
+}
+
 export function getListingById(id: string) {
   return apiRequest<Listing>(`/listings/${id}`);
 }
@@ -341,6 +379,12 @@ export function activateListing(listingId: string) {
   });
 }
 
+export function relistListing(listingId: string) {
+  return apiRequest<Listing>(`/listings/${listingId}/relist`, {
+    method: "POST"
+  });
+}
+
 export function loginWithPassword(payload: { email: string; password: string }) {
   return apiRequest<{ accessToken: string }>("/auth/login", {
     method: "POST",
@@ -388,6 +432,36 @@ export function verifyListingPublishOtp(payload: { idToken: string }) {
 
 export function getMyListings() {
   return apiRequest<Listing[]>("/listings/me");
+}
+
+export function getSavedListings(limit = 40) {
+  return apiRequest<{ items: Listing[]; total: number }>(`/users/me/saved?limit=${limit}`);
+}
+
+export function saveListing(listingId: string) {
+  return apiRequest<{ saved: boolean }>(`/users/me/saved/${listingId}`, {
+    method: "POST"
+  });
+}
+
+export function unsaveListing(listingId: string) {
+  return apiRequest<{ saved: boolean }>(`/users/me/saved/${listingId}`, {
+    method: "DELETE"
+  });
+}
+
+export function getRecentlyViewedListings(limit = 40) {
+  return apiRequest<{ items: Listing[]; total: number }>(`/users/me/recent?limit=${limit}`);
+}
+
+export function trackRecentlyViewedListing(listingId: string) {
+  return apiRequest<{ tracked: boolean; viewedAt: string }>(`/users/me/recent/${listingId}`, {
+    method: "POST"
+  });
+}
+
+export function getSellerOverviewMetrics() {
+  return apiRequest<SellerOverviewMetrics>("/analytics/seller/overview");
 }
 
 export function getChatThreads() {
