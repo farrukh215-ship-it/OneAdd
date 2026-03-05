@@ -950,6 +950,70 @@ textarea {
   color: var(--muted);
 }
 
+.liveSuggestRoot {
+  position: relative;
+}
+
+.liveSuggestMenu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--white);
+  border: 1px solid var(--sand);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.liveSuggestItem {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid rgba(232, 213, 183, 0.55);
+  background: transparent;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.liveSuggestItem:last-child {
+  border-bottom: none;
+}
+
+.liveSuggestItem:hover,
+.liveSuggestItem.active {
+  background: var(--clay-xs);
+}
+
+.liveSuggestLabel {
+  color: var(--brown);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.liveSuggestMeta {
+  color: var(--muted);
+  font-size: 11px;
+  font-family: "DM Mono", monospace;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.liveSuggestEmpty {
+  margin: 0;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .search-divider {
   width: 1px;
   height: 28px;

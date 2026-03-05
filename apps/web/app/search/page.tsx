@@ -8,6 +8,7 @@ import {
   semanticSearchListingsWithFilters,
   searchListingsWithFilters
 } from "../../lib/api";
+import { LiveSearchInput } from "../../components/live-search-input";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
 
@@ -316,11 +317,11 @@ export default function SearchPage() {
           <form className="stack" onSubmit={runSearch}>
             <label className="filterLabel">
               Keyword
-              <input
-                className="input"
-                placeholder="e.g. iPhone 15"
+              <LiveSearchInput
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={setQuery}
+                placeholder="e.g. iPhone 15"
+                inputClassName="input"
               />
             </label>
             <label className="filterLabel">
@@ -549,11 +550,11 @@ export default function SearchPage() {
               </div>
               <label className="filterLabel">
                 Keyword
-                <input
-                  className="input"
-                  placeholder="e.g. iPhone 15"
+                <LiveSearchInput
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={setQuery}
+                  placeholder="e.g. iPhone 15"
+                  inputClassName="input"
                 />
               </label>
               <label className="filterLabel">

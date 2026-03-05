@@ -17,6 +17,7 @@ import {
 import { resolveMediaUrl } from "../lib/media-url";
 import { Listing, MarketplaceCategory } from "../lib/types";
 import { useAuthToken } from "../lib/use-auth-token";
+import { LiveSearchInput } from "./live-search-input";
 
 const INITIAL_SKELETON_COUNT = 8;
 const urduTagline =
@@ -542,18 +543,15 @@ export function HomeFeed() {
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
               <label className="search-field search-field-keyword">
                 <span className="search-field-label">Product</span>
-                <div className="search-input-wrap">
-                  <span className="search-icon" aria-hidden="true">
-                    {"\ud83d\udd0d"}
-                  </span>
-                  <input
-                    className="search-input"
-                    name="q"
-                    placeholder="Product name (Cycle, Sofa, Fridge...)"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                  />
-                </div>
+                <LiveSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  name="q"
+                  icon={"\ud83d\udd0d"}
+                  placeholder="Product name (Cycle, Sofa, Fridge...)"
+                  inputClassName="search-input"
+                  wrapperClassName="search-input-wrap"
+                />
               </label>
               <label className="search-field">
                 <span className="search-field-label">Category</span>
