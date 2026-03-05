@@ -16,8 +16,14 @@ import { resolveMediaUrl } from "../../lib/media-url";
 import { Listing, MarketplaceCategory } from "../../lib/types";
 
 const conditions = ["ANY", "NEW", "USED"];
-const searchModes = ["semantic", "keyword"] as const;
-type SearchMode = (typeof searchModes)[number];
+const sortOptions = [
+  { value: "relevance", label: "Best Match" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "date_desc", label: "Date Posted: Newest" },
+  { value: "date_asc", label: "Date Posted: Oldest" }
+] as const;
+type SortBy = (typeof sortOptions)[number]["value"];
 
 function parsePositiveNumber(value: string) {
   if (!value.trim()) {
@@ -63,7 +69,7 @@ export default function SearchPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [blockedSellerIds, setBlockedSellerIds] = useState<string[]>([]);
-  const [searchMode, setSearchMode] = useState<SearchMode>("semantic");
+  const [sortBy, setSortBy] = useState<SortBy>("relevance");
 
   const suggestedTags = useMemo(() => catalog.slice(0, 8), [catalog]);
   const filteredResults = useMemo(
@@ -104,7 +110,7 @@ export default function SearchPage() {
     const initialMaxPrice = params.get("maxPrice") ?? "";
     const initialCondition = params.get("condition") ?? "ANY";
     const initialNegotiable = params.get("negotiable") === "true";
-    const initialMode = params.get("mode") === "keyword" ? "keyword" : "semantic";
+    const initialSortBy = (params.get("sortBy") as SortBy | null) ?? "relevance";
     const resolvedCategory = initialSubcategory || initialCategory;
     if (initialQ) {
       setQuery(initialQ);
@@ -130,7 +136,7 @@ export default function SearchPage() {
     if (initialNegotiable) {
       setNegotiableOnly(true);
     }
-    setSearchMode(initialMode);
+    setSortBy(sortOptions.some((item) => item.value === initialSortBy) ? initialSortBy : "relevance");
     const parsedInitialMin = parsePositiveNumber(initialMinPrice);
     const parsedInitialMax = parsePositiveNumber(initialMaxPrice);
 
@@ -152,8 +158,9 @@ export default function SearchPage() {
         maxPrice: Number.isNaN(parsedInitialMax) ? undefined : parsedInitialMax,
         condition: conditions.includes(initialCondition) ? initialCondition : "ANY",
         negotiable: initialNegotiable,
+        sortBy: sortOptions.some((item) => item.value === initialSortBy) ? initialSortBy : "relevance",
         limit: 100
-      }, initialMode);
+      });
     }
     // Only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,11 +182,12 @@ export default function SearchPage() {
     if (maxPrice.trim()) list.push(`Max ${maxPrice}`);
     if (condition !== "ANY") list.push(condition);
     if (negotiableOnly) list.push("Negotiable Only");
-    list.push(searchMode === "semantic" ? "Smart Ranking" : "Exact Match");
+    const sortLabel = sortOptions.find((item) => item.value === sortBy)?.label ?? "Best Match";
+    list.push(sortLabel);
     return list;
-  }, [area, catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query, searchMode]);
+  }, [area, catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query, sortBy]);
 
-  function updateUrlFromSearch(payload: SearchFilters, mode: SearchMode) {
+  function updateUrlFromSearch(payload: SearchFilters) {
     if (typeof window === "undefined") {
       return;
     }
@@ -214,33 +222,29 @@ export default function SearchPage() {
     if (typeof payload.negotiable === "boolean") {
       params.set("negotiable", String(payload.negotiable));
     }
-    params.set("mode", mode);
+    if (payload.sortBy && payload.sortBy !== "relevance") {
+      params.set("sortBy", payload.sortBy);
+    }
 
     const url = params.toString() ? `/search?${params.toString()}` : "/search";
     window.history.replaceState({}, "", url);
   }
 
-  async function runSearchWith(payload: SearchFilters, modeOverride?: SearchMode) {
+  async function runSearchWith(payload: SearchFilters) {
     setLoading(true);
     setError("");
     try {
-      const mode = modeOverride ?? searchMode;
       let data: Listing[] = [];
-
-      if (mode === "semantic") {
-        try {
-          data = await semanticSearchListingsWithFilters(payload);
-        } catch {
-          data = await searchListingsWithFilters(payload);
-        }
-      } else {
+      try {
+        data = await semanticSearchListingsWithFilters(payload);
+      } catch {
         data = await searchListingsWithFilters(payload);
       }
 
       setResults(data);
       setMobileFiltersOpen(false);
       setHasSubmitted(true);
-      updateUrlFromSearch(payload, mode);
+      updateUrlFromSearch(payload);
     } catch {
       setError("Search request fail ho gayi. Dobara try karein.");
     } finally {
@@ -274,6 +278,7 @@ export default function SearchPage() {
       maxPrice: max,
       condition,
       negotiable: negotiableOnly,
+      sortBy,
       limit: 100
     };
 
@@ -300,14 +305,17 @@ export default function SearchPage() {
               />
             </label>
             <label className="filterLabel">
-              Search Mode
+              Sort By
               <select
                 className="input"
-                value={searchMode}
-                onChange={(event) => setSearchMode(event.target.value as SearchMode)}
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortBy)}
               >
-                <option value="semantic">Smart AI Ranking</option>
-                <option value="keyword">Exact Keyword</option>
+                {sortOptions.map((option) => (
+                  <option value={option.value} key={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="filterLabel">
@@ -427,6 +435,7 @@ export default function SearchPage() {
                   maxPrice: Number.isNaN(parsedMax) ? undefined : parsedMax,
                   condition,
                   negotiable: negotiableOnly,
+                  sortBy,
                   limit: 100
                 });
               }}
@@ -479,7 +488,7 @@ export default function SearchPage() {
                     <h3>{listing.title}</h3>
                     <p className="searchResultMeta">
                       {(listing.city || "Pakistan") +
-                        (listing.exactLocation ? ` · ${listing.exactLocation}` : "") +
+                        (listing.exactLocation ? ` - ${listing.exactLocation}` : "") +
                         ` - ${listing.status}`}
                     </p>
                   </div>
@@ -518,14 +527,17 @@ export default function SearchPage() {
                 />
               </label>
               <label className="filterLabel">
-                Search Mode
+                Sort By
                 <select
                   className="input"
-                  value={searchMode}
-                  onChange={(event) => setSearchMode(event.target.value as SearchMode)}
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value as SortBy)}
                 >
-                  <option value="semantic">Smart AI Ranking</option>
-                  <option value="keyword">Exact Keyword</option>
+                  {sortOptions.map((option) => (
+                    <option value={option.value} key={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="filterLabel">

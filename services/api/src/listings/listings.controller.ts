@@ -41,7 +41,8 @@ export class ListingsController {
     @Query("area") area?: string,
     @Query("minPrice") minPrice?: string,
     @Query("maxPrice") maxPrice?: string,
-    @Query("negotiable") negotiable?: string
+    @Query("negotiable") negotiable?: string,
+    @Query("sortBy") sortBy?: string
   ) {
     const parsedMinPrice =
       typeof minPrice === "string" && minPrice.length > 0
@@ -65,7 +66,8 @@ export class ListingsController {
           ? parsedMaxPrice
           : undefined,
       isNegotiable:
-        negotiable === "true" ? true : negotiable === "false" ? false : undefined
+        negotiable === "true" ? true : negotiable === "false" ? false : undefined,
+      sortBy
     });
   }
 
@@ -78,7 +80,8 @@ export class ListingsController {
     @Query("area") area?: string,
     @Query("minPrice") minPrice?: string,
     @Query("maxPrice") maxPrice?: string,
-    @Query("negotiable") negotiable?: string
+    @Query("negotiable") negotiable?: string,
+    @Query("sortBy") sortBy?: string
   ) {
     const parsedMinPrice =
       typeof minPrice === "string" && minPrice.length > 0
@@ -102,7 +105,8 @@ export class ListingsController {
           ? parsedMaxPrice
           : undefined,
       isNegotiable:
-        negotiable === "true" ? true : negotiable === "false" ? false : undefined
+        negotiable === "true" ? true : negotiable === "false" ? false : undefined,
+      sortBy
     });
   }
 

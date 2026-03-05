@@ -20,6 +20,13 @@ import { TrustScoreService } from "../trust-score/trust-score.service";
 import { AuthService } from "../auth/auth.service";
 import { CreateListingDto } from "./dto/create-listing.dto";
 
+type ListingSearchSortBy =
+  | "relevance"
+  | "price_asc"
+  | "price_desc"
+  | "date_desc"
+  | "date_asc";
+
 @Injectable()
 export class ListingsService {
   constructor(
@@ -622,28 +629,35 @@ export class ListingsService {
       city?: string;
       area?: string;
       isNegotiable?: boolean;
+      sortBy?: string;
+      semanticTerms?: string[];
     }
   ) {
     const q = query.trim();
+    const queryTerms = this.buildQueryTerms(q, filters?.semanticTerms);
     const city = filters?.city?.trim() ?? "";
     const area = filters?.area?.trim() ?? "";
+    const sortBy = this.sanitizeSortBy(filters?.sortBy);
     const hasPriceFilter =
       typeof filters?.minPrice === "number" || typeof filters?.maxPrice === "number";
     const hasCategoryFilter = Boolean(filters?.category?.trim());
     const hasAreaFilter = Boolean(area);
 
-    if (!q && !city && !hasAreaFilter && !hasPriceFilter && !hasCategoryFilter) {
+    if (queryTerms.length === 0 && !city && !hasAreaFilter && !hasPriceFilter && !hasCategoryFilter) {
       return [];
     }
 
     const andFilters: Prisma.ListingWhereInput[] = [];
 
-    if (q) {
+    if (queryTerms.length > 0) {
+      const queryOrClauses: Prisma.ListingWhereInput[] = [];
+      for (const term of queryTerms) {
+        queryOrClauses.push({ title: { contains: term, mode: "insensitive" } });
+        queryOrClauses.push({ description: { contains: term, mode: "insensitive" } });
+      }
+
       andFilters.push({
-        OR: [
-          { title: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } }
-        ]
+        OR: queryOrClauses
       });
     }
 
@@ -718,7 +732,8 @@ export class ListingsService {
       take: Math.min(Math.max(limit, 1), 100)
     });
 
-    const sorted = this.sortByTrustWeightedRanking(listings);
+    const sortedByRelevance = this.sortByTrustWeightedRanking(listings);
+    const sorted = this.applyListingSort(sortedByRelevance, sortBy);
     return sorted.map((item) => this.normalizeListingForClient(item));
   }
 
@@ -732,58 +747,159 @@ export class ListingsService {
       city?: string;
       area?: string;
       isNegotiable?: boolean;
+      sortBy?: string;
     }
   ) {
     const semanticTerms = this.expandSemanticTerms(query);
     const hasQuery = semanticTerms.length > 0;
-    let base = await this.search(query, limit, filters);
+    const sortBy = this.sanitizeSortBy(filters?.sortBy);
+    let base = await this.search(query, limit, {
+      ...filters,
+      semanticTerms
+    });
     if (base.length === 0 && hasQuery && (filters?.category || filters?.city || filters?.area)) {
       base = await this.search("", limit, filters);
     }
     const q = query.trim().toLowerCase();
     if (!q) {
-      return base;
+      return this.applyNormalizedSort(base, sortBy);
     }
 
-    return [...base].sort((a, b) => {
+    const ranked = [...base].sort((a, b) => {
       const aText = `${a.title} ${a.description}`.toLowerCase();
       const bText = `${b.title} ${b.description}`.toLowerCase();
 
-      let aTitleBoost = a.title.toLowerCase().includes(q) ? 2 : 0;
-      let bTitleBoost = b.title.toLowerCase().includes(q) ? 2 : 0;
-      let aDescBoost = aText.includes(q) ? 1 : 0;
-      let bDescBoost = bText.includes(q) ? 1 : 0;
+      const aScore = this.computeSemanticScore({
+        query: q,
+        terms: semanticTerms,
+        title: a.title,
+        text: aText,
+        trust: a.user?.trustScore?.score ?? 0
+      });
+      const bScore = this.computeSemanticScore({
+        query: q,
+        terms: semanticTerms,
+        title: b.title,
+        text: bText,
+        trust: b.user?.trustScore?.score ?? 0
+      });
 
-      for (const term of semanticTerms) {
-        if (term.length < 2) {
-          continue;
-        }
-        if (a.title.toLowerCase().includes(term)) {
-          aTitleBoost += 0.8;
-        }
-        if (b.title.toLowerCase().includes(term)) {
-          bTitleBoost += 0.8;
-        }
-        if (aText.includes(term)) {
-          aDescBoost += 0.4;
-        }
-        if (bText.includes(term)) {
-          bDescBoost += 0.4;
-        }
+      if (aScore !== bScore) {
+        return bScore - aScore;
       }
-      const aTrust = a.user?.trustScore?.score ?? 0;
-      const bTrust = b.user?.trustScore?.score ?? 0;
       const aFreshness =
         a.createdAt ? Date.now() - new Date(a.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
       const bFreshness =
         b.createdAt ? Date.now() - new Date(b.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
-
-      const aScore = aTitleBoost + aDescBoost + aTrust / 100;
-      const bScore = bTitleBoost + bDescBoost + bTrust / 100;
-      if (aScore !== bScore) {
-        return bScore - aScore;
-      }
       return aFreshness - bFreshness;
+    });
+
+    return this.applyNormalizedSort(ranked, sortBy);
+  }
+
+  private computeSemanticScore(params: {
+    query: string;
+    terms: string[];
+    title: string;
+    text: string;
+    trust: number;
+  }) {
+    const titleLower = params.title.toLowerCase();
+    let score = 0;
+
+    if (titleLower === params.query) {
+      score += 9;
+    } else if (titleLower.startsWith(params.query)) {
+      score += 7;
+    } else if (titleLower.includes(params.query)) {
+      score += 5;
+    }
+
+    if (params.text.includes(params.query)) {
+      score += 2.5;
+    }
+
+    for (const term of params.terms) {
+      if (term.length < 2) {
+        continue;
+      }
+      if (titleLower === term) {
+        score += 3.2;
+      } else if (titleLower.startsWith(term)) {
+        score += 2.6;
+      } else if (titleLower.includes(term)) {
+        score += 1.8;
+      }
+      if (params.text.includes(term)) {
+        score += 0.7;
+      }
+    }
+
+    return score + params.trust / 120;
+  }
+
+  private sanitizeSortBy(sortBy?: string): ListingSearchSortBy {
+    if (
+      sortBy === "price_asc" ||
+      sortBy === "price_desc" ||
+      sortBy === "date_desc" ||
+      sortBy === "date_asc"
+    ) {
+      return sortBy;
+    }
+    return "relevance";
+  }
+
+  private buildQueryTerms(query: string, extraTerms?: string[]) {
+    const base = query
+      .toLowerCase()
+      .split(/[\s,./\\\-_:;]+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 2);
+    if (query.length >= 2) {
+      base.unshift(query.toLowerCase());
+    }
+
+    if (extraTerms?.length) {
+      for (const term of extraTerms) {
+        const clean = term.trim().toLowerCase();
+        if (clean.length >= 2) {
+          base.push(clean);
+        }
+      }
+    }
+
+    return Array.from(new Set(base));
+  }
+
+  private applyNormalizedSort<
+    T extends { price: string | number | Prisma.Decimal; createdAt?: string | Date | null }
+  >(items: T[], sortBy: ListingSearchSortBy) {
+    return this.applyListingSort(items, sortBy);
+  }
+
+  private applyListingSort<
+    T extends { price: string | number | Prisma.Decimal; createdAt?: string | Date | null }
+  >(items: T[], sortBy: ListingSearchSortBy) {
+    if (sortBy === "relevance") {
+      return items;
+    }
+
+    return [...items].sort((a, b) => {
+      if (sortBy === "price_asc" || sortBy === "price_desc") {
+        const aPrice = Number(a.price);
+        const bPrice = Number(b.price);
+        if (aPrice !== bPrice) {
+          return sortBy === "price_asc" ? aPrice - bPrice : bPrice - aPrice;
+        }
+      }
+
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (aDate !== bDate) {
+        return sortBy === "date_asc" ? aDate - bDate : bDate - aDate;
+      }
+      return 0;
     });
   }
 

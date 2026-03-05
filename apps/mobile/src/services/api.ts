@@ -236,9 +236,11 @@ export type MobileSearchFilters = {
   query?: string;
   category?: string;
   city?: string;
+  area?: string;
   minPrice?: number;
   maxPrice?: number;
   negotiable?: boolean;
+  sortBy?: "relevance" | "price_asc" | "price_desc" | "date_desc" | "date_asc";
 };
 
 export function searchListingsWithFilters(filters: MobileSearchFilters) {
@@ -254,6 +256,9 @@ export function searchListingsWithFilters(filters: MobileSearchFilters) {
   if (filters.city?.trim()) {
     params.set("city", filters.city.trim());
   }
+  if (filters.area?.trim()) {
+    params.set("area", filters.area.trim());
+  }
   if (typeof filters.minPrice === "number") {
     params.set("minPrice", String(filters.minPrice));
   }
@@ -262,6 +267,9 @@ export function searchListingsWithFilters(filters: MobileSearchFilters) {
   }
   if (typeof filters.negotiable === "boolean") {
     params.set("negotiable", String(filters.negotiable));
+  }
+  if (filters.sortBy && filters.sortBy !== "relevance") {
+    params.set("sortBy", filters.sortBy);
   }
 
   return apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
@@ -280,6 +288,9 @@ export function semanticSearchListingsWithFilters(filters: MobileSearchFilters) 
   if (filters.city?.trim()) {
     params.set("city", filters.city.trim());
   }
+  if (filters.area?.trim()) {
+    params.set("area", filters.area.trim());
+  }
   if (typeof filters.minPrice === "number") {
     params.set("minPrice", String(filters.minPrice));
   }
@@ -288,6 +299,9 @@ export function semanticSearchListingsWithFilters(filters: MobileSearchFilters) 
   }
   if (typeof filters.negotiable === "boolean") {
     params.set("negotiable", String(filters.negotiable));
+  }
+  if (filters.sortBy && filters.sortBy !== "relevance") {
+    params.set("sortBy", filters.sortBy);
   }
 
   return apiRequest<Listing[]>(`/listings/semantic-search?${params.toString()}`);

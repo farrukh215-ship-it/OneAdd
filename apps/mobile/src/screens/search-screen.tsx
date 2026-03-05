@@ -9,7 +9,10 @@ import {
   TextInput,
   View
 } from "react-native";
-import { getCategoryCatalog, searchListingsWithFilters } from "../services/api";
+import {
+  getCategoryCatalog,
+  semanticSearchListingsWithFilters
+} from "../services/api";
 import { StaggerInCard } from "../components/stagger-in-card";
 import { useScreenEnterAnimation } from "../hooks/use-screen-enter-animation";
 import {
@@ -19,6 +22,13 @@ import {
   toggleSavedListingId
 } from "../services/listing-preferences";
 import type { Listing, MarketplaceCategory } from "../types";
+
+const sortOptions = [
+  { value: "relevance", label: "Best Match" },
+  { value: "price_asc", label: "Price Low" },
+  { value: "price_desc", label: "Price High" },
+  { value: "date_desc", label: "Newest" }
+] as const;
 
 function dedupeByListingId(source: Listing[]) {
   const seen = new Set<string>();
@@ -36,6 +46,9 @@ function dedupeByListingId(source: Listing[]) {
 export function SearchScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [query, setQuery] = useState("");
+  const [city, setCity] = useState("");
+  const [area, setArea] = useState("");
+  const [sortBy, setSortBy] = useState<(typeof sortOptions)[number]["value"]>("relevance");
   const [items, setItems] = useState<Listing[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [recentItems, setRecentItems] = useState<Listing[]>([]);
@@ -80,22 +93,28 @@ export function SearchScreen({ navigation, route }: any) {
     const normalizedQuery = query.trim();
     const normalizedCategory = selectedCategorySlug.trim();
 
-    if (!normalizedQuery && !normalizedCategory) {
+    const normalizedCity = city.trim();
+    const normalizedArea = area.trim();
+
+    if (!normalizedQuery && !normalizedCategory && !normalizedCity && !normalizedArea) {
       setItems([]);
       return;
     }
 
     const handle = setTimeout(() => {
-      void searchListingsWithFilters({
+      void semanticSearchListingsWithFilters({
         query: normalizedQuery,
-        category: normalizedCategory
+        category: normalizedCategory,
+        city: normalizedCity,
+        area: normalizedArea,
+        sortBy
       })
         .then((result) => setItems(dedupeByListingId(result)))
         .catch(() => setItems([]));
     }, 250);
 
     return () => clearTimeout(handle);
-  }, [query, selectedCategorySlug]);
+  }, [area, city, query, selectedCategorySlug, sortBy]);
 
   useEffect(() => {
     void refreshLocalCollections(items);
@@ -130,6 +149,38 @@ export function SearchScreen({ navigation, route }: any) {
           onChangeText={setQuery}
         />
       </View>
+      <View style={styles.inlineFilters}>
+        <TextInput
+          style={[styles.input, styles.filterInput]}
+          placeholder="City (e.g. Lahore)"
+          value={city}
+          onChangeText={setCity}
+        />
+        <TextInput
+          style={[styles.input, styles.filterInput]}
+          placeholder="Area (DHA, Johar...)"
+          value={area}
+          onChangeText={setArea}
+        />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>
+        {sortOptions.map((option) => {
+          const selected = sortBy === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              style={({ pressed }) => [
+                styles.subchip,
+                selected ? styles.subchipActive : null,
+                pressed ? styles.pressed : null
+              ]}
+              onPress={() => setSortBy(option.value)}
+            >
+              <Text style={styles.subchipText}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
         {categories.map((category) => {
@@ -202,7 +253,7 @@ export function SearchScreen({ navigation, route }: any) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          query.trim().length > 0 || selectedCategorySlug ? (
+          query.trim().length > 0 || selectedCategorySlug || city.trim().length > 0 || area.trim().length > 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>Koi listing nahi mili</Text>
               <Text style={styles.emptySub}>Dusra keyword try karein, ya category change karein.</Text>
@@ -235,7 +286,10 @@ export function SearchScreen({ navigation, route }: any) {
                 </Pressable>
               </View>
               <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.meta}>{item.city || "Pakistan"}</Text>
+              <Text style={styles.meta}>
+                {item.city || "Pakistan"}
+                {item.exactLocation ? ` - ${item.exactLocation}` : ""}
+              </Text>
             </Pressable>
           </StaggerInCard>
         )}
@@ -287,6 +341,19 @@ const styles = StyleSheet.create({
   chipsRow: {
     gap: 8,
     paddingBottom: 8
+  },
+  inlineFilters: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8
+  },
+  filterInput: {
+    flex: 1,
+    marginBottom: 0
+  },
+  sortRow: {
+    gap: 8,
+    paddingBottom: 10
   },
   chip: {
     backgroundColor: "#FFFFFF",

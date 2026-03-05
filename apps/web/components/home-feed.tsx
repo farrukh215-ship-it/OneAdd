@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CSSProperties, FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCatalog, getRecentListingsPage } from "../lib/api";
 import {
   BLOCKED_SELLERS_CHANGED_EVENT,
@@ -305,10 +305,6 @@ function categoryHref(slug: string) {
 export function HomeFeed() {
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategorySlug, setSearchCategorySlug] = useState("");
-  const [searchSubcategorySlug, setSearchSubcategorySlug] = useState("");
-  const [searchCity, setSearchCity] = useState("");
   const [items, setItems] = useState<Listing[]>([]);
   const [recentItems, setRecentItems] = useState<Listing[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -326,10 +322,6 @@ export function HomeFeed() {
   const selectedCategory = useMemo(
     () => categories.find((item) => item.slug === selectedCategorySlug) ?? categories[0] ?? null,
     [categories, selectedCategorySlug]
-  );
-  const selectedSearchCategory = useMemo(
-    () => categories.find((item) => item.slug === searchCategorySlug) ?? null,
-    [categories, searchCategorySlug]
   );
 
   async function loadCategories() {
@@ -457,30 +449,6 @@ export function HomeFeed() {
       visibleItems.filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id)),
     [heroListingIds, recentListingIds, visibleItems]
   );
-
-  function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const params = new URLSearchParams();
-    const query = searchQuery.trim();
-    const city = searchCity.trim();
-
-    if (query) {
-      params.set("q", query);
-    }
-    if (searchCategorySlug) {
-      params.set("category", searchCategorySlug);
-    }
-    if (searchSubcategorySlug) {
-      params.set("subcategory", searchSubcategorySlug);
-    }
-    if (city) {
-      params.set("city", city);
-    }
-    params.set("mode", "semantic");
-
-    const target = params.toString() ? `/search?${params.toString()}` : "/search";
-    window.location.href = target;
-  }
 
   const listingSectionBody = useMemo(() => {
     if (loading) {
@@ -658,83 +626,6 @@ export function HomeFeed() {
           <span className="trust-text">Made for Pakistan</span>
         </div>
       </div>
-
-      <section className="search-section">
-        <form className="search-box search-box-advanced" onSubmit={onSearchSubmit}>
-          <label className="search-field search-field-keyword">
-            <span className="search-field-label">Product</span>
-            <div className="search-input-wrap">
-              <span className="search-icon" aria-hidden="true">
-                {"\ud83d\udd0d"}
-              </span>
-              <input
-                className="search-input"
-                name="q"
-                placeholder="Product name (iPhone, Sofa, Fridge...)"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-          </label>
-          <label className="search-field">
-            <span className="search-field-label">Category</span>
-            <select
-              className="search-select"
-              value={searchCategorySlug}
-              onChange={(event) => {
-                setSearchCategorySlug(event.target.value);
-                setSearchSubcategorySlug("");
-              }}
-            >
-              <option value="">All Categories</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.slug}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="search-field">
-            <span className="search-field-label">Subcategory</span>
-            <select
-              className="search-select"
-              value={searchSubcategorySlug}
-              onChange={(event) => setSearchSubcategorySlug(event.target.value)}
-              disabled={!selectedSearchCategory}
-            >
-              <option value="">
-                {selectedSearchCategory ? "All Subcategories" : "Select category first"}
-              </option>
-              {(selectedSearchCategory?.subcategories ?? []).map((subcategory) => (
-                <option key={subcategory.id} value={subcategory.slug}>
-                  {subcategory.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="search-field">
-            <span className="search-field-label">City</span>
-            <input
-              className="search-select"
-              name="city"
-              placeholder="Karachi, Lahore..."
-              value={searchCity}
-              onChange={(event) => setSearchCity(event.target.value)}
-            />
-          </label>
-          <button className="search-btn" type="submit">
-            Smart Search
-          </button>
-        </form>
-        <div className="search-tags">
-          <span className="search-tag-label">Popular</span>
-          {quickFilters.map((item) => (
-            <Link href="/search" className="search-tag" key={item}>
-              {item}
-            </Link>
-          ))}
-        </div>
-      </section>
 
       <section className="categories-section">
         <header className="section-header">

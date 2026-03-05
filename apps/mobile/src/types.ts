@@ -14,6 +14,7 @@ export type Listing = {
   currency: string;
   status: string;
   city?: string | null;
+  exactLocation?: string | null;
   createdAt?: string;
   showPhone: boolean;
   allowChat: boolean;

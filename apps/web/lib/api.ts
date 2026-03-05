@@ -298,6 +298,7 @@ export type SearchFilters = {
   category: string;
   city: string;
   area?: string;
+  sortBy?: "relevance" | "price_asc" | "price_desc" | "date_desc" | "date_asc";
   minPrice?: number;
   maxPrice?: number;
   condition: string;
@@ -329,6 +330,9 @@ export async function searchListingsWithFilters(filters: SearchFilters) {
   if (typeof filters.negotiable === "boolean") {
     params.set("negotiable", String(filters.negotiable));
   }
+  if (filters.sortBy && filters.sortBy !== "relevance") {
+    params.set("sortBy", filters.sortBy);
+  }
 
   const listings = await apiRequest<Listing[]>(`/listings/search?${params.toString()}`);
   return normalizeListingList(listings);
@@ -354,6 +358,9 @@ export async function semanticSearchListingsWithFilters(filters: SearchFilters) 
   }
   if (typeof filters.negotiable === "boolean") {
     params.set("negotiable", String(filters.negotiable));
+  }
+  if (filters.sortBy && filters.sortBy !== "relevance") {
+    params.set("sortBy", filters.sortBy);
   }
 
   const listings = await apiRequest<Listing[]>(`/listings/semantic-search?${params.toString()}`);

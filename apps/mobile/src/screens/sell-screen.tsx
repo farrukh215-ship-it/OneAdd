@@ -50,8 +50,25 @@ function extractCityFromDescription(description: string) {
   return match?.[1]?.trim() ?? "";
 }
 
+function extractLocationFromDescription(description: string) {
+  const match = description.match(/\n\s*(location|area)\s*:\s*(.+)$/im);
+  return match?.[2]?.trim() ?? "";
+}
+
+function extractMapFromDescription(description: string) {
+  const match = description.match(/\n\s*map\s*:\s*([-.\d]+)\s*,\s*([-.\d]+)\s*$/im);
+  return {
+    lat: match?.[1]?.trim() ?? "",
+    lng: match?.[2]?.trim() ?? ""
+  };
+}
+
 function cleanDescriptionMetadata(description: string) {
-  return description.replace(/\n\s*city\s*:\s*.+$/gim, "").trim();
+  return description
+    .replace(/\n\s*city\s*:\s*.+$/gim, "")
+    .replace(/\n\s*(location|area)\s*:\s*.+$/gim, "")
+    .replace(/\n\s*map\s*:\s*[-.\d]+\s*,\s*[-.\d]+\s*$/gim, "")
+    .trim();
 }
 
 export function SellScreen({ navigation, route }: any) {
@@ -61,6 +78,9 @@ export function SellScreen({ navigation, route }: any) {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [city, setCity] = useState("");
+  const [exactLocation, setExactLocation] = useState("");
+  const [mapLat, setMapLat] = useState("");
+  const [mapLng, setMapLng] = useState("");
   const [categoryRootSlug, setCategoryRootSlug] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -156,6 +176,10 @@ export function SellScreen({ navigation, route }: any) {
         setDescription(cleanDescriptionMetadata(listing.description ?? ""));
         setPrice(String(listing.price ?? ""));
         setCity(listing.city?.trim() || extractCityFromDescription(listing.description ?? ""));
+        setExactLocation(listing.exactLocation?.trim() || extractLocationFromDescription(listing.description ?? ""));
+        const parsedMap = extractMapFromDescription(listing.description ?? "");
+        setMapLat(parsedMap.lat);
+        setMapLng(parsedMap.lng);
         setShowPhone(Boolean(listing.showPhone));
         setAllowChat(Boolean(listing.allowChat));
         setAllowCall(Boolean(listing.allowCall));
@@ -217,6 +241,9 @@ export function SellScreen({ navigation, route }: any) {
     setDescription("");
     setPrice("");
     setCity("");
+    setExactLocation("");
+    setMapLat("");
+    setMapLng("");
     setImageUrl("");
     setVideoUrl("");
     setVideoDurationSec("");
@@ -421,14 +448,21 @@ export function SellScreen({ navigation, route }: any) {
       Alert.alert("Missing city", "Pakistan city select karna zaroori hai.");
       return;
     }
+    if (!exactLocation.trim()) {
+      Alert.alert("Missing area", "Area / exact location dena zaroori hai.");
+      return;
+    }
 
     setPublishing(true);
     try {
       const media = buildMedia();
+      const normalizedDescription = `${description.trim()}\n\nCity: ${city.trim()}\nLocation: ${exactLocation.trim()}${
+        mapLat.trim() && mapLng.trim() ? `\nMap: ${mapLat.trim()}, ${mapLng.trim()}` : ""
+      }`;
       const payload = {
         categoryId: categoryId.trim(),
         title: title.trim(),
-        description: description.trim(),
+        description: normalizedDescription,
         price: Number(price),
         currency: "PKR",
         city: city.trim(),
@@ -625,6 +659,26 @@ export function SellScreen({ navigation, route }: any) {
             </Pressable>
           ))}
         </ScrollView>
+        <TextInput
+          style={styles.input}
+          placeholder="Area / Exact location (e.g. DHA Phase 5)"
+          value={exactLocation}
+          onChangeText={setExactLocation}
+        />
+        <View style={styles.mapRow}>
+          <TextInput
+            style={[styles.input, styles.mapInput]}
+            placeholder="Map Lat (optional)"
+            value={mapLat}
+            onChangeText={setMapLat}
+          />
+          <TextInput
+            style={[styles.input, styles.mapInput]}
+            placeholder="Map Lng (optional)"
+            value={mapLng}
+            onChangeText={setMapLng}
+          />
+        </View>
 
         <Pressable
           style={({ pressed }) => [
@@ -874,6 +928,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E8D5B7"
+  },
+  mapRow: {
+    flexDirection: "row",
+    gap: 8
+  },
+  mapInput: {
+    flex: 1
   },
   citySuggestionRow: {
     gap: 8,
