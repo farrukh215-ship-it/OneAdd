@@ -78,6 +78,11 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const selectedImageUrl = resolveMediaUrl(selectedImage);
 
   const phone = listing.user?.phone ?? "";
+  const numericPrice = Number.parseFloat(String(listing.price ?? "").replace(/[^\d.]/g, ""));
+  const suggestedOffer =
+    Number.isFinite(numericPrice) && numericPrice > 0
+      ? Math.max(500, Math.round((numericPrice * 0.9) / 500) * 500)
+      : null;
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const trustLabel =
     trustScore >= 80 ? "Highly Trusted" : trustScore >= 50 ? "Trusted Seller" : "New Seller";
@@ -216,7 +221,10 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               <p className="sellerName">Live Buyer Offers</p>
               {offers.length === 0 ? (
                 <p className="listingDescription">
-                  Abhi public offers nahi aaye. Chat me likhein: <strong>Offer: 120000</strong>
+                  Abhi public offers nahi aaye. Chat me likhein:{" "}
+                  <strong>
+                    Offer: {suggestedOffer ? `PKR ${suggestedOffer.toLocaleString()}` : "apni amount"}
+                  </strong>
                 </p>
               ) : (
                 <div className="stack">
@@ -292,11 +300,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               ) : (
                 <span className="pill muted">Chat disabled</span>
               )}
-              {isLoggedIn && listing.allowCall && phone ? (
-                <a className="btn secondary" href={`tel:${phone}`}>
-                  Call
-                </a>
-              ) : null}
               {isLoggedIn && listing.allowSMS && phone ? (
                 <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
                   <span className="actionIcon" aria-hidden="true">
@@ -330,11 +333,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
         ) : (
           <span className="pill muted">Chat off</span>
         )}
-        {isLoggedIn && listing.allowCall && phone ? (
-          <a className="btn secondary" href={`tel:${phone}`}>
-            Call
-          </a>
-        ) : null}
         {isLoggedIn && listing.allowSMS && phone ? (
           <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
             <span className="actionIcon" aria-hidden="true">

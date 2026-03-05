@@ -625,6 +625,22 @@ export async function relistListing(listingId: string) {
   return normalizeListing(listing);
 }
 
+export async function markListingSold(listingId: string) {
+  const listing = await apiRequest<Listing>(`/listings/${listingId}/mark-sold`, {
+    method: "POST",
+    auth: true
+  });
+  return normalizeListing(listing);
+}
+
+export async function deactivateListing(listingId: string) {
+  const listing = await apiRequest<Listing>(`/listings/${listingId}/deactivate`, {
+    method: "POST",
+    auth: true
+  });
+  return normalizeListing(listing);
+}
+
 export async function getMyListings() {
   const listings = await apiRequest<Listing[]>("/listings/me", {
     auth: true

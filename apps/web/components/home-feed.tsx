@@ -509,44 +509,60 @@ export function HomeFeed() {
               priority
             />
           </div>
-          {heroCards.map((item, index) => (
-            <article className="hero-card" key={`${item.title}-${index}`}>
-              <div className="hcard-header">
-                <div className="hcard-img" aria-hidden="true">
-                  {item.imageUrl ? (
-                    <>
-                      <img
-                        className="hcard-img-media"
-                        src={item.imageUrl}
-                        alt={item.title}
-                        loading="lazy"
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                          const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
-                          if (fallback) {
-                            fallback.style.display = "flex";
-                          }
-                        }}
-                      />
-                      <span className="hcard-img-fallback">{item.icon}</span>
-                    </>
-                  ) : (
-                    item.icon
-                  )}
+          {heroCards.map((item, index) => {
+            const cardBody = (
+              <>
+                <div className="hcard-header">
+                  <div className="hcard-img" aria-hidden="true">
+                    {item.imageUrl ? (
+                      <>
+                        <img
+                          className="hcard-img-media"
+                          src={item.imageUrl}
+                          alt={item.title}
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                            const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
+                            if (fallback) {
+                              fallback.style.display = "flex";
+                            }
+                          }}
+                        />
+                        <span className="hcard-img-fallback">{item.icon}</span>
+                      </>
+                    ) : (
+                      item.icon
+                    )}
+                  </div>
+                  <div className="hcard-meta">
+                    <h3 className="hcard-title">{item.title}</h3>
+                    <p className="hcard-desc">{item.desc}</p>
+                    <p className="hcard-location">{item.city}</p>
+                  </div>
+                  <p className="hcard-price">{item.price}</p>
                 </div>
-                <div className="hcard-meta">
-                  <h3 className="hcard-title">{item.title}</h3>
-                  <p className="hcard-desc">{item.desc}</p>
-                  <p className="hcard-location">{item.city}</p>
+                <div className="hcard-footer">
+                  <span className="badge-verified">Asli Banda</span>
+                  <span className="hcard-time">{toRelativeTime(item.createdAt)}</span>
                 </div>
-                <p className="hcard-price">{item.price}</p>
-              </div>
-              <div className="hcard-footer">
-                <span className="badge-verified">Asli Banda</span>
-                <span className="hcard-time">{toRelativeTime(item.createdAt)}</span>
-              </div>
-            </article>
-          ))}
+              </>
+            );
+
+            if (item.listingId) {
+              return (
+                <Link href={`/listing/${item.listingId}`} className="hero-card" key={`${item.title}-${index}`}>
+                  {cardBody}
+                </Link>
+              );
+            }
+
+            return (
+              <article className="hero-card" key={`${item.title}-${index}`}>
+                {cardBody}
+              </article>
+            );
+          })}
         </div>
       </section>
 

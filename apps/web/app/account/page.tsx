@@ -6,10 +6,13 @@ import { useRouter } from "next/navigation";
 import { OtpLoginCard } from "../../components/otp-login-card";
 import { SignupCard } from "../../components/signup-card";
 import {
+  activateListing,
   clearToken,
+  deactivateListing,
   getMe,
   getMyListings,
   getSellerOverviewMetrics,
+  markListingSold,
   relistListing
 } from "../../lib/api";
 import { resolveMediaUrl } from "../../lib/media-url";
@@ -70,6 +73,8 @@ export default function AccountPage() {
   const [metrics, setMetrics] = useState<SellerOverviewMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [relistingId, setRelistingId] = useState("");
+  const [actionListingId, setActionListingId] = useState("");
+  const [actionType, setActionType] = useState<"SOLD" | "DEACTIVATE" | "ACTIVATE" | "RELIST" | "">("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -107,19 +112,75 @@ export default function AccountPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  async function refreshListings() {
+    const [listings, overview] = await Promise.all([getMyListings(), getSellerOverviewMetrics()]);
+    setItems(listings);
+    setMetrics(overview);
+  }
+
   async function onRelist(listingId: string) {
     setError("");
     setRelistingId(listingId);
+    setActionListingId(listingId);
+    setActionType("RELIST");
     try {
       await relistListing(listingId);
-      const [listings, overview] = await Promise.all([getMyListings(), getSellerOverviewMetrics()]);
-      setItems(listings);
-      setMetrics(overview);
+      await refreshListings();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Relist fail ho gaya.";
       setError(message);
     } finally {
       setRelistingId("");
+      setActionListingId("");
+      setActionType("");
+    }
+  }
+
+  async function onMarkSold(listingId: string) {
+    setError("");
+    setActionListingId(listingId);
+    setActionType("SOLD");
+    try {
+      await markListingSold(listingId);
+      await refreshListings();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sold update fail ho gaya.";
+      setError(message);
+    } finally {
+      setActionListingId("");
+      setActionType("");
+    }
+  }
+
+  async function onDeactivate(listingId: string) {
+    setError("");
+    setActionListingId(listingId);
+    setActionType("DEACTIVATE");
+    try {
+      await deactivateListing(listingId);
+      await refreshListings();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Deactivate fail ho gaya.";
+      setError(message);
+    } finally {
+      setActionListingId("");
+      setActionType("");
+    }
+  }
+
+  async function onActivate(listingId: string) {
+    setError("");
+    setActionListingId(listingId);
+    setActionType("ACTIVATE");
+    try {
+      await activateListing(listingId);
+      await refreshListings();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Activate fail ho gaya.";
+      setError(message);
+    } finally {
+      setActionListingId("");
+      setActionType("");
     }
   }
 
@@ -235,6 +296,42 @@ export default function AccountPage() {
                   <Link href={`/sell?edit=${encodeURIComponent(listing.id)}`} className="btn secondary">
                     Edit ADD
                   </Link>
+                  {listing.status === "ACTIVE" ? (
+                    <>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => {
+                          void onMarkSold(listing.id);
+                        }}
+                        disabled={actionListingId === listing.id}
+                      >
+                        {actionListingId === listing.id && actionType === "SOLD" ? "Updating..." : "Mark Sold"}
+                      </button>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => {
+                          void onDeactivate(listing.id);
+                        }}
+                        disabled={actionListingId === listing.id}
+                      >
+                        {actionListingId === listing.id && actionType === "DEACTIVATE" ? "Deactivating..." : "Deactivate"}
+                      </button>
+                    </>
+                  ) : null}
+                  {listing.status === "PAUSED" ? (
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => {
+                        void onActivate(listing.id);
+                      }}
+                      disabled={actionListingId === listing.id}
+                    >
+                      {actionListingId === listing.id && actionType === "ACTIVATE" ? "Activating..." : "Activate"}
+                    </button>
+                  ) : null}
                   {listing.status === "SOLD" || listing.status === "EXPIRED" || listing.status === "PAUSED" ? (
                     <button
                       className="btn secondary"
