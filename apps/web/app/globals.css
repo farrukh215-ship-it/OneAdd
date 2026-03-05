@@ -408,6 +408,9 @@ textarea {
   padding: 42px 60px 48px 80px;
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .hero-right {
@@ -427,6 +430,12 @@ textarea {
   padding: 14px;
   display: flex;
   justify-content: center;
+}
+
+.hero-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .hero-full-logo {
@@ -3528,10 +3537,12 @@ textarea {
 
   .hero-left {
     padding: 28px 32px 24px;
+    order: 2;
   }
 
   .hero-right {
     padding: 8px 32px 48px;
+    order: 1;
   }
 
   .subcat-grid {
