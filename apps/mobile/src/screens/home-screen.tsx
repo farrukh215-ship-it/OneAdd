@@ -38,6 +38,33 @@ function formatRelativeTime(input?: string) {
   return `${diffDays}d ago`;
 }
 
+function formatListedDate(input?: string) {
+  if (!input) return "Listed recently";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "Listed recently";
+  return `Listed: ${date.toLocaleDateString("en-GB")}`;
+}
+
+function formatLastOnline(input?: string | null) {
+  if (!input) return "Seller last online: recently";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "Seller last online: recently";
+  return `Seller last online: ${formatRelativeTime(date.toISOString())}`;
+}
+
+function dedupeByListingId(source: Listing[]) {
+  const seen = new Set<string>();
+  const unique: Listing[] = [];
+  source.forEach((item) => {
+    if (!item.id || seen.has(item.id)) {
+      return;
+    }
+    seen.add(item.id);
+    unique.push(item);
+  });
+  return unique;
+}
+
 function getTrustBadge(score: number) {
   if (score >= 80) return "Asli Banda";
   if (score >= 50) return "Trusted Asli Banda";
@@ -79,14 +106,50 @@ type HomeCardProps = {
 };
 
 function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
-  const image = useMemo(() => item.media.find((media) => media.type === "IMAGE")?.url, [item.media]);
+  const images = useMemo(
+    () =>
+      item.media
+        .filter((media) => media.type === "IMAGE")
+        .map((media) => media.url)
+        .filter(Boolean),
+    [item.media]
+  );
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const trustScore = item.user?.trustScore?.score ?? 0;
   const trustBadge = getTrustBadge(trustScore);
+  const currentImage = images[activeImageIndex] ?? null;
 
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} onPress={onPress}>
-      {image ? (
-        <Image source={{ uri: image }} style={styles.cardImage} resizeMode="cover" />
+      {currentImage ? (
+        <View>
+          <Image source={{ uri: currentImage }} style={styles.cardImage} resizeMode="cover" />
+          {images.length > 1 ? (
+            <View style={styles.imageControls}>
+              <Pressable
+                style={({ pressed }) => [styles.imageControlBtn, pressed && styles.cardPressed]}
+                onPress={(event) => {
+                  event.stopPropagation?.();
+                  setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+                }}
+              >
+                <Text style={styles.imageControlText}>Prev</Text>
+              </Pressable>
+              <Text style={styles.imageControlCount}>
+                {activeImageIndex + 1}/{images.length}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.imageControlBtn, pressed && styles.cardPressed]}
+                onPress={(event) => {
+                  event.stopPropagation?.();
+                  setActiveImageIndex((prev) => (prev + 1) % images.length);
+                }}
+              >
+                <Text style={styles.imageControlText}>Next</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
       ) : (
         <View style={styles.cardImagePlaceholder} />
       )}
@@ -113,6 +176,8 @@ function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
           <Text style={styles.metaDot}>|</Text>
           <Text style={styles.metaText}>{formatRelativeTime(item.createdAt)}</Text>
         </View>
+        <Text style={styles.metaSub}>{formatListedDate(item.createdAt)}</Text>
+        <Text style={styles.metaSub}>{formatLastOnline(item.user?.lastSeenAt)}</Text>
         <View style={styles.trustPill}>
           <Text style={styles.trustText}>{trustBadge}</Text>
         </View>
@@ -162,9 +227,10 @@ export function HomeScreen({ navigation }: any) {
 
     try {
       const [listingData, categoryData] = await Promise.all([getListings(), getCategoryCatalog()]);
-      setItems(listingData);
+      const deduped = dedupeByListingId(listingData);
+      setItems(deduped);
       setCategories(categoryData);
-      await refreshLocalCollections(listingData);
+      await refreshLocalCollections(deduped);
       if (categoryData.length > 0) {
         setSelectedCategorySlug((prev) => prev || categoryData[0].slug);
       }
@@ -559,6 +625,36 @@ const styles = StyleSheet.create({
     height: 220,
     backgroundColor: "#F5EAD8"
   },
+  imageControls: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    bottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  imageControlBtn: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    backgroundColor: "rgba(255,255,255,0.95)",
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  imageControlText: {
+    color: "#5C3D2E",
+    fontSize: 11,
+    fontWeight: "700"
+  },
+  imageControlCount: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3
+  },
   cardBody: {
     padding: 14
   },
@@ -606,6 +702,11 @@ const styles = StyleSheet.create({
   metaDot: {
     marginHorizontal: 8,
     color: "#D4B896"
+  },
+  metaSub: {
+    marginTop: 4,
+    color: "#9B8070",
+    fontSize: 12
   },
   trustPill: {
     marginTop: 10,

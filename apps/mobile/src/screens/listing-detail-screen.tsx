@@ -15,7 +15,12 @@ import {
 } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEffect } from "react";
-import { getListingById, getListingOffers, upsertThread } from "../services/api";
+import {
+  getAuthToken,
+  getListingById,
+  getListingOffers,
+  upsertThread
+} from "../services/api";
 import {
   addRecentlyViewedListingId,
   isListingSaved,
@@ -30,6 +35,41 @@ import type {
 
 const { width } = Dimensions.get("window");
 const GALLERY_HEIGHT = 300;
+
+function formatRelativeTime(input?: string | null) {
+  if (!input) return "recently";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "recently";
+  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSeconds < 60) return "just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function formatListedDate(input?: string) {
+  if (!input) return "Listed recently";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "Listed recently";
+  return `Listed on ${date.toLocaleDateString("en-GB")}`;
+}
+
+function getUserIdFromToken(token: string) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) {
+      return "";
+    }
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(atob(normalized)) as { sub?: string };
+    return decoded.sub ?? "";
+  } catch {
+    return "";
+  }
+}
 
 type GalleryItemProps = {
   media: ListingMedia;
@@ -71,6 +111,7 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const [offers, setOffers] = useState<ListingOffer[]>([]);
   const [recentMessages, setRecentMessages] = useState<ListingPublicMessage[]>([]);
   const listingId = String(route.params?.id ?? "");
+  const galleryRef = useRef<FlatList<ListingMedia> | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -119,6 +160,19 @@ export function ListingDetailScreen({ route, navigation }: any) {
       }
     }
   ).current;
+
+  function jumpToMedia(direction: "prev" | "next") {
+    if (media.length <= 1) return;
+    const target =
+      direction === "next"
+        ? (activeMediaIndex + 1) % media.length
+        : (activeMediaIndex - 1 + media.length) % media.length;
+    setActiveMediaIndex(target);
+    galleryRef.current?.scrollToIndex({
+      index: target,
+      animated: true
+    });
+  }
 
   async function openChat() {
     if (!listing) {
@@ -169,6 +223,8 @@ export function ListingDetailScreen({ route, navigation }: any) {
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const trustBadge =
     trustScore >= 80 ? "Asli Banda" : trustScore >= 50 ? "Trusted Asli Banda" : "New Member";
+  const currentUserId = getUserIdFromToken(getAuthToken());
+  const isOwner = Boolean(currentUserId && listing.user?.id === currentUserId);
 
   return (
     <View style={styles.screen}>
@@ -176,6 +232,7 @@ export function ListingDetailScreen({ route, navigation }: any) {
         {media.length > 0 ? (
           <View>
             <FlatList
+              ref={galleryRef}
               data={media}
               horizontal
               pagingEnabled
@@ -190,6 +247,25 @@ export function ListingDetailScreen({ route, navigation }: any) {
                 </View>
               )}
             />
+            {media.length > 1 ? (
+              <View style={styles.galleryControls}>
+                <Pressable
+                  style={({ pressed }) => [styles.galleryControlBtn, pressed && styles.pressed]}
+                  onPress={() => jumpToMedia("prev")}
+                >
+                  <Text style={styles.galleryControlText}>Prev</Text>
+                </Pressable>
+                <Text style={styles.galleryControlCount}>
+                  {activeMediaIndex + 1}/{media.length}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [styles.galleryControlBtn, pressed && styles.pressed]}
+                  onPress={() => jumpToMedia("next")}
+                >
+                  <Text style={styles.galleryControlText}>Next</Text>
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.dotsRow}>
               {media.map((item, index) => (
                 <View
@@ -212,10 +288,14 @@ export function ListingDetailScreen({ route, navigation }: any) {
             {listing.currency} {listing.price}
           </Text>
           <Text style={styles.description}>{listing.description}</Text>
+          <Text style={styles.metaLine}>{formatListedDate(listing.createdAt)}</Text>
 
           <View style={styles.trustCard}>
             <Text style={styles.sellerName}>{listing.user?.fullName || "Asli Seller"}</Text>
             <Text style={styles.trustText}>{trustBadge}</Text>
+            <Text style={styles.trustSub}>
+              Seller last online: {formatRelativeTime(listing.user?.lastSeenAt)}
+            </Text>
           </View>
 
           <View style={styles.trustCard}>
@@ -263,6 +343,19 @@ export function ListingDetailScreen({ route, navigation }: any) {
       </ScrollView>
 
       <View style={styles.stickyCta}>
+        {isOwner ? (
+          <Pressable
+            style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
+            onPress={() =>
+              navigation.navigate("Tabs", {
+                screen: "Becho",
+                params: { editListingId: listing.id }
+              })
+            }
+          >
+            <Text style={styles.secondaryCtaText}>Edit ADD</Text>
+          </Pressable>
+        ) : null}
         {listing.allowChat ? (
           <Pressable
             style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
@@ -287,9 +380,11 @@ export function ListingDetailScreen({ route, navigation }: any) {
         {listing.allowSMS && phone ? (
           <Pressable
             style={({ pressed }) => [styles.secondaryCta, pressed && styles.pressed]}
-            onPress={() => Linking.openURL(`sms:${phone}`)}
+            onPress={() =>
+              Linking.openURL(`https://wa.me/${phone.replace(/[^\d]/g, "")}`)
+            }
           >
-            <Text style={styles.secondaryCtaText}>SMS</Text>
+            <Text style={styles.secondaryCtaText}>WhatsApp</Text>
           </Pressable>
         ) : null}
       </View>
@@ -356,6 +451,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6
   },
+  galleryControls: {
+    position: "absolute",
+    left: 24,
+    right: 24,
+    bottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  galleryControlBtn: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    backgroundColor: "rgba(255,255,255,0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 6
+  },
+  galleryControlText: {
+    color: "#5C3D2E",
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  galleryControlCount: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3
+  },
   dot: {
     width: 7,
     height: 7,
@@ -405,6 +530,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontSize: 15
   },
+  metaLine: {
+    marginTop: 10,
+    color: "#9B8070",
+    fontSize: 13
+  },
   trustCard: {
     marginTop: 16,
     borderRadius: 14,
@@ -423,6 +553,11 @@ const styles = StyleSheet.create({
     color: "#3D6B4F",
     fontWeight: "700",
     fontSize: 13
+  },
+  trustSub: {
+    marginTop: 4,
+    color: "#7A5544",
+    fontSize: 12
   },
   quickActionsRow: {
     marginTop: 14,

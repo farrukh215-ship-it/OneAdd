@@ -20,7 +20,9 @@ import {
   createListing,
   getAuthToken,
   getCategoryCatalog,
+  getListingById,
   subscribeAuthToken,
+  updateListing,
   uploadMediaFile
 } from "../services/api";
 import type { MarketplaceCategory } from "../types";
@@ -43,7 +45,16 @@ function parseImageUrls(value: string) {
     .filter(Boolean);
 }
 
-export function SellScreen({ navigation }: any) {
+function extractCityFromDescription(description: string) {
+  const match = description.match(/\n\s*city\s*:\s*(.+)$/im);
+  return match?.[1]?.trim() ?? "";
+}
+
+function cleanDescriptionMetadata(description: string) {
+  return description.replace(/\n\s*city\s*:\s*.+$/gim, "").trim();
+}
+
+export function SellScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 16, duration: 320 });
   const [token, setToken] = useState(getAuthToken());
   const [title, setTitle] = useState("");
@@ -66,6 +77,8 @@ export function SellScreen({ navigation }: any) {
   const [catalog, setCatalog] = useState<MarketplaceCategory[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [editingListingId, setEditingListingId] = useState("");
+  const [loadingListingForEdit, setLoadingListingForEdit] = useState(false);
   const heroAnim = useRef(new Animated.Value(0)).current;
   const detailsAnim = useRef(new Animated.Value(0)).current;
   const controlsAnim = useRef(new Animated.Value(0)).current;
@@ -122,6 +135,52 @@ export function SellScreen({ navigation }: any) {
   }, [categoryId, selectedRoot]);
 
   useEffect(() => {
+    const editId = String(route?.params?.editListingId ?? "");
+
+    if (!token || !editId || editId === editingListingId || loadingCatalog) {
+      return;
+    }
+
+    setLoadingListingForEdit(true);
+    void getListingById(editId)
+      .then((listing) => {
+        const root = catalog.find((entry) =>
+          entry.subcategories.some((sub) => sub.id === listing.categoryId)
+        );
+
+        if (root) {
+          setCategoryRootSlug(root.slug);
+        }
+        setCategoryId(listing.categoryId ?? "");
+        setTitle(listing.title ?? "");
+        setDescription(cleanDescriptionMetadata(listing.description ?? ""));
+        setPrice(String(listing.price ?? ""));
+        setCity(listing.city?.trim() || extractCityFromDescription(listing.description ?? ""));
+        setShowPhone(Boolean(listing.showPhone));
+        setAllowChat(Boolean(listing.allowChat));
+        setAllowCall(Boolean(listing.allowCall));
+        setAllowSMS(Boolean(listing.allowSMS));
+        setIsNegotiable(Boolean(listing.isNegotiable));
+
+        const imageUrls = listing.media
+          .filter((item) => item.type === "IMAGE")
+          .map((item) => item.url);
+        const videoItem = listing.media.find((item) => item.type === "VIDEO");
+        setImageUrl(imageUrls.join("\n"));
+        setVideoUrl(videoItem?.url ?? "");
+        setVideoDurationSec(videoItem?.durationSec ? String(videoItem.durationSec) : "");
+        setEditingListingId(listing.id);
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : "Listing load nahi ho saki.";
+        Alert.alert("Error", message);
+      })
+      .finally(() => {
+        setLoadingListingForEdit(false);
+      });
+  }, [catalog, editingListingId, loadingCatalog, route?.params?.editListingId, token]);
+
+  useEffect(() => {
     heroAnim.setValue(0);
     detailsAnim.setValue(0);
     controlsAnim.setValue(0);
@@ -162,6 +221,8 @@ export function SellScreen({ navigation }: any) {
     setVideoUrl("");
     setVideoDurationSec("");
     setIsNegotiable(false);
+    setEditingListingId("");
+    navigation.setParams?.({ editListingId: undefined });
   }
 
   function buildMedia() {
@@ -293,6 +354,17 @@ export function SellScreen({ navigation }: any) {
     }
   }
 
+  function removeImageAt(index: number) {
+    const current = parseImageUrls(imageUrl);
+    const next = current.filter((_, i) => i !== index);
+    setImageUrl(next.join("\n"));
+  }
+
+  function clearVideo() {
+    setVideoUrl("");
+    setVideoDurationSec("");
+  }
+
   async function pickAndUploadVideo() {
     setVideoUploading(true);
     try {
@@ -353,8 +425,7 @@ export function SellScreen({ navigation }: any) {
     setPublishing(true);
     try {
       const media = buildMedia();
-
-      const created = await createListing({
+      const payload = {
         categoryId: categoryId.trim(),
         title: title.trim(),
         description: description.trim(),
@@ -367,11 +438,20 @@ export function SellScreen({ navigation }: any) {
         allowSMS,
         isNegotiable,
         media
-      });
+      };
 
-      await activateListing(created.id);
-      resetForm();
-      Alert.alert("Success", "Listing post ho gayi.");
+      if (editingListingId) {
+        const updated = await updateListing(editingListingId, payload);
+        setEditingListingId("");
+        navigation.setParams?.({ editListingId: undefined });
+        Alert.alert("Success", "ADD update ho gayi.");
+        navigation.navigate("ListingDetail", { id: updated.id });
+      } else {
+        const created = await createListing(payload);
+        await activateListing(created.id);
+        resetForm();
+        Alert.alert("Success", "Listing post ho gayi.");
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not create listing.";
       Alert.alert("Error", message);
@@ -412,7 +492,9 @@ export function SellScreen({ navigation }: any) {
         ]}
       >
         <Text style={styles.kicker}>TGMG SELL STUDIO</Text>
-        <Text style={styles.heading}>Apna Saaman Becho</Text>
+        <Text style={styles.heading}>
+          {editingListingId ? "Apna ADD Update Karo" : "Apna Saaman Becho"}
+        </Text>
         <Text style={styles.sub}>Ek ADD - seedha asli kharedaar tak</Text>
         <Text style={styles.note}>
           Shopkeepers/showroom owners ke duplicate ADDs marketplace ko flood karte hain.
@@ -436,7 +518,12 @@ export function SellScreen({ navigation }: any) {
           }
         ]}
       >
-        <Text style={styles.panelTitle}>Listing Details</Text>
+        <Text style={styles.panelTitle}>
+          {editingListingId ? "Update Listing Details" : "Listing Details"}
+        </Text>
+        {loadingListingForEdit ? (
+          <Text style={styles.subcategoryHint}>Loading listing...</Text>
+        ) : null}
 
         <Text style={styles.fieldLabel}>Category</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rootChips}>
@@ -554,13 +641,19 @@ export function SellScreen({ navigation }: any) {
             {imageUploading ? "Uploading image..." : "Image Upload (Gallery)"}
           </Text>
         </Pressable>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Image URLs (fallback, comma/new line separated)"
-          value={imageUrl}
-          onChangeText={setImageUrl}
-        />
+        {parseImageUrls(imageUrl).map((url, index) => (
+          <View style={styles.uploadedMediaRow} key={`${url}-${index}`}>
+            <Text style={styles.uploadedMediaText} numberOfLines={1}>
+              Image {index + 1}: {url}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.removeMediaBtn, pressed ? styles.pressed : null]}
+              onPress={() => removeImageAt(index)}
+            >
+              <Text style={styles.removeMediaBtnText}>Remove</Text>
+            </Pressable>
+          </View>
+        ))}
         <Text style={styles.aiHintText}>
           Uploaded images: {parseImageUrls(imageUrl).length} (minimum 2, max 6)
         </Text>
@@ -579,19 +672,19 @@ export function SellScreen({ navigation }: any) {
             {videoUploading ? "Uploading video..." : "Video Upload (Gallery, <=30s)"}
           </Text>
         </Pressable>
-        <TextInput
-          style={styles.input}
-          placeholder="Video URL (manual fallback)"
-          value={videoUrl}
-          onChangeText={setVideoUrl}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Video duration <=30 sec"
-          keyboardType="numeric"
-          value={videoDurationSec}
-          onChangeText={setVideoDurationSec}
-        />
+        {videoUrl ? (
+          <View style={styles.uploadedMediaRow}>
+            <Text style={styles.uploadedMediaText} numberOfLines={1}>
+              Video ({videoDurationSec || "0"} sec): {videoUrl}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.removeMediaBtn, pressed ? styles.pressed : null]}
+              onPress={clearVideo}
+            >
+              <Text style={styles.removeMediaBtnText}>Remove</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {selectedSubcategory ? (
           <Text style={styles.selectedInfo}>
@@ -643,7 +736,7 @@ export function SellScreen({ navigation }: any) {
           disabled={publishing}
         >
           <Text style={styles.buttonText}>
-            {publishing ? "Please wait..." : "Post Karo"}
+            {publishing ? "Please wait..." : editingListingId ? "Update ADD" : "Post Karo"}
           </Text>
         </Pressable>
       </Animated.View>
@@ -820,6 +913,37 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: "#7A5544",
     fontSize: 12
+  },
+  uploadedMediaRow: {
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    borderRadius: 10,
+    backgroundColor: "#FFFDF9",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8
+  },
+  uploadedMediaText: {
+    flex: 1,
+    color: "#7A5544",
+    fontSize: 12
+  },
+  removeMediaBtn: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E8D5B7",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  removeMediaBtnText: {
+    color: "#7A5544",
+    fontSize: 11,
+    fontWeight: "700"
   },
   toggleRow: {
     flexDirection: "row",

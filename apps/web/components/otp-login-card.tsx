@@ -122,6 +122,7 @@ export function OtpLoginCard() {
         { rememberMe }
       );
       setMessage("Login successful.");
+      router.push("/");
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError) {

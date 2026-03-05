@@ -8,8 +8,10 @@ import {
   activateListing,
   ApiError,
   createListing,
+  fetchListingById,
   getCategoryCatalog,
   getMyListings,
+  updateListing,
   uploadMediaFile,
   uploadListingMedia
 } from "../../lib/api";
@@ -79,6 +81,25 @@ function countWords(value: string) {
     .filter(Boolean).length;
 }
 
+function extractCityFromDescription(description: string) {
+  const match = description.match(/\n\s*city\s*:\s*(.+)$/im);
+  return match?.[1]?.trim() ?? "";
+}
+
+function extractConditionFromDescription(description: string): Condition {
+  const match = description.match(/\n\s*condition\s*:\s*(NEW|USED|LIKE_NEW)\s*$/im);
+  const value = match?.[1] as Condition | undefined;
+  if (!value) return "USED";
+  return value;
+}
+
+function cleanDescriptionMetadata(description: string) {
+  return description
+    .replace(/\n\s*condition\s*:\s*(NEW|USED|LIKE_NEW)\s*$/gim, "")
+    .replace(/\n\s*city\s*:\s*.+$/gim, "")
+    .trim();
+}
+
 export default function SellPage() {
   const { mounted, token } = useAuthToken();
   const [step, setStep] = useState<WizardStep>(1);
@@ -95,6 +116,9 @@ export default function SellPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [editingListingId, setEditingListingId] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState("");
+  const [editQueryId, setEditQueryId] = useState("");
   const [draftStatus, setDraftStatus] = useState("");
 
   const draftHydratedRef = useRef(false);
@@ -182,8 +206,13 @@ export default function SellPage() {
     [selectedMainCategory]
   );
   const hasActiveCategoryLock = useMemo(
-    () => Boolean(form.categoryId && activeCategoryIds.includes(form.categoryId)),
-    [activeCategoryIds, form.categoryId]
+    () =>
+      Boolean(
+        form.categoryId &&
+          activeCategoryIds.includes(form.categoryId) &&
+          (!editingListingId || form.categoryId !== editingCategoryId)
+      ),
+    [activeCategoryIds, editingCategoryId, editingListingId, form.categoryId]
   );
   const descriptionWordCount = useMemo(() => countWords(form.description), [form.description]);
   const priceSuggestions = useMemo(() => {
@@ -226,6 +255,84 @@ export default function SellPage() {
     if (video && (video.durationSec ?? 0) > 30) errs.push("Video duration 30 sec se kam honi chahiye.");
     return errs;
   }, [form.categoryId, form.city, form.description, form.price, form.title, images.length, mainCategoryId, video]);
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+    const next = new URLSearchParams(window.location.search).get("edit")?.trim() ?? "";
+    setEditQueryId(next);
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!token || !editQueryId || catalog.length === 0) {
+      return;
+    }
+
+    setStepLoading(true);
+    setError("");
+    setSuccess("");
+
+    fetchListingById(editQueryId)
+      .then((listing) => {
+        const imageMedia = listing.media
+          .filter((item) => item.type === "IMAGE")
+          .map((item) => ({
+            ...item,
+            id: item.id || uid(),
+            durationSec: item.durationSec ?? undefined
+          }));
+        const videoMedia = listing.media
+          .filter((item) => item.type === "VIDEO")
+          .map((item) => ({
+            ...item,
+            id: item.id || uid(),
+            durationSec: item.durationSec ?? undefined
+          }));
+        const parsedCity = listing.city?.trim() || extractCityFromDescription(listing.description);
+        const parsedCondition = extractConditionFromDescription(listing.description);
+        const root = catalog.find((entry) =>
+          entry.subcategories.some((sub) => sub.id === listing.categoryId)
+        );
+
+        setEditingListingId(listing.id);
+        setEditingCategoryId(listing.categoryId ?? "");
+        setMainCategoryId(root?.id ?? "");
+        setForm({
+          categoryId: listing.categoryId ?? "",
+          title: listing.title ?? "",
+          description: cleanDescriptionMetadata(listing.description ?? ""),
+          price: String(listing.price ?? ""),
+          condition: parsedCondition,
+          city: parsedCity,
+          isNegotiable: Boolean(listing.isNegotiable),
+          media: [...imageMedia, ...videoMedia],
+          showPhone: listing.showPhone,
+          allowChat: listing.allowChat,
+          allowCall: listing.allowCall,
+          allowSMS: listing.allowSMS
+        });
+        setCoverImageId(imageMedia[0]?.id ?? "");
+        setVideoDuration(
+          String(
+            videoMedia[0]?.durationSec && Number.isFinite(videoMedia[0].durationSec)
+              ? videoMedia[0].durationSec
+              : ""
+          )
+        );
+        setStep(1);
+        setDraftStatus("Editing mode enabled.");
+      })
+      .catch((err) => {
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError("Listing edit mode load nahi ho saka.");
+        }
+      })
+      .finally(() => {
+        setStepLoading(false);
+      });
+  }, [catalog, editQueryId, token]);
 
   function goNextStep() {
     setError("");
@@ -296,6 +403,8 @@ export default function SellPage() {
     localStorage.removeItem(SELL_DRAFT_KEY);
     setForm(initialState);
     setMainCategoryId("");
+    setEditingListingId("");
+    setEditingCategoryId("");
     setStep(1);
     setDraftStatus("Draft clear ho gaya.");
     setError("");
@@ -474,7 +583,7 @@ export default function SellPage() {
         return cover ? [cover, ...rest, ...videoList] : [...imageList, ...videoList];
       })();
 
-      const created = await createListing({
+      const payload = {
         categoryId: form.categoryId,
         title: form.title,
         description: `${form.description}\n\nCondition: ${form.condition}`,
@@ -490,26 +599,34 @@ export default function SellPage() {
           url: item.url,
           durationSec: item.durationSec
         }))
-      });
+      };
 
-      try {
-        await uploadListingMedia(
-          created.id,
-          orderedMedia.map((item) => ({
-            type: item.type,
-            url: item.url,
-            durationSec: item.durationSec
-          }))
-        );
-      } catch {
-        // Older API variants may not expose /listings/:id/media.
+      if (editingListingId) {
+        await updateListing(editingListingId, payload);
+        setSuccess("Listing update ho gayi.");
+      } else {
+        const created = await createListing(payload);
+        try {
+          await uploadListingMedia(
+            created.id,
+            orderedMedia.map((item) => ({
+              type: item.type,
+              url: item.url,
+              durationSec: item.durationSec
+            }))
+          );
+        } catch {
+          // Older API variants may not expose /listings/:id/media.
+        }
+        await activateListing(created.id);
+        setSuccess("Listing successfully publish ho gayi.");
       }
 
-      await activateListing(created.id);
-      setSuccess("Listing successfully publish ho gayi.");
       setForm(initialState);
       setMainCategoryId("");
       setCoverImageId("");
+      setEditingListingId("");
+      setEditingCategoryId("");
       setStep(1);
       localStorage.removeItem(SELL_DRAFT_KEY);
       setDraftStatus("Draft clear ho gaya.");
@@ -569,7 +686,7 @@ export default function SellPage() {
       <form className="sellWizardCard" onSubmit={onPublish}>
         <header className="sellWizardHeader">
           <p className="feedKicker">TGMG Sell Wizard</p>
-          <h1>Apna Saaman Becho</h1>
+          <h1>{editingListingId ? "Apna ADD Update Karo" : "Apna Saaman Becho"}</h1>
           <p>Ek ADD - seedha asli kharedaar tak</p>
           <p className="helperText">
             Shopkeepers/showroom owners ke duplicate ADDs marketplace ko flood karte hain.
@@ -853,6 +970,9 @@ export default function SellPage() {
                 <p>
                   <strong>Description words:</strong> {descriptionWordCount}
                 </p>
+                <p>
+                  <strong>Contact visibility:</strong> {form.showPhone ? "Show Contact enabled" : "Hidden"}
+                </p>
               </div>
               <div className="toggleRow">
                 <label className="toggle">
@@ -861,7 +981,7 @@ export default function SellPage() {
                     checked={form.showPhone}
                     onChange={(event) => setForm((prev) => ({ ...prev, showPhone: event.target.checked }))}
                   />
-                  Show Phone
+                  Show Contact on listing
                 </label>
                 <label className="toggle">
                   <input
@@ -885,7 +1005,7 @@ export default function SellPage() {
                     checked={form.allowSMS}
                     onChange={(event) => setForm((prev) => ({ ...prev, allowSMS: event.target.checked }))}
                   />
-                  Allow SMS
+                  Allow WhatsApp
                 </label>
                 <label className="toggle">
                   <input
@@ -916,7 +1036,11 @@ export default function SellPage() {
             </button>
           ) : (
             <button className="searchSubmitBtn" disabled={publishing} type="submit">
-              {publishing ? "Please wait..." : "Post Karo"}
+              {publishing
+                ? "Please wait..."
+                : editingListingId
+                  ? "Update Karo"
+                  : "Post Karo"}
             </button>
           )}
         </footer>

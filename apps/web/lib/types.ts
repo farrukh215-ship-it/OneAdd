@@ -25,6 +25,7 @@ export type Listing = {
     id: string;
     fullName?: string;
     phone?: string;
+    lastSeenAt?: string | null;
     trustScore?: {
       score: number;
     } | null;

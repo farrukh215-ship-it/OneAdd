@@ -50,7 +50,7 @@ export default function App() {
       navigationRef.navigate("Login", { tab: "signin" });
     }
     if (isAuthenticated && current === "Login") {
-      navigationRef.navigate("Tabs");
+      navigationRef.navigate("Tabs", { screen: "Home" });
     }
   }, [authChecked, isAuthenticated]);
 

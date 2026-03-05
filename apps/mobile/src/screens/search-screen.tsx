@@ -20,6 +20,19 @@ import {
 } from "../services/listing-preferences";
 import type { Listing, MarketplaceCategory } from "../types";
 
+function dedupeByListingId(source: Listing[]) {
+  const seen = new Set<string>();
+  const unique: Listing[] = [];
+  source.forEach((item) => {
+    if (!item.id || seen.has(item.id)) {
+      return;
+    }
+    seen.add(item.id);
+    unique.push(item);
+  });
+  return unique;
+}
+
 export function SearchScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [query, setQuery] = useState("");
@@ -77,7 +90,7 @@ export function SearchScreen({ navigation, route }: any) {
         query: normalizedQuery,
         category: normalizedCategory
       })
-        .then(setItems)
+        .then((result) => setItems(dedupeByListingId(result)))
         .catch(() => setItems([]));
     }, 250);
 

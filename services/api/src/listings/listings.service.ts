@@ -75,6 +75,103 @@ export class ListingsService {
     });
   }
 
+  async updateListing(userId: string, listingId: string, dto: CreateListingDto) {
+    await this.assertPhoneVerified(userId);
+    this.validateMediaConstraints(dto.media);
+    this.assertListingContentQuality(dto.description, dto.city);
+
+    const [current, resolvedCategoryId] = await Promise.all([
+      this.prisma.listing.findUnique({
+        where: { id: listingId },
+        select: {
+          id: true,
+          userId: true,
+          categoryId: true,
+          status: true
+        }
+      }),
+      this.resolveCategoryReference(dto.categoryId)
+    ]);
+
+    if (!current) {
+      throw new NotFoundException("Listing not found.");
+    }
+    if (current.userId !== userId) {
+      throw new ForbiddenException("You can only edit your own listing.");
+    }
+    if (
+      current.status === ListingStatus.SOLD ||
+      current.status === ListingStatus.REMOVED
+    ) {
+      throw new BadRequestException("This listing cannot be edited.");
+    }
+
+    const normalizedDescription = this.buildNormalizedDescription(
+      dto.description,
+      dto.city
+    );
+
+    return this.prisma.$transaction(async (tx) => {
+      if (
+        current.status === ListingStatus.ACTIVE &&
+        current.categoryId !== resolvedCategoryId
+      ) {
+        const lock = await tx.userCategoryActiveListing.findUnique({
+          where: {
+            userId_categoryId: {
+              userId,
+              categoryId: resolvedCategoryId
+            }
+          }
+        });
+
+        if (lock && lock.listingId !== listingId) {
+          throw new ConflictException(
+            "An active listing already exists for this category."
+          );
+        }
+
+        await tx.userCategoryActiveListing.updateMany({
+          where: { listingId },
+          data: { categoryId: resolvedCategoryId }
+        });
+      }
+
+      await tx.listingMedia.deleteMany({
+        where: { listingId }
+      });
+
+      return tx.listing.update({
+        where: { id: listingId },
+        data: {
+          categoryId: resolvedCategoryId,
+          title: dto.title.trim(),
+          description: normalizedDescription,
+          price: new Prisma.Decimal(dto.price),
+          currency: dto.currency?.trim().toUpperCase() ?? "PKR",
+          showPhone: dto.showPhone,
+          allowChat: dto.allowChat,
+          allowCall: dto.allowCall,
+          allowSMS: dto.allowSMS,
+          isNegotiable: Boolean(dto.isNegotiable),
+          media: {
+            create: dto.media.map((item, index) => ({
+              type: item.type,
+              url: item.url,
+              durationSec: item.durationSec ?? null,
+              sortOrder: index
+            }))
+          }
+        },
+        include: {
+          media: {
+            orderBy: { sortOrder: "asc" }
+          }
+        }
+      });
+    });
+  }
+
   async relistListing(userId: string, listingId: string) {
     const source = await this.prisma.listing.findUnique({
       where: { id: listingId },
@@ -439,6 +536,12 @@ export class ListingsService {
             id: true,
             fullName: true,
             phone: true,
+            updatedAt: true,
+            deviceFingerprints: {
+              orderBy: { lastSeenAt: "desc" },
+              take: 1,
+              select: { lastSeenAt: true }
+            },
             trustScore: {
               select: { score: true }
             }
@@ -448,7 +551,8 @@ export class ListingsService {
       take: Math.min(Math.max(limit, 1), 100)
     });
 
-    return this.sortByTrustWeightedRanking(listings);
+    const sorted = this.sortByTrustWeightedRanking(listings);
+    return sorted.map((item) => this.normalizeListingForClient(item));
   }
 
   async getCategoryCatalog() {
@@ -589,6 +693,12 @@ export class ListingsService {
             id: true,
             fullName: true,
             phone: true,
+            updatedAt: true,
+            deviceFingerprints: {
+              orderBy: { lastSeenAt: "desc" },
+              take: 1,
+              select: { lastSeenAt: true }
+            },
             trustScore: {
               select: { score: true }
             }
@@ -598,7 +708,8 @@ export class ListingsService {
       take: Math.min(Math.max(limit, 1), 100)
     });
 
-    return this.sortByTrustWeightedRanking(listings);
+    const sorted = this.sortByTrustWeightedRanking(listings);
+    return sorted.map((item) => this.normalizeListingForClient(item));
   }
 
   async semanticSearch(
@@ -654,6 +765,12 @@ export class ListingsService {
             id: true,
             fullName: true,
             phone: true,
+            updatedAt: true,
+            deviceFingerprints: {
+              orderBy: { lastSeenAt: "desc" },
+              take: 1,
+              select: { lastSeenAt: true }
+            },
             trustScore: { select: { score: true } }
           }
         }
@@ -664,7 +781,7 @@ export class ListingsService {
       throw new NotFoundException("Listing not found.");
     }
 
-    return listing;
+    return this.normalizeListingForClient(listing);
   }
 
   async getListingOffers(listingId: string, limit = 20) {
@@ -746,6 +863,35 @@ export class ListingsService {
       },
       orderBy: { createdAt: "desc" }
     });
+  }
+
+  private normalizeListingForClient<
+    T extends {
+      user?: {
+        deviceFingerprints?: Array<{ lastSeenAt: Date }>;
+        updatedAt?: Date;
+      } | null;
+    }
+  >(listing: T) {
+    if (!listing.user) {
+      return listing;
+    }
+
+    const user = listing.user as {
+      deviceFingerprints?: Array<{ lastSeenAt: Date }>;
+      updatedAt?: Date;
+      [key: string]: unknown;
+    };
+    const { deviceFingerprints, ...restUser } = user;
+    const lastSeenAt = deviceFingerprints?.[0]?.lastSeenAt ?? user.updatedAt ?? null;
+
+    return {
+      ...listing,
+      user: {
+        ...restUser,
+        lastSeenAt
+      }
+    };
   }
 
   private validateMediaConstraints(

@@ -556,6 +556,18 @@ export async function createListing(payload: Record<string, unknown>) {
   return normalizeListing(listing);
 }
 
+export async function updateListing(
+  listingId: string,
+  payload: Record<string, unknown>
+) {
+  const listing = await apiRequest<Listing>(`/listings/${listingId}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(payload)
+  });
+  return normalizeListing(listing);
+}
+
 export async function uploadListingMedia(
   listingId: string,
   media: Array<{ type: "IMAGE" | "VIDEO"; url: string; durationSec?: number }>

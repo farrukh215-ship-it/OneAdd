@@ -270,6 +270,7 @@ export function SignupCard() {
 
       setOtpModalOpen(false);
       setMessage("Account create ho gaya aur login ho chuka hai.");
+      router.push("/");
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError) {

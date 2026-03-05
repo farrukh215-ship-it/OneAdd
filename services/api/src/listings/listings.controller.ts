@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Param,
   ParseIntPipe,
   Post,
@@ -125,6 +126,21 @@ export class ListingsController {
   @UseGuards(JwtAuthGuard)
   create(@Req() request: Request, @Body() dto: CreateListingDto) {
     return this.listingsService.createListing(String(request.user?.sub), dto);
+  }
+
+  @Patch(":id")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  update(
+    @Req() request: Request,
+    @Param("id") listingId: string,
+    @Body() dto: CreateListingDto
+  ) {
+    return this.listingsService.updateListing(
+      String(request.user?.sub),
+      listingId,
+      dto
+    );
   }
 
   @Post(":id/activate")

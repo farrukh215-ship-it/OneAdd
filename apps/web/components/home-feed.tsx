@@ -63,9 +63,41 @@ function toRelativeTime(timestamp?: string) {
   return `${days}d ago`;
 }
 
-function listingImageUrl(listing: Listing) {
-  const preferred = listing.media.find((item) => item.type === "IMAGE");
-  return preferred?.url ?? "";
+function toListedDate(timestamp?: string) {
+  if (!timestamp) {
+    return "Listed recently";
+  }
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "Listed recently";
+  }
+  return `Listed on ${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  })}`;
+}
+
+function toLastOnline(timestamp?: string | null) {
+  if (!timestamp) {
+    return "Last online recently";
+  }
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "Last online recently";
+  }
+  return `Seller online ${toRelativeTime(timestamp)}`;
+}
+
+function dedupeById(listings: Listing[]) {
+  const seen = new Set<string>();
+  const unique: Listing[] = [];
+  for (const item of listings) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    unique.push(item);
+  }
+  return unique;
 }
 
 function heroCardsFromListings(listings: Listing[]) {
@@ -88,7 +120,12 @@ type ListingCardProps = {
 };
 
 function ListingCard({ listing }: ListingCardProps) {
-  const image = listingImageUrl(listing);
+  const images = useMemo(
+    () => listing.media.filter((item) => item.type === "IMAGE"),
+    [listing.media]
+  );
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const image = images[activeImageIndex]?.url ?? "";
   const condition = (listing.status || "USED").replace(/_/g, " ");
   const trustScore = listing.user?.trustScore?.score ?? 0;
   const responseBadge =
@@ -107,6 +144,22 @@ function ListingCard({ listing }: ListingCardProps) {
     void toggleSavedListingPreference(listing.id, isLoggedIn).then(setSaved);
   }
 
+  function goToPrevImage(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImageIndex((prev) => (prev <= 0 ? images.length - 1 : prev - 1));
+  }
+
+  function goToNextImage(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImageIndex((prev) => (prev + 1) % images.length);
+  }
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [listing.id]);
+
   return (
     <Link className="listing-card" href={`/listing/${listing.id}`}>
       <div className="listing-img">
@@ -121,11 +174,31 @@ function ListingCard({ listing }: ListingCardProps) {
         </button>
         <div className="listing-img-inner">
           {image ? (
-            <img className="premiumMedia" src={image} alt={listing.title} loading="lazy" />
+            <img
+              className="premiumMedia"
+              src={image}
+              alt={listing.title}
+              loading="lazy"
+              onError={() => {
+                if (images.length > 1) {
+                  setActiveImageIndex((prev) => (prev + 1) % images.length);
+                }
+              }}
+            />
           ) : (
-            <span aria-hidden="true">{"\ud83d\udce6"}</span>
+            <div className="listingImagePlaceholder" aria-hidden="true" />
           )}
         </div>
+        {images.length > 1 ? (
+          <div className="listingSlideControls">
+            <button className="listingSlideBtn" onClick={goToPrevImage} type="button">
+              ‹
+            </button>
+            <button className="listingSlideBtn" onClick={goToNextImage} type="button">
+              ›
+            </button>
+          </div>
+        ) : null}
       </div>
       <div className="listing-body">
         <p className="listing-cat">TGMG Verified</p>
@@ -140,6 +213,8 @@ function ListingCard({ listing }: ListingCardProps) {
           <span className="badge-verified">Asli Banda</span>
         </div>
         <p className="listing-desc">{responseBadge}</p>
+        <p className="listing-desc">{toListedDate(listing.createdAt)}</p>
+        <p className="listing-desc">{toLastOnline(listing.user?.lastSeenAt)}</p>
       </div>
     </Link>
   );
@@ -205,7 +280,7 @@ export function HomeFeed() {
     setError("");
     try {
       const page = await getRecentListingsPage(null);
-      setItems(page.items);
+      setItems(dedupeById(page.items));
       setCursor(page.nextCursor);
     } catch {
       setError("Could not load listings right now.");
@@ -223,7 +298,7 @@ export function HomeFeed() {
     setLoadingMore(true);
     try {
       const page = await getRecentListingsPage(cursor);
-      setItems((prev) => [...prev, ...page.items]);
+      setItems((prev) => dedupeById([...prev, ...page.items]));
       setCursor(page.nextCursor);
     } catch {
       setError("Could not load more listings.");

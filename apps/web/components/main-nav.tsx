@@ -32,6 +32,7 @@ export function MainNav() {
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
   const [accountName, setAccountName] = useState("");
+  const mobileAccountName = accountName.split(" ")[0] || "You";
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -110,6 +111,11 @@ export function MainNav() {
 
       <nav className="mobile-nav" aria-label="Primary">
         <div className="mobile-nav-inner">
+          {mounted && isLoggedIn ? (
+            <div className="mobile-user-chip" title={accountName}>
+              Logged in: {mobileAccountName}
+            </div>
+          ) : null}
           {links.slice(0, 2).map((link) => (
             <Link
               key={link.href}

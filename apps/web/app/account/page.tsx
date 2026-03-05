@@ -155,6 +155,15 @@ export default function AccountPage() {
                 <Link href={`/listing/${listing.id}`} className="stack">
                   <p className="listingTitle">{listing.title}</p>
                   <p className="listingMeta">{listing.status}</p>
+                  <p className="listingMeta">
+                    Listed:{" "}
+                    {listing.createdAt
+                      ? new Date(listing.createdAt).toLocaleDateString("en-GB")
+                      : "recently"}
+                  </p>
+                </Link>
+                <Link href={`/sell?edit=${encodeURIComponent(listing.id)}`} className="btn secondary">
+                  Edit ADD
                 </Link>
                 {listing.status === "SOLD" || listing.status === "EXPIRED" || listing.status === "PAUSED" ? (
                   <button

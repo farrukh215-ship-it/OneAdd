@@ -3,11 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 import { ChatScreen } from "../screens/chat-screen";
 import { HomeScreen } from "../screens/home-screen";
+import { MyAdsScreen } from "../screens/my-ads-screen";
 import { ReelsScreen } from "../screens/reels-screen";
-import { SavedScreen } from "../screens/saved-screen";
 import { SearchScreen } from "../screens/search-screen";
 import { SellScreen } from "../screens/sell-screen";
-import { clearAuthToken, getAuthToken, subscribeAuthToken } from "../services/api";
+import {
+  clearAuthToken,
+  getAuthToken,
+  getMe,
+  subscribeAuthToken
+} from "../services/api";
 
 const Tab = createBottomTabNavigator();
 
@@ -17,7 +22,7 @@ const iconMap: Record<string, string> = {
   Becho: "\ud83c\udff7\ufe0f",
   Chat: "\ud83d\udcac",
   Reels: "\ud83c\udfac",
-  Saved: "\ud83d\udd16"
+  MereAds: "\ud83d\udccb"
 };
 
 function AnimatedTabIcon({
@@ -131,6 +136,7 @@ function TabBarGlassBackdrop({ pulse }: { pulse: Animated.Value }) {
 
 export function TabsNavigator() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
+  const [loggedInName, setLoggedInName] = useState("");
   const tabPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -138,6 +144,29 @@ export function TabsNavigator() {
       setIsAuthenticated(Boolean(token));
     });
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoggedInName("");
+      return;
+    }
+
+    let alive = true;
+    void getMe()
+      .then((profile) => {
+        if (!alive) return;
+        const firstName = profile.fullName?.trim().split(/\s+/)[0] ?? "";
+        setLoggedInName(firstName);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setLoggedInName("");
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [isAuthenticated]);
 
   function triggerTabPulse() {
     tabPulse.setValue(1);
@@ -161,27 +190,45 @@ export function TabsNavigator() {
         headerTitleStyle: { color: "#5C3D2E", fontWeight: "700" },
         headerTintColor: "#5C3D2E",
         headerRight: () => (
-          <Pressable
-            style={{
-              borderWidth: 1,
-              borderColor: "#E8D5B7",
-              backgroundColor: "#FFFFFF",
-              borderRadius: 999,
-              paddingHorizontal: 12,
-              paddingVertical: 6
-            }}
-            onPress={() => {
-              if (isAuthenticated) {
-                void clearAuthToken();
-                return;
-              }
-              navigation.getParent()?.navigate("Login", { tab: "signin" });
-            }}
-          >
-            <Text style={{ color: "#5C3D2E", fontSize: 12, fontWeight: "700" }}>
-              {isAuthenticated ? "Sign Out" : "Login"}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {isAuthenticated && loggedInName ? (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#E8D5B7",
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6
+                }}
+              >
+                <Text style={{ color: "#5C3D2E", fontSize: 11, fontWeight: "700" }}>
+                  Logged in: {loggedInName}
+                </Text>
+              </View>
+            ) : null}
+            <Pressable
+              style={{
+                borderWidth: 1,
+                borderColor: "#E8D5B7",
+                backgroundColor: "#FFFFFF",
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 6
+              }}
+              onPress={() => {
+                if (isAuthenticated) {
+                  void clearAuthToken();
+                  return;
+                }
+                navigation.getParent()?.navigate("Login", { tab: "signin" });
+              }}
+            >
+              <Text style={{ color: "#5C3D2E", fontSize: 12, fontWeight: "700" }}>
+                {isAuthenticated ? "Sign Out" : "Login"}
+              </Text>
+            </Pressable>
+          </View>
         ),
         tabBarStyle: {
           backgroundColor: "transparent",
@@ -210,7 +257,11 @@ export function TabsNavigator() {
       <Tab.Screen name="Becho" component={SellScreen} />
       <Tab.Screen name="Chat" component={ChatScreen} />
       <Tab.Screen name="Reels" component={ReelsScreen} />
-      <Tab.Screen name="Saved" component={SavedScreen} />
+      <Tab.Screen
+        name="MereAds"
+        component={MyAdsScreen}
+        options={{ title: "Mere Ads", tabBarLabel: "Mere Ads" }}
+      />
     </Tab.Navigator>
   );
 }

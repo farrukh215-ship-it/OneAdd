@@ -318,6 +318,13 @@ export function createListing(payload: Record<string, unknown>) {
   });
 }
 
+export function updateListing(listingId: string, payload: Record<string, unknown>) {
+  return apiRequest<Listing>(`/listings/${listingId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function uploadMediaFile(params: {
   uri: string;
   name: string;
@@ -381,6 +388,18 @@ export function activateListing(listingId: string) {
 
 export function relistListing(listingId: string) {
   return apiRequest<Listing>(`/listings/${listingId}/relist`, {
+    method: "POST"
+  });
+}
+
+export function markListingSold(listingId: string) {
+  return apiRequest<Listing>(`/listings/${listingId}/mark-sold`, {
+    method: "POST"
+  });
+}
+
+export function deactivateListing(listingId: string) {
+  return apiRequest<Listing>(`/listings/${listingId}/deactivate`, {
     method: "POST"
   });
 }
@@ -462,6 +481,21 @@ export function trackRecentlyViewedListing(listingId: string) {
 
 export function getSellerOverviewMetrics() {
   return apiRequest<SellerOverviewMetrics>("/analytics/seller/overview");
+}
+
+export function getMe() {
+  return apiRequest<{
+    id: string;
+    fullName: string;
+    fatherName: string;
+    cnic: string;
+    phone: string;
+    email: string;
+    city: string;
+    dateOfBirth: string;
+    gender: "MALE" | "FEMALE" | "OTHER";
+    profilePhotoUrl: string | null;
+  }>("/auth/me");
 }
 
 export function getChatThreads() {

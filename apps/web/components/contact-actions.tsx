@@ -7,6 +7,9 @@ type ContactActionsProps = {
 };
 
 export function ContactActions({ listing, phone }: ContactActionsProps) {
+  const waPhone = phone.replace(/\D/g, "");
+  const whatsappHref = `https://wa.me/${waPhone}`;
+
   return (
     <div className="actions">
       {listing.showPhone && phone && <span className="pill">{phone}</span>}
@@ -16,8 +19,11 @@ export function ContactActions({ listing, phone }: ContactActionsProps) {
         </a>
       )}
       {listing.allowSMS && phone && (
-        <a className="btn secondary" href={`sms:${phone}`}>
-          SMS
+        <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
+          <span className="actionIcon" aria-hidden="true">
+            WA
+          </span>
+          WhatsApp
         </a>
       )}
       {listing.allowChat ? (

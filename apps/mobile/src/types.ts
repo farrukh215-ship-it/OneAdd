@@ -7,6 +7,7 @@ export type ListingMedia = {
 
 export type Listing = {
   id: string;
+  categoryId?: string;
   title: string;
   description: string;
   price: string | number;
@@ -24,6 +25,7 @@ export type Listing = {
     id: string;
     fullName?: string;
     phone?: string;
+    lastSeenAt?: string | null;
     trustScore?: {
       score: number;
     } | null;
