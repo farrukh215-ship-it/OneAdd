@@ -208,15 +208,24 @@ function normalizeMediaUrl(url: string) {
     return url;
   }
 
+  const normalizeMediaPath = (pathname: string) => {
+    if (pathname.startsWith("/media/files/")) {
+      return `/api${pathname}`;
+    }
+    return pathname;
+  };
+
   try {
     if (url.startsWith("/")) {
+      const path = normalizeMediaPath(url);
       if (typeof window !== "undefined") {
-        return `${window.location.origin}${url}`;
+        return `${window.location.origin}${path}`;
       }
-      return `https://www.teragharmeraghar.com${url}`;
+      return `https://www.teragharmeraghar.com${path}`;
     }
 
     const parsed = new URL(url);
+    parsed.pathname = normalizeMediaPath(parsed.pathname);
     if (parsed.pathname.startsWith("/api/media/files/")) {
       if (typeof window !== "undefined") {
         parsed.protocol = window.location.protocol;
@@ -635,11 +644,15 @@ export async function uploadMediaFile(params: {
     throw new ApiError(message, response.status, payload);
   }
 
-  return (await response.json()) as {
+  const payload = (await response.json()) as {
     mediaType: "IMAGE" | "VIDEO";
     durationSec: number | null;
     url: string;
     filename: string;
+  };
+  return {
+    ...payload,
+    url: normalizeMediaUrl(payload.url)
   };
 }
 
