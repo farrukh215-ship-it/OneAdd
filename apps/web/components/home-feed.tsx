@@ -191,7 +191,7 @@ function ListingCard({ listing }: ListingCardProps) {
         <div className="listing-img-inner">
           {image ? (
             <img
-              className="premiumMedia"
+              className="premiumMedia listingCardMedia"
               src={image}
               alt={listing.title}
               loading="lazy"
@@ -491,16 +491,6 @@ export function HomeFeed() {
     <>
       <section className="hero">
         <div className="hero-left">
-          <div className="hero-left-logo" aria-label="TGMG Brand">
-            <Image
-              src="/brand/tgmg-full.png"
-              alt="TGMG"
-              width={380}
-              height={212}
-              className="hero-full-logo hero-full-logo-left"
-              priority
-            />
-          </div>
           <aside className="hero-search-sidebar">
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
               <label className="search-field search-field-keyword">
@@ -576,7 +566,7 @@ export function HomeFeed() {
                       {item.imageUrl ? (
                         <>
                           <img
-                            className="hcard-img-media"
+                            className="hcard-img-media heroCardMedia"
                             src={item.imageUrl}
                             alt={item.title}
                             loading="lazy"
@@ -682,6 +672,17 @@ export function HomeFeed() {
               <div className="stat-num">PK</div>
               <div className="stat-label">Local First</div>
             </div>
+          </div>
+
+          <div className="hero-logo-panel" aria-label="TGMG Brand">
+            <Image
+              src="/brand/tgmg-full.png"
+              alt="TGMG"
+              width={380}
+              height={212}
+              className="hero-full-logo hero-full-logo-right"
+              priority
+            />
           </div>
         </div>
       </section>
