@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { ApiError, verifyFirebaseLogin } from "../lib/api";
+import { toUserFriendlyAuthError } from "../lib/auth-error";
 import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
 
 type SignupFormState = {
@@ -159,7 +160,7 @@ export function SignupCard() {
 
   function validateBeforeOtp() {
     if (!isFirebaseConfigured()) {
-      return "Firebase config missing hai. apps/web/.env.local set karein.";
+      return "Phone verification abhi available nahi hai. Thori dair baad dobara try karein.";
     }
     if (!form.fullName.trim()) return "Full Name required hai.";
     if (!form.fatherName.trim()) return "Father Name required hai.";
@@ -173,7 +174,7 @@ export function SignupCard() {
     }
     if (!phoneValid) return "Phone format +923004203035 hona chahiye.";
     if (!recaptchaVerifierRef.current) {
-      return "reCAPTCHA initialize nahi hua. Page refresh karein.";
+      return "Verification load nahi ho saki. Page refresh karke dobara try karein.";
     }
     return "";
   }
@@ -210,7 +211,7 @@ export function SignupCard() {
       setMessage("OTP send ho gaya. Popup me 6-digit code verify karein.");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("OTP request failed.");
       }
@@ -228,7 +229,7 @@ export function SignupCard() {
       setMessage("Naya OTP send kar diya gaya.");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("OTP resend failed.");
       }
@@ -274,9 +275,9 @@ export function SignupCard() {
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("OTP verify karke account create nahi ho saka.");
       }

@@ -518,19 +518,6 @@ export function HomeFeed() {
     <>
       <section className="hero">
         <div className="hero-left">
-          <div className="hero-search-intel">
-            <p className="hero-search-kicker">Premium Search Stack</p>
-            <h2 className="hero-search-title">Smarter discovery for real household listings</h2>
-            <p className="hero-search-copy">
-              Keyword, category, subcategory aur city ko ek focused discovery flow me rakha gaya hai
-              taake fake noise kam aur useful matches zyada milen.
-            </p>
-            <div className="hero-search-badges">
-              <span>Live suggestions</span>
-              <span>Category intelligence</span>
-              <span>City + area aware</span>
-            </div>
-          </div>
           <aside className="hero-search-sidebar">
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
               <label className="search-field search-field-keyword">

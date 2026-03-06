@@ -444,7 +444,7 @@ export class AuthService {
     const firebaseAuth = this.getFirebaseAuth();
     if (!firebaseAuth) {
       throw new BadRequestException(
-        "Firebase auth is not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH or FCM_* credentials."
+        "Phone verification service abhi available nahi hai. Thori dair baad dobara try karein."
       );
     }
 
@@ -748,7 +748,7 @@ export class AuthService {
     const firebaseAuth = this.getFirebaseAuth();
     if (!firebaseAuth) {
       throw new BadRequestException(
-        "Firebase auth is not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH or FCM_* credentials."
+        "Phone verification service abhi available nahi hai. Thori dair baad dobara try karein."
       );
     }
 

@@ -19,7 +19,7 @@ function hasFirebaseConfig() {
 function getFirebaseApp(): FirebaseApp {
   if (!hasFirebaseConfig()) {
     throw new Error(
-      "Firebase config missing. Set NEXT_PUBLIC_FIREBASE_* in apps/web/.env.local."
+      "Phone verification abhi available nahi hai. Thori dair baad dobara try karein."
     );
   }
 

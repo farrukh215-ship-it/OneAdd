@@ -14,6 +14,7 @@ import {
   requestPasswordReset,
   verifyPasswordReset
 } from "../lib/api";
+import { toUserFriendlyAuthError } from "../lib/auth-error";
 import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
 
 const phonePattern = /^\+92[0-9]{10}$/;
@@ -86,10 +87,10 @@ export function OtpLoginCard() {
 
   async function requestFirebaseOtp(phone: string) {
     if (!isFirebaseConfigured()) {
-      throw new Error("Firebase config missing hai. apps/web/.env.local set karein.");
+      throw new Error("Phone verification abhi available nahi hai. Thori dair baad dobara try karein.");
     }
     if (!recaptchaVerifierRef.current) {
-      throw new Error("reCAPTCHA initialize nahi hua. Page refresh karein.");
+      throw new Error("Verification load nahi ho saki. Page refresh karke dobara try karein.");
     }
 
     const auth = getFirebaseAuth();
@@ -126,9 +127,9 @@ export function OtpLoginCard() {
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Login failed.");
       }
@@ -162,9 +163,9 @@ export function OtpLoginCard() {
       setMessage("OTP send ho gaya. 6-digit code verify karein.");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Password reset request failed.");
       }
@@ -184,7 +185,7 @@ export function OtpLoginCard() {
       setMessage("Naya OTP send kar diya gaya.");
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("OTP resend failed.");
       }
@@ -221,9 +222,9 @@ export function OtpLoginCard() {
       setMessage("OTP verified. Ab naya password set karein.");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("OTP verification failed.");
       }
@@ -265,9 +266,9 @@ export function OtpLoginCard() {
       setMessage("Password reset ho gaya. Ab email/password se login karein.");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Password reset confirm failed.");
       }

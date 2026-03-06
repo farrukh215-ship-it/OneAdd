@@ -15,6 +15,7 @@ import {
   uploadMediaFile,
   uploadListingMedia
 } from "../../lib/api";
+import { toUserFriendlyAuthError } from "../../lib/auth-error";
 import { MarketplaceCategory } from "../../lib/types";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { resolveMediaUrl } from "../../lib/media-url";
@@ -380,7 +381,7 @@ export default function SellPage() {
       })
       .catch((err) => {
         if (err instanceof ApiError) {
-          setError(err.message);
+          setError(toUserFriendlyAuthError(err.message));
         } else {
           setError("Listing edit mode load nahi ho saka.");
         }
@@ -498,9 +499,9 @@ export default function SellPage() {
       setSuccess("Images upload ho gayin.");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Image upload fail ho gayi.");
       }
@@ -549,9 +550,9 @@ export default function SellPage() {
       setSuccess("Video upload ho gayi.");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Video upload fail ho gayi.");
       }
@@ -740,7 +741,7 @@ export default function SellPage() {
       if (err instanceof ApiError && err.status === 409) {
         setError("Fairness rule block: is category me pehle se active listing hai.");
       } else if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Publish fail ho gaya. Dobara try karein.");
       }
@@ -763,9 +764,9 @@ export default function SellPage() {
       await publishListing();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else if (err instanceof Error) {
-        setError(err.message);
+        setError(toUserFriendlyAuthError(err.message));
       } else {
         setError("Publish fail ho gaya. Dobara try karein.");
       }

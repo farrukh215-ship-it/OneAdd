@@ -15,6 +15,7 @@ import {
   markListingSold,
   relistListing
 } from "../../lib/api";
+import { toUserFriendlyAuthError } from "../../lib/auth-error";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { Listing, SellerOverviewMetrics } from "../../lib/types";
@@ -150,7 +151,8 @@ export default function AccountPage() {
       await relistListing(listingId);
       await refreshListings();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Relist fail ho gaya.";
+      const message =
+        err instanceof Error ? toUserFriendlyAuthError(err.message) : "Relist fail ho gaya.";
       setError(message);
     } finally {
       setRelistingId("");
@@ -167,7 +169,8 @@ export default function AccountPage() {
       await markListingSold(listingId);
       await refreshListings();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Sold update fail ho gaya.";
+      const message =
+        err instanceof Error ? toUserFriendlyAuthError(err.message) : "Sold update fail ho gaya.";
       setError(message);
     } finally {
       setActionListingId("");
@@ -183,7 +186,10 @@ export default function AccountPage() {
       await deactivateListing(listingId);
       await refreshListings();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Deactivate fail ho gaya.";
+      const message =
+        err instanceof Error
+          ? toUserFriendlyAuthError(err.message)
+          : "Deactivate fail ho gaya.";
       setError(message);
     } finally {
       setActionListingId("");
@@ -199,7 +205,8 @@ export default function AccountPage() {
       await activateListing(listingId);
       await refreshListings();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Activate fail ho gaya.";
+      const message =
+        err instanceof Error ? toUserFriendlyAuthError(err.message) : "Activate fail ho gaya.";
       setError(message);
     } finally {
       setActionListingId("");
