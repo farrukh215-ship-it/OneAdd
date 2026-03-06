@@ -140,6 +140,53 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
     `Assalam o Alaikum, ${listing.title} ke baray me baat karni hai. https://www.teragharmeraghar.com/listing/${listing.id}`
   )}`;
 
+  const publicChatSection = (
+    <section className="sellerTrustCard listingPublicChatSection">
+      <p className="sellerName">Public Chat on this Product</p>
+      {recentMessages.length === 0 ? (
+        <p className="listingDescription">
+          Abhi public chat visible nahi hai. Buyers chat start karte hi yahan preview aayega.
+        </p>
+      ) : (
+        <div className="stack">
+          {recentMessages.map((message) => (
+            <div key={message.id} className="publicMessageItem">
+              <div className="sellerTrustRow">
+                <button
+                  className="pill publicSenderBtn"
+                  type="button"
+                  onClick={() =>
+                    setOpenPublicContactFor((prev) =>
+                      prev === message.senderId ? "" : message.senderId ?? message.id
+                    )
+                  }
+                >
+                  {message.senderName}
+                </button>
+                <span className="sellerTrustScore">
+                  <strong>{formatDateTime(message.createdAt)}</strong>
+                  {message.senderCity ? ` - ${message.senderCity}` : ""}
+                </span>
+              </div>
+              <p className="publicMessageText">
+                {message.amount ? `Offer: PKR ${message.amount.toLocaleString()}` : message.content}
+              </p>
+              {openPublicContactFor === (message.senderId ?? message.id) ? (
+                isListingOwner && message.senderPhone ? (
+                  <p className="revealedContact">{message.senderPhone}</p>
+                ) : (
+                  <p className="shareHint">
+                    Sender contact dekhne ke liye owner account se login karein.
+                  </p>
+                )
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
   useEffect(() => {
     setSaved(getSavedListingIdsLocal().includes(listing.id));
     void trackRecentlyViewedPreference(listing.id, isLoggedIn);
@@ -303,53 +350,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               preload="metadata"
             />
           ) : null}
-
-          <div className="listingBelowMediaCards">
-            <section className="sellerTrustCard">
-              <p className="sellerName">Public Chat on this Product</p>
-              {recentMessages.length === 0 ? (
-                <p className="listingDescription">
-                  Abhi public chat visible nahi hai. Buyers chat start karte hi yahan preview aayega.
-                </p>
-              ) : (
-                <div className="stack">
-                  {recentMessages.map((message) => (
-                    <div key={message.id} className="publicMessageItem">
-                      <div className="sellerTrustRow">
-                        <button
-                          className="pill publicSenderBtn"
-                          type="button"
-                          onClick={() =>
-                            setOpenPublicContactFor((prev) =>
-                              prev === message.senderId ? "" : message.senderId ?? message.id
-                            )
-                          }
-                        >
-                          {message.senderName}
-                        </button>
-                        <span className="sellerTrustScore">
-                          <strong>{formatDateTime(message.createdAt)}</strong>
-                          {message.senderCity ? ` - ${message.senderCity}` : ""}
-                        </span>
-                      </div>
-                      <p className="publicMessageText">
-                        {message.amount ? `Offer: PKR ${message.amount.toLocaleString()}` : message.content}
-                      </p>
-                      {openPublicContactFor === (message.senderId ?? message.id) ? (
-                        isListingOwner && message.senderPhone ? (
-                          <p className="revealedContact">{message.senderPhone}</p>
-                        ) : (
-                          <p className="shareHint">
-                            Sender contact dekhne ke liye owner account se login karein.
-                          </p>
-                        )
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
         </section>
 
         <aside className="listingInfoColumn">
@@ -466,6 +466,8 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <ShareActions listingId={listing.id} title={listing.title} />
         </aside>
       </div>
+
+      <section className="listingDetailBottomSection">{publicChatSection}</section>
 
       <div className="mobileStickyCta">
         {listing.allowChat ? (

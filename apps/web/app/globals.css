@@ -3073,6 +3073,12 @@ textarea {
   gap: 12px;
 }
 
+.listingDetailBottomSection {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
 .listingTitleMain {
   margin: 4px 0 8px;
   font-size: clamp(1.4rem, 2.8vw, 2rem);
@@ -3154,6 +3160,10 @@ textarea {
   padding: 10px;
   display: grid;
   gap: 6px;
+}
+
+.listingPublicChatSection .publicMessageItem {
+  padding: 12px;
 }
 
 .publicSenderBtn {
@@ -4147,6 +4157,74 @@ textarea {
     gap: 12px;
   }
 
+  .listing-card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 156px;
+  }
+
+  .listing-img {
+    aspect-ratio: auto;
+    min-height: 100%;
+    border-right: 1px solid rgba(160, 108, 76, 0.14);
+  }
+
+  .listing-img-inner {
+    padding: 8px;
+    font-size: 26px;
+  }
+
+  .listing-body {
+    padding: 12px 12px 10px;
+    display: grid;
+    align-content: start;
+    gap: 4px;
+  }
+
+  .listing-cat {
+    margin-bottom: 2px;
+    font-size: 9px;
+    letter-spacing: 1.3px;
+  }
+
+  .listing-title {
+    font-size: 20px;
+    line-height: 1.08;
+    margin-bottom: 0;
+    -webkit-line-clamp: 2;
+  }
+
+  .listing-desc {
+    margin-bottom: 4px;
+    font-size: 12px;
+    line-height: 1.45;
+    -webkit-line-clamp: 3;
+  }
+
+  .listing-price {
+    font-size: 20px;
+    line-height: 1.05;
+    margin-bottom: 2px;
+  }
+
+  .listing-price span {
+    display: inline;
+    font-size: 11px;
+  }
+
+  .listing-footer {
+    padding-top: 8px;
+    gap: 6px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .listing-loc {
+    font-size: 9px;
+    letter-spacing: 0.8px;
+  }
+
   .hero-left {
     padding: 6px;
   }
@@ -4237,6 +4315,80 @@ textarea {
   .hero-search-box {
     padding: 12px;
     border-radius: 16px;
+  }
+
+  .listingDetailScreen {
+    padding: 14px 10px 98px;
+  }
+
+  .listingDetailLayout {
+    gap: 14px;
+  }
+
+  .listingMediaColumn,
+  .listingInfoColumn {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .listingMainMedia {
+    aspect-ratio: 1 / 1;
+    border-radius: 18px;
+    background: linear-gradient(145deg, #fffaf3 0%, #f3e4cf 100%);
+  }
+
+  .listingMainImage {
+    object-fit: contain;
+    padding: 12px;
+  }
+
+  .listingMainControls {
+    left: 8px;
+    right: 8px;
+  }
+
+  .listingMainControlBtn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .listingThumbRow {
+    grid-auto-columns: minmax(62px, 72px);
+    gap: 6px;
+  }
+
+  .listingThumb {
+    height: 58px;
+  }
+
+  .listingTitleMain {
+    font-size: 1.75rem;
+    line-height: 1.08;
+  }
+
+  .listingPriceMain {
+    font-size: 2rem;
+  }
+
+  .listingActionGrid,
+  .shareActionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .listingDetailBottomSection {
+    margin-top: 14px;
+  }
+
+  .listingPublicChatSection {
+    border-radius: 18px;
+  }
+
+  .listingPublicChatSection .sellerName {
+    margin-bottom: 10px;
+  }
+
+  .publicMessageItem {
+    gap: 8px;
   }
 
   .accountListingMain {
