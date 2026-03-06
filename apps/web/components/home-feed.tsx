@@ -30,33 +30,6 @@ const INITIAL_SKELETON_COUNT = 8;
 const urduTagline =
   "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 const quickFilters = ["Latest", "Verified", "Karachi", "Lahore", "Islamabad", "Under 50K"];
-const marketSignals = [
-  {
-    title: "Live suggestions",
-    detail: "Word-by-word smart search ranking",
-    href: "/search"
-  },
-  {
-    title: "City + area targeting",
-    detail: "Lahore, DHA, Johar, exact locality friendly",
-    href: "/search"
-  },
-  {
-    title: "Saved + recent sync",
-    detail: "Cross-session memory for serious buyers",
-    href: "/my-listings"
-  },
-  {
-    title: "Verified trust signals",
-    detail: "Seller note, last seen, listed date, category path",
-    href: "/search"
-  },
-  {
-    title: "Fast response flow",
-    detail: "Chat, WhatsApp, save and premium CTA stack",
-    href: "/chat"
-  }
-] as const;
 
 type HeroCard = {
   listingId?: string;
@@ -756,25 +729,6 @@ export function HomeFeed() {
           <span className="trust-text">Made for Pakistan</span>
         </div>
       </div>
-
-      <section className="market-signals-section">
-        <header className="section-header compactHeader">
-          <div>
-            <p className="section-eyebrow">Premium Experience</p>
-            <h2 className="section-title">5 Core Upgrades</h2>
-          </div>
-        </header>
-        <div className="market-signals-grid">
-          {marketSignals.map((item, index) => (
-            <Link className="market-signal-card" href={item.href} key={item.title}>
-              <span className="market-signal-index">0{index + 1}</span>
-              <h3>{item.title}</h3>
-              <p>{item.detail}</p>
-              <span className="market-signal-cta">Open</span>
-            </Link>
-          ))}
-        </div>
-      </section>
 
       <section className="categories-section">
         <header className="section-header">

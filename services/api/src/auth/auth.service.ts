@@ -65,6 +65,8 @@ const LOGIN_ATTEMPT_MAX = 5;
 const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const RESET_ATTEMPT_MAX = 5;
 const RESET_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const TESTING_PHONE_NUMBERS = new Set(["03154203035", "+923154203035"]);
+const TESTING_OTP = "123456";
 
 const loginAttemptStore = new Map<
   string,
@@ -180,7 +182,7 @@ export class AuthService {
       throw new BadRequestException("No account found for this phone.");
     }
 
-    const otp = this.generateOtp();
+    const otp = this.isTestingPhone(phone) ? TESTING_OTP : this.generateOtp();
     const expiresMinutes = this.configService.get<number>("OTP_EXPIRES_MINUTES", 3);
     const maxAttempts = this.configService.get<number>("OTP_MAX_ATTEMPTS", 5);
     const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
@@ -199,14 +201,17 @@ export class AuthService {
       }
     });
 
-    await this.smsProvider.send({
-      to: phone,
-      message: `Your OTP is ${otp}. It will expire in ${expiresMinutes} minutes.`
-    });
+    if (!this.isTestingPhone(phone)) {
+      await this.smsProvider.send({
+        to: phone,
+        message: `Your OTP is ${otp}. It will expire in ${expiresMinutes} minutes.`
+      });
+    }
 
     return {
       requestId: otpRecord.id,
-      expiresAt: otpRecord.expiresAt.toISOString()
+      expiresAt: otpRecord.expiresAt.toISOString(),
+      ...(this.isTestingPhone(phone) ? { devOtp: TESTING_OTP } : {})
     };
   }
 
@@ -836,6 +841,10 @@ export class AuthService {
 
   private generateOtp() {
     return randomInt(100000, 1000000).toString();
+  }
+
+  private isTestingPhone(phone: string) {
+    return TESTING_PHONE_NUMBERS.has(phone.trim());
   }
 
   private getFirebaseAuth():
