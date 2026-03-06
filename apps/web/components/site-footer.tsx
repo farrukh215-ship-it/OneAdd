@@ -1,6 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 
+const footerSignals = [
+  { label: "Verified sellers", detail: "CNIC + real-person first" },
+  { label: "Smart discovery", detail: "Live suggestions + city targeting" },
+  { label: "Fast actions", detail: "Save, chat, WhatsApp ready" }
+];
+
 export function SiteFooter() {
   return (
     <footer className="footer">
@@ -20,16 +26,36 @@ export function SiteFooter() {
             Pakistan ka pehla real-person used marketplace. Tera Dil Ka Saaman -
             Mere Ghar Ka Hissa.
           </p>
+          <div className="footer-signal-list">
+            {footerSignals.map((item) => (
+              <div className="footer-signal-chip" key={item.label}>
+                <strong>{item.label}</strong>
+                <span>{item.detail}</span>
+              </div>
+            ))}
+          </div>
           <div className="footer-social">
-            <button className="social-btn" type="button" aria-label="Facebook">
-              f
-            </button>
-            <button className="social-btn" type="button" aria-label="Instagram">
-              o
-            </button>
-            <button className="social-btn" type="button" aria-label="YouTube">
-              &gt;
-            </button>
+            <Link className="social-btn social-link-btn" href="/search">
+              Search
+            </Link>
+            <Link className="social-btn social-link-btn" href="/my-listings">
+              Saved + Ads
+            </Link>
+            <Link className="social-btn social-link-btn" href="/sell">
+              Sell Fast
+            </Link>
+          </div>
+          <div className="footer-cta-panel">
+            <p className="footer-cta-kicker">Start in seconds</p>
+            <h3 className="footer-cta-title">Apna ghar ka saaman seedha verified buyers tak.</h3>
+            <div className="footer-cta-actions">
+              <Link href="/sell" className="footer-cta-primary">
+                Apna Saaman Becho
+              </Link>
+              <Link href="/search" className="footer-cta-secondary">
+                Dhundo
+              </Link>
+            </div>
           </div>
         </div>
 

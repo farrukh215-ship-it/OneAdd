@@ -6,6 +6,7 @@ import {
   Image,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View
@@ -31,6 +32,13 @@ import { uiTheme } from "../theme/tokens";
 
 const urduTagline =
   "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
+const mobilePremiumSignals = [
+  "Live suggestions",
+  "City + area aware",
+  "Verified-first trust",
+  "Saved + recent sync",
+  "Chat-ready flow"
+] as const;
 
 
 function dedupeByListingId(source: Listing[]) {
@@ -103,8 +111,8 @@ function HomeCard({ item, onPress, saved, onToggleSaved }: HomeCardProps) {
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} onPress={onPress}>
       {currentImage ? (
-        <View>
-          <Image source={{ uri: currentImage }} style={styles.cardImage} resizeMode="cover" />
+        <View style={styles.cardImageFrame}>
+          <Image source={{ uri: currentImage }} style={styles.cardImage} resizeMode="contain" />
           {images.length > 1 ? (
             <View style={styles.imageControls}>
               <Pressable
@@ -285,6 +293,31 @@ export function HomeScreen({ navigation }: any) {
                 <Text style={styles.heroTitle}>Tera Ghar Mera Ghar</Text>
                 <Text style={styles.heroSub}>Pakistan ka pehla real-person used marketplace</Text>
                 <Text style={styles.heroUrdu}>{urduTagline}</Text>
+                <View style={styles.heroActionsRow}>
+                  <Pressable
+                    style={({ pressed }) => [styles.heroPrimaryAction, pressed && styles.cardPressed]}
+                    onPress={() => navigation.navigate("Becho")}
+                  >
+                    <Text style={styles.heroPrimaryActionText}>Apna Saaman Becho</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.heroSecondaryAction, pressed && styles.cardPressed]}
+                    onPress={() => navigation.navigate("Dhundo")}
+                  >
+                    <Text style={styles.heroSecondaryActionText}>Dhundo</Text>
+                  </Pressable>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.signalRail}
+                >
+                  {mobilePremiumSignals.map((item) => (
+                    <View key={item} style={styles.signalCard}>
+                      <Text style={styles.signalCardText}>{item}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
 
               <Text style={styles.kicker}>CATEGORIES</Text>
@@ -432,9 +465,10 @@ const styles = StyleSheet.create({
     backgroundColor: uiTheme.colors.surface,
     borderWidth: 1,
     borderColor: uiTheme.colors.border,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 12
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 14,
+    ...uiTheme.elevation.md
   },
   heroBrandRow: {
     flexDirection: "row",
@@ -455,12 +489,12 @@ const styles = StyleSheet.create({
   },
   heroLogoFull: {
     width: "100%",
-    height: 120
+    height: 132
   },
   heroTitle: {
     marginTop: 4,
-    fontSize: 29,
-    lineHeight: 34,
+    fontSize: 32,
+    lineHeight: 36,
     color: "#5C3D2E",
     fontWeight: "800"
   },
@@ -476,6 +510,58 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 26,
     textAlign: "right"
+  },
+  heroActionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14
+  },
+  heroPrimaryAction: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: uiTheme.colors.primary,
+    ...uiTheme.elevation.sm
+  },
+  heroPrimaryActionText: {
+    color: uiTheme.colors.white,
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  heroSecondaryAction: {
+    minWidth: 110,
+    minHeight: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: uiTheme.colors.borderStrong,
+    backgroundColor: uiTheme.colors.surfaceRaised
+  },
+  heroSecondaryActionText: {
+    color: uiTheme.colors.textStrong,
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  signalRail: {
+    gap: 8,
+    paddingTop: 14
+  },
+  signalCard: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceRaised,
+    justifyContent: "center"
+  },
+  signalCardText: {
+    color: uiTheme.colors.textSoft,
+    fontSize: 11,
+    fontWeight: "700"
   },
   kicker: {
     color: uiTheme.colors.primary,
@@ -573,11 +659,12 @@ const styles = StyleSheet.create({
   },
   collectionCard: {
     width: 160,
-    backgroundColor: uiTheme.colors.surface,
-    borderRadius: 12,
+    backgroundColor: uiTheme.colors.surfaceRaised,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: uiTheme.colors.border,
-    padding: 10
+    padding: 12,
+    ...uiTheme.elevation.sm
   },
   collectionPrice: {
     color: uiTheme.colors.primary,
@@ -592,29 +679,31 @@ const styles = StyleSheet.create({
     fontWeight: "600"
   },
   card: {
-    borderRadius: 12,
+    borderRadius: 18,
     overflow: "hidden",
     backgroundColor: uiTheme.colors.surface,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: uiTheme.colors.border,
-    shadowColor: uiTheme.colors.textStrong,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.09,
-    shadowRadius: 14,
-    elevation: 3
+    ...uiTheme.elevation.md
   },
   cardPressed: {
     transform: [{ scale: 0.992 }],
     opacity: 0.96
   },
+  cardImageFrame: {
+    width: "100%",
+    height: 228,
+    backgroundColor: uiTheme.colors.surfaceSoft,
+    padding: 12
+  },
   cardImage: {
     width: "100%",
-    height: 220
+    height: "100%"
   },
   cardImagePlaceholder: {
     width: "100%",
-    height: 220,
+    height: 228,
     backgroundColor: uiTheme.colors.surfaceSoft
   },
   imageControls: {
@@ -648,7 +737,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 3
   },
   cardBody: {
-    padding: 14
+    padding: 16
   },
   priceRow: {
     flexDirection: "row",
@@ -677,8 +766,8 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 6,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 23,
     color: uiTheme.colors.textStrong,
     fontWeight: "700"
   },

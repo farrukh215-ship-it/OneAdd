@@ -192,12 +192,26 @@ export function TabsNavigator() {
         headerTintColor: uiTheme.colors.textStrong,
         headerRight: () => (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: uiTheme.colors.border,
+                backgroundColor: uiTheme.colors.surfaceRaised,
+                borderRadius: 999,
+                paddingHorizontal: 10,
+                paddingVertical: 6
+              }}
+            >
+              <Text style={{ color: uiTheme.colors.primaryDark, fontSize: 10, fontWeight: "800" }}>
+                Premium UI
+              </Text>
+            </View>
             {isAuthenticated && loggedInName ? (
               <View
                 style={{
                   borderWidth: 1,
                   borderColor: uiTheme.colors.border,
-                  backgroundColor: uiTheme.colors.surface,
+                  backgroundColor: uiTheme.colors.surfaceRaised,
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 6
@@ -212,7 +226,7 @@ export function TabsNavigator() {
               style={{
                 borderWidth: 1,
                 borderColor: uiTheme.colors.border,
-                backgroundColor: uiTheme.colors.surface,
+                backgroundColor: uiTheme.colors.surfaceRaised,
                 borderRadius: 999,
                 paddingHorizontal: 12,
                 paddingVertical: 6
@@ -235,19 +249,19 @@ export function TabsNavigator() {
           backgroundColor: "transparent",
           borderTopColor: uiTheme.colors.border,
           borderTopWidth: 0,
-          height: 62,
-          paddingBottom: 6,
-          paddingTop: 6,
+          height: 70,
+          paddingBottom: 8,
+          paddingTop: 8,
           shadowColor: uiTheme.colors.textStrong,
           shadowOffset: { width: 0, height: -6 },
-          shadowOpacity: 0.1,
-          shadowRadius: 18,
-          elevation: 10
+          shadowOpacity: 0.12,
+          shadowRadius: 22,
+          elevation: 12
         },
         tabBarBackground: () => <TabBarGlassBackdrop pulse={tabPulse} />,
         tabBarActiveTintColor: uiTheme.colors.primary,
         tabBarInactiveTintColor: uiTheme.colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "700", marginBottom: 2 },
         tabBarIcon: ({ color, focused }) => (
           <AnimatedTabIcon icon={iconMap[route.name] ?? "\u2022"} color={color} focused={focused} />
         )

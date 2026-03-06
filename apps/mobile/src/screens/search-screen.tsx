@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Animated,
   FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,6 +47,10 @@ function dedupeByListingId(source: Listing[]) {
   return unique;
 }
 
+function getPrimaryImage(listing: Listing) {
+  return listing.media.find((item) => item.type === "IMAGE" && item.url)?.url ?? "";
+}
+
 export function SearchScreen({ navigation, route }: any) {
   const enterStyle = useScreenEnterAnimation({ distance: 14, duration: 320 });
   const [query, setQuery] = useState("");
@@ -68,6 +73,14 @@ export function SearchScreen({ navigation, route }: any) {
     }
     return categories.find((item) => item.subcategories.some((sub) => sub.slug === selectedCategorySlug));
   }, [categories, selectedCategorySlug]);
+  const activeFilterLabels = useMemo(() => {
+    const labels: string[] = [];
+    if (selectedRoot?.name) labels.push(selectedRoot.name);
+    if (city.trim()) labels.push(city.trim());
+    if (area.trim()) labels.push(area.trim());
+    if (query.trim()) labels.push(`"${query.trim()}"`);
+    return labels;
+  }, [area, city, query, selectedRoot?.name]);
 
   useEffect(() => {
     void getCategoryCatalog().then(setCategories).catch(() => setCategories([]));
@@ -199,18 +212,29 @@ export function SearchScreen({ navigation, route }: any) {
         <Text style={styles.heroSub}>Real people ki verified listings, seedha aur fast search.</Text>
       </View>
 
-      <View style={styles.searchRow}>
-        <Text style={styles.searchIcon}>{"\ud83d\udd0d"}</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Dhundo listings..."
-          value={query}
-          onFocus={() => setSuggestionsOpen(true)}
-          onBlur={() => {
-            setTimeout(() => setSuggestionsOpen(false), 120);
-          }}
-          onChangeText={setQuery}
-        />
+      <View style={styles.searchShell}>
+        <View style={styles.searchRow}>
+          <Text style={styles.searchIcon}>{"\ud83d\udd0d"}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Dhundo listings..."
+            value={query}
+            onFocus={() => setSuggestionsOpen(true)}
+            onBlur={() => {
+              setTimeout(() => setSuggestionsOpen(false), 120);
+            }}
+            onChangeText={setQuery}
+          />
+        </View>
+        {activeFilterLabels.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeFilterRow}>
+            {activeFilterLabels.map((label) => (
+              <View key={label} style={styles.activeFilterChip}>
+                <Text style={styles.activeFilterText}>{label}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
       </View>
       {suggestionsOpen && (suggestionsLoading || suggestions.length > 0) ? (
         <View style={styles.suggestionMenu}>
@@ -331,6 +355,18 @@ export function SearchScreen({ navigation, route }: any) {
         </View>
       ) : null}
 
+      <View style={styles.resultsSummaryCard}>
+        <View>
+          <Text style={styles.resultsSummaryTitle}>Results</Text>
+          <Text style={styles.resultsSummaryMeta}>
+            {items.length} matches • {sortOptions.find((option) => option.value === sortBy)?.label ?? "Best Match"}
+          </Text>
+        </View>
+        <View style={styles.resultsSummaryBadge}>
+          <Text style={styles.resultsSummaryBadgeText}>Premium search</Text>
+        </View>
+      </View>
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -354,33 +390,44 @@ export function SearchScreen({ navigation, route }: any) {
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
               onPress={() => navigation.navigate("ListingDetail", { id: item.id })}
             >
-              <View style={styles.priceRow}>
-                <Text style={styles.price}>
-                  {item.currency} {item.price}
-                </Text>
-                <Pressable
-                  style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
-                  onPress={(event) => {
-                    event.stopPropagation?.();
-                    void onToggleSaved(item.id);
-                  }}
-                >
-                  <Text style={styles.saveBtnText}>{savedIds.includes(item.id) ? "Saved" : "Save"}</Text>
-                </Pressable>
+              <View style={styles.cardTopRow}>
+                {getPrimaryImage(item) ? (
+                  <View style={styles.resultThumbWrap}>
+                    <Image source={{ uri: getPrimaryImage(item) }} style={styles.resultThumb} resizeMode="contain" />
+                  </View>
+                ) : (
+                  <View style={styles.resultThumbWrap} />
+                )}
+                <View style={styles.resultBody}>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.price}>
+                      {item.currency} {item.price}
+                    </Text>
+                    <Pressable
+                      style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+                      onPress={(event) => {
+                        event.stopPropagation?.();
+                        void onToggleSaved(item.id);
+                      }}
+                    >
+                      <Text style={styles.saveBtnText}>{savedIds.includes(item.id) ? "Saved" : "Save"}</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.title}>{item.title}</Text>
+                  {displayCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
+                    <Text style={styles.meta}>
+                      {displayCategoryPath(item.mainCategoryName, item.subCategoryName)}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.meta}>
+                    {displayLocation({
+                      city: item.city,
+                      exactLocation: item.exactLocation,
+                      description: item.description
+                    })}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.title}>{item.title}</Text>
-              {displayCategoryPath(item.mainCategoryName, item.subCategoryName) ? (
-                <Text style={styles.meta}>
-                  {displayCategoryPath(item.mainCategoryName, item.subCategoryName)}
-                </Text>
-              ) : null}
-              <Text style={styles.meta}>
-                {displayLocation({
-                  city: item.city,
-                  exactLocation: item.exactLocation,
-                  description: item.description
-                })}
-              </Text>
             </Pressable>
           </StaggerInCard>
         )}
@@ -397,7 +444,13 @@ const styles = StyleSheet.create({
     backgroundColor: uiTheme.colors.surfaceAlt
   },
   hero: {
-    marginBottom: 10
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceRaised,
+    ...uiTheme.elevation.sm
   },
   heroTitle: {
     color: uiTheme.colors.textStrong,
@@ -417,8 +470,16 @@ const styles = StyleSheet.create({
     borderColor: uiTheme.colors.border,
     paddingHorizontal: 12,
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10
+    alignItems: "center"
+  },
+  searchShell: {
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceRaised,
+    ...uiTheme.elevation.sm
   },
   searchIcon: {
     fontSize: 16,
@@ -430,7 +491,7 @@ const styles = StyleSheet.create({
     color: uiTheme.colors.textStrong
   },
   suggestionMenu: {
-    marginTop: -4,
+    marginTop: -2,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: uiTheme.colors.border,
@@ -462,6 +523,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginBottom: 8
+  },
+  activeFilterRow: {
+    gap: 8,
+    paddingTop: 10
+  },
+  activeFilterChip: {
+    minHeight: 30,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: uiTheme.colors.primaryGlow,
+    borderWidth: 1,
+    borderColor: "rgba(200,96,58,0.16)",
+    justifyContent: "center"
+  },
+  activeFilterText: {
+    color: uiTheme.colors.primaryDark,
+    fontSize: 11,
+    fontWeight: "700"
   },
   filterInput: {
     flex: 1,
@@ -546,16 +625,35 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: uiTheme.colors.surface,
-    borderRadius: 12,
+    borderRadius: 18,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: uiTheme.colors.border,
-    shadowColor: uiTheme.colors.textStrong,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2
+    ...uiTheme.elevation.sm
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start"
+  },
+  resultThumbWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceSoft,
+    overflow: "hidden",
+    padding: 8
+  },
+  resultThumb: {
+    width: "100%",
+    height: "100%"
+  },
+  resultBody: {
+    flex: 1,
+    gap: 2
   },
   priceRow: {
     flexDirection: "row",
@@ -610,6 +708,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     lineHeight: 18
+  },
+  resultsSummaryCard: {
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: uiTheme.colors.border,
+    backgroundColor: uiTheme.colors.surfaceRaised,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  resultsSummaryTitle: {
+    color: uiTheme.colors.textStrong,
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  resultsSummaryMeta: {
+    marginTop: 2,
+    color: uiTheme.colors.textMuted,
+    fontSize: 12
+  },
+  resultsSummaryBadge: {
+    minHeight: 30,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: uiTheme.colors.primaryGlow,
+    justifyContent: "center"
+  },
+  resultsSummaryBadgeText: {
+    color: uiTheme.colors.primaryDark,
+    fontSize: 11,
+    fontWeight: "800"
   },
   pressed: {
     opacity: 0.93,

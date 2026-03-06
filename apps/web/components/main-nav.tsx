@@ -31,6 +31,7 @@ export function MainNav() {
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
   const [accountName, setAccountName] = useState("");
+  const [scrollProgress, setScrollProgress] = useState(0);
   const mobileAccountName = accountName.split(" ")[0] || "You";
 
   useEffect(() => {
@@ -44,6 +45,25 @@ export function MainNav() {
       })
       .catch(() => setAccountName("Account"));
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    function handleScroll() {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      if (total <= 0) {
+        setScrollProgress(0);
+        return;
+      }
+      setScrollProgress(Math.min(100, Math.max(0, (window.scrollY / total) * 100)));
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
 
   return (
     <>
@@ -76,6 +96,7 @@ export function MainNav() {
         </ul>
 
         <div className="nav-actions">
+          <span className="nav-status-pill">Premium marketplace</span>
           {!mounted ? (
             <span className="btn-ghost">Login</span>
           ) : isLoggedIn ? (
@@ -104,6 +125,9 @@ export function MainNav() {
             <span aria-hidden="true">{"\ud83c\udfe0"}</span>
             Apna Saaman Becho
           </Link>
+        </div>
+        <div className="nav-progress-track" aria-hidden="true">
+          <div className="nav-progress-bar" style={{ width: `${scrollProgress}%` }} />
         </div>
       </nav>
 
