@@ -133,6 +133,14 @@ function heroCardsFromListings(listings: Listing[]) {
   return fromListings;
 }
 
+function compactCopy(text: string, maxLength = 76) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength).trimEnd()}...`;
+}
+
 type ListingCardProps = {
   listing: Listing;
 };
@@ -261,7 +269,7 @@ function ListingCard({ listing }: ListingCardProps) {
           <p className="listingMetaPrimary">{categoryPath}</p>
           <p className="listingMetaSecondary">{locationLabel}</p>
         </div>
-        <p className="listing-desc">{listing.description}</p>
+        <p className="listing-desc">{compactCopy(listing.description, 72)}</p>
         <p className="listing-price">
           {listing.currency} {listing.price}
           <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
@@ -618,7 +626,7 @@ export function HomeFeed() {
                     <div className="hcard-meta">
                       <h3 className="hcard-title">{item.title}</h3>
                       {item.categoryPath ? <p className="listing-cat">{item.categoryPath}</p> : null}
-                      <p className="hcard-desc">{item.desc}</p>
+                      <p className="hcard-desc">{compactCopy(item.desc, 62)}</p>
                       <p className="hcard-location">{item.city}</p>
                     </div>
                     <p className="hcard-price">{item.price}</p>

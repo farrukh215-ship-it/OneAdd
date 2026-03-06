@@ -126,6 +126,22 @@ export function MainNav() {
             Apna Saaman Becho
           </Link>
         </div>
+
+        <div className="mobile-header-actions">
+          {!mounted ? (
+            <Link href="/account" className="mobile-header-chip mobile-header-create">
+              Create Account
+            </Link>
+          ) : isLoggedIn ? (
+            <Link href="/account" className="mobile-header-chip mobile-header-user" title={accountName}>
+              Logged in: {mobileAccountName}
+            </Link>
+          ) : (
+            <Link href="/account" className="mobile-header-chip mobile-header-create">
+              Create Account
+            </Link>
+          )}
+        </div>
         <div className="nav-progress-track" aria-hidden="true">
           <div className="nav-progress-bar" style={{ width: `${scrollProgress}%` }} />
         </div>
