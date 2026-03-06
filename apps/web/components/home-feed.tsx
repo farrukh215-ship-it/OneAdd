@@ -169,6 +169,9 @@ function ListingCard({ listing }: ListingCardProps) {
       }),
     [listing.city, listing.description, listing.exactLocation]
   );
+  const categoryPath =
+    displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ||
+    "Verified household listing";
 
   useEffect(() => {
     setSaved(getSavedListingIdsLocal().includes(listing.id));
@@ -253,24 +256,25 @@ function ListingCard({ listing }: ListingCardProps) {
       </div>
       <div className="listing-body">
         <p className="listing-cat">TGMG Verified</p>
-        {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ? (
-          <p className="listing-cat">
-            {displayCategoryPath(listing.mainCategoryName, listing.subCategoryName)}
-          </p>
-        ) : null}
         <h3 className="listing-title">{listing.title}</h3>
+        <div className="listingMetaBlock">
+          <p className="listingMetaPrimary">{categoryPath}</p>
+          <p className="listingMetaSecondary">{locationLabel}</p>
+        </div>
         <p className="listing-desc">{listing.description}</p>
         <p className="listing-price">
           {listing.currency} {listing.price}
           <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
         </p>
         <div className="listing-footer">
-          <span className="listing-loc">{locationLabel}</span>
           <span className="badge-verified">Asli Banda</span>
+          <span className="listing-loc">{displayRelativeTime(listing.createdAt)}</span>
         </div>
-        <p className="listing-desc">{responseBadge}</p>
-        <p className="listing-desc">{displayListedDate(listing.createdAt)}</p>
-        <p className="listing-desc">{displaySellerLastSeen(listing.user?.lastSeenAt)}</p>
+        <div className="listingSupportMeta">
+          <span>{responseBadge}</span>
+          <span>{displaySellerLastSeen(listing.user?.lastSeenAt)}</span>
+        </div>
+        <p className="listingTimelineMeta">{displayListedDate(listing.createdAt)}</p>
       </div>
     </Link>
   );

@@ -470,26 +470,42 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
       <section className="listingDetailBottomSection">{publicChatSection}</section>
 
       <div className="mobileStickyCta">
-        {listing.allowChat ? (
-          <button className="btn" onClick={startChat} disabled={chatLoading} type="button">
-            {chatLoading ? "Opening..." : "Chat"}
+        <div className="mobileStickyCtaHandle" aria-hidden="true" />
+        <div className="mobileStickyCtaGrid">
+          {isLoggedIn && listing.showPhone && phone ? (
+            <button
+              className="btn secondary"
+              onClick={() => setContactVisible((prev) => !prev)}
+              type="button"
+            >
+              {contactVisible ? "Hide Contact" : "Show Contact"}
+            </button>
+          ) : null}
+          {listing.allowChat ? (
+            <button className="btn" onClick={startChat} disabled={chatLoading} type="button">
+              {chatLoading ? "Opening..." : "Start Chat"}
+            </button>
+          ) : (
+            <span className="pill muted">Chat off</span>
+          )}
+          {isLoggedIn && listing.allowSMS && phone ? (
+            <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
+              <span className="actionIcon" aria-hidden="true">
+                WA
+              </span>
+              WhatsApp
+            </a>
+          ) : null}
+          <button className="btn secondary" onClick={toggleSaved} type="button">
+            {saved ? "Saved" : "Save"}
           </button>
-        ) : (
-          <span className="pill muted">Chat off</span>
-        )}
-        {isLoggedIn && listing.allowSMS && phone ? (
-          <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
-            <span className="actionIcon" aria-hidden="true">
-              WA
-            </span>
-            WhatsApp
-          </a>
-        ) : null}
-        {!isLoggedIn ? (
-          <Link href="/account" className="btn secondary">
-            Login
-          </Link>
-        ) : null}
+          {!isLoggedIn ? (
+            <Link href="/account" className="btn secondary">
+              Login
+            </Link>
+          ) : null}
+        </div>
+        {contactVisible ? <div className="revealedContact mobileDockContact">{phone}</div> : null}
       </div>
     </main>
   );
