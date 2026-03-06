@@ -407,6 +407,7 @@ export async function verifyOtp(payload: {
   requestId: string;
   phone: string;
   otp: string;
+  purpose?: "LOGIN" | "SIGNUP" | "PASSWORD_RESET" | "LISTING_PUBLISH";
 }) {
   return apiRequest<{ verificationToken: string }>("/auth/otp/verify", {
     method: "POST",

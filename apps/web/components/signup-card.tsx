@@ -1,15 +1,9 @@
 ﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ConfirmationResult,
-  RecaptchaVerifier,
-  signInWithPhoneNumber
-} from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { ApiError, verifyFirebaseLogin } from "../lib/api";
+import { ApiError, requestOtp, signup, verifyOtp } from "../lib/api";
 import { toUserFriendlyAuthError } from "../lib/auth-error";
-import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
 
 type SignupFormState = {
   fullName: string;
@@ -106,9 +100,7 @@ export function SignupCard() {
   const [otpResendIn, setOtpResendIn] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const recaptchaElementRef = useRef<HTMLDivElement | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const requestIdRef = useRef("");
 
   useEffect(() => {
     if (otpResendIn <= 0) return;
@@ -117,24 +109,6 @@ export function SignupCard() {
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [otpResendIn]);
-
-  useEffect(() => {
-    if (!isFirebaseConfigured() || !recaptchaElementRef.current) {
-      return;
-    }
-
-    const auth = getFirebaseAuth();
-    recaptchaVerifierRef.current = new RecaptchaVerifier(
-      auth,
-      recaptchaElementRef.current,
-      { size: "invisible" }
-    );
-
-    return () => {
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = null;
-    };
-  }, []);
 
   const strength = useMemo(() => getPasswordStrength(form.password), [form.password]);
   const phoneValid = phonePattern.test(form.phone.trim());
@@ -159,9 +133,6 @@ export function SignupCard() {
   }, [form, cnicValid, passwordsMatch, phoneValid]);
 
   function validateBeforeOtp() {
-    if (!isFirebaseConfigured()) {
-      return "Phone verification abhi available nahi hai. Thori dair baad dobara try karein.";
-    }
     if (!form.fullName.trim()) return "Full Name required hai.";
     if (!form.fatherName.trim()) return "Father Name required hai.";
     if (!cnicValid) return "CNIC format 00000-0000000-0 hona chahiye.";
@@ -173,23 +144,12 @@ export function SignupCard() {
       return "Age less than 18 ka account nahi ban sakta. Ask your mama papa to create account.";
     }
     if (!phoneValid) return "Phone format +923004203035 hona chahiye.";
-    if (!recaptchaVerifierRef.current) {
-      return "Verification load nahi ho saki. Page refresh karke dobara try karein.";
-    }
     return "";
   }
 
   async function requestSignupOtp() {
-    if (!recaptchaVerifierRef.current) {
-      throw new Error("reCAPTCHA initialize nahi hua.");
-    }
-    const auth = getFirebaseAuth();
-    const confirmation = await signInWithPhoneNumber(
-      auth,
-      form.phone.trim(),
-      recaptchaVerifierRef.current
-    );
-    confirmationRef.current = confirmation;
+    const response = await requestOtp(form.phone.trim(), { forSignup: true });
+    requestIdRef.current = response.requestId;
     setOtpModalOpen(true);
     setOtpResendIn(otpResendSeconds);
   }
@@ -243,7 +203,7 @@ export function SignupCard() {
     setError("");
     setMessage("");
 
-    if (!confirmationRef.current) {
+    if (!requestIdRef.current) {
       setError("Pehle OTP request karein.");
       return;
     }
@@ -254,21 +214,26 @@ export function SignupCard() {
 
     setLoading(true);
     try {
-      const credential = await confirmationRef.current.confirm(otp.trim());
-      const idToken = await credential.user.getIdToken(true);
+      const verification = await verifyOtp({
+        requestId: requestIdRef.current,
+        phone: form.phone.trim(),
+        otp: otp.trim(),
+        purpose: "SIGNUP"
+      });
 
-      await verifyFirebaseLogin({
-        idToken,
+      await signup({
         fullName: form.fullName.trim(),
         fatherName: form.fatherName.trim(),
         cnic: form.cnic.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        city: "Unknown",
+        phone: form.phone.trim(),
         dateOfBirth: form.dateOfBirth,
-        gender: form.gender
+        gender: form.gender,
+        otpVerificationToken: verification.verificationToken
       });
 
+      requestIdRef.current = "";
       setOtpModalOpen(false);
       setMessage("Account create ho gaya aur login ho chuka hai.");
       router.push("/");
@@ -454,8 +419,6 @@ export function SignupCard() {
           </div>
         </div>
       ) : null}
-
-      <div ref={recaptchaElementRef} />
 
       {error && <p className="error">{error}</p>}
       {message && <p className="success">{message}</p>}
