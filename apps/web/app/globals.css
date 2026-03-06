@@ -476,6 +476,17 @@ textarea {
   gap: 18px;
 }
 
+.hero-left-logo {
+  width: min(100%, 460px);
+  padding: 2px 0 4px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
 .hero-right {
   padding: 24px 24px 28px;
   position: relative;
@@ -508,6 +519,10 @@ textarea {
 .hero-full-logo {
   width: min(100%, 380px);
   height: auto;
+}
+
+.hero-full-logo-left {
+  filter: drop-shadow(0 10px 24px rgba(75, 44, 27, 0.22));
 }
 
 .hero-badge {
@@ -3744,6 +3759,10 @@ textarea {
     order: 2;
   }
 
+  .hero-left-logo {
+    width: min(100%, 360px);
+  }
+
   .hero-right {
     padding: 20px 18px;
     order: 1;
@@ -3888,6 +3907,12 @@ textarea {
 
   .hero-left {
     padding: 6px;
+  }
+
+  .hero-left-logo {
+    width: min(100%, 300px);
+    margin-inline: auto;
+    justify-content: center;
   }
 
   .hero-right {

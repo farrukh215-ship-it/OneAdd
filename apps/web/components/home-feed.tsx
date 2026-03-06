@@ -491,6 +491,16 @@ export function HomeFeed() {
     <>
       <section className="hero">
         <div className="hero-left">
+          <div className="hero-left-logo" aria-label="TGMG Brand">
+            <Image
+              src="/brand/tgmg-full.png"
+              alt="TGMG"
+              width={380}
+              height={212}
+              className="hero-full-logo hero-full-logo-left"
+              priority
+            />
+          </div>
           <aside className="hero-search-sidebar">
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
               <label className="search-field search-field-keyword">
@@ -617,17 +627,6 @@ export function HomeFeed() {
         </div>
 
         <div className="hero-right">
-          <div className="hero-logo-panel">
-            <Image
-              src="/brand/tgmg-full.png"
-              alt="TGMG"
-              width={350}
-              height={196}
-              className="hero-full-logo"
-              priority
-            />
-          </div>
-
           <div className="hero-badge">
             <span className="hero-badge-dot" />
             <span>Live Marketplace - Pakistan</span>
