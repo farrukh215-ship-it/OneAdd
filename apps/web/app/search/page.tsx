@@ -166,6 +166,33 @@ export default function SearchPage() {
     list.push(sortLabel);
     return list;
   }, [area, catalog, category, city, condition, maxPrice, minPrice, negotiableOnly, query, sortBy]);
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (query.trim()) count += 1;
+    if (category.trim()) count += 1;
+    if (city.trim()) count += 1;
+    if (area.trim()) count += 1;
+    if (minPrice.trim()) count += 1;
+    if (maxPrice.trim()) count += 1;
+    if (condition !== "ANY") count += 1;
+    if (negotiableOnly) count += 1;
+    if (sortBy !== "relevance") count += 1;
+    return count;
+  }, [area, category, city, condition, maxPrice, minPrice, negotiableOnly, query, sortBy]);
+
+  function clearFilters() {
+    setQuery("");
+    setCategory("");
+    setCity("");
+    setArea("");
+    setMinPrice("");
+    setMaxPrice("");
+    setCondition("ANY");
+    setNegotiableOnly(false);
+    setSortBy("relevance");
+    setNotice("");
+    setError("");
+  }
 
   function updateUrlFromSearch(payload: SearchFilters) {
     if (typeof window === "undefined") {
@@ -423,7 +450,7 @@ export default function SearchPage() {
               type="button"
               onClick={() => setMobileFiltersOpen(true)}
             >
-              Open Filters
+              Filters{activeFilterCount > 0 ? ` • ${activeFilterCount}` : ""}
             </button>
           </div>
 
@@ -532,9 +559,13 @@ export default function SearchPage() {
             onClick={(event) => event.stopPropagation()}
             aria-label="Search filters"
           >
+            <div className="sheetHandle" aria-hidden="true" />
             <form className="stack" onSubmit={runSearch}>
               <div className="sheetHeader">
-                <h2>Filters</h2>
+                <div className="sheetHeaderCopy">
+                  <h2>Filters</h2>
+                  <p>Keyword, category, city aur price ke saath targeted results.</p>
+                </div>
                 <button
                   type="button"
                   className="searchSubmitBtn ghost"
@@ -646,9 +677,19 @@ export default function SearchPage() {
                 />
                 <span>Negotiable Only</span>
               </label>
-              <button className="searchSubmitBtn" type="submit" disabled={loading}>
-                Apply Filters
-              </button>
+              <div className="mobileSheetActions">
+                <button
+                  className="searchSubmitBtn ghost"
+                  type="button"
+                  onClick={clearFilters}
+                  disabled={loading}
+                >
+                  Clear
+                </button>
+                <button className="searchSubmitBtn" type="submit" disabled={loading}>
+                  Apply Filters
+                </button>
+              </div>
             </form>
           </aside>
         </div>

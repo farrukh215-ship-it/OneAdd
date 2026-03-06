@@ -264,23 +264,27 @@ function ListingCard({ listing }: ListingCardProps) {
       </div>
       <div className="listing-body">
         <p className="listing-cat">TGMG Verified</p>
-        <h3 className="listing-title">{listing.title}</h3>
+        <div className="listingTitleRow">
+          <h3 className="listing-title">{listing.title}</h3>
+          <p className="listing-price">
+            {listing.currency} {listing.price}
+            <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
+          </p>
+        </div>
         <div className="listingMetaBlock">
           <p className="listingMetaPrimary">{categoryPath}</p>
           <p className="listingMetaSecondary">{locationLabel}</p>
         </div>
         <p className="listing-desc">{compactCopy(listing.description, 72)}</p>
-        <p className="listing-price">
-          {listing.currency} {listing.price}
-          <span>{listing.isNegotiable ? " / negotiable" : " / fixed"}</span>
-        </p>
-        <div className="listing-footer">
-          <span className="badge-verified">Asli Banda</span>
-          <span className="listing-loc">{displayRelativeTime(listing.createdAt)}</span>
-        </div>
-        <div className="listingSupportMeta">
-          <span>{responseBadge}</span>
-          <span>{displaySellerLastSeen(listing.user?.lastSeenAt)}</span>
+        <div className="listingFooterCluster">
+          <div className="listing-footer">
+            <span className="badge-verified">Asli Banda</span>
+            <span className="listing-loc">{displayRelativeTime(listing.createdAt)}</span>
+          </div>
+          <div className="listingSupportMeta">
+            <span>{responseBadge}</span>
+            <span>{displaySellerLastSeen(listing.user?.lastSeenAt)}</span>
+          </div>
         </div>
         <p className="listingTimelineMeta">{displayListedDate(listing.createdAt)}</p>
       </div>
@@ -784,7 +788,7 @@ export function HomeFeed() {
         </header>
 
         <div className="cats-grid">
-          {categories.map((category) => (
+          {categories.map((category, index) => (
             <button
               key={category.id}
               className={`cat-card ${selectedCategory?.slug === category.slug ? "active" : ""}`}
@@ -792,11 +796,14 @@ export function HomeFeed() {
               style={{ "--cat-accent": category.accent } as CSSProperties}
               type="button"
             >
+              <span className="cat-rail-index">0{index + 1}</span>
               <span className="cat-emoji" aria-hidden="true">
                 {category.icon}
               </span>
-              <div className="cat-name">{category.name}</div>
-              <div className="cat-count">{category.listingCount} Adds</div>
+              <div className="cat-copy">
+                <div className="cat-name">{category.name}</div>
+                <div className="cat-count">{category.listingCount} Adds</div>
+              </div>
             </button>
           ))}
         </div>
