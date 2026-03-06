@@ -642,6 +642,24 @@ export function HomeFeed() {
             Pakistan ka pehla real-person used marketplace. <strong>Shopkeepers aur showroom
             owners ki duplicate ADDs block,</strong> sirf real household seller ko priority.
           </p>
+          <ul className="hero-proof-list" aria-label="Trust highlights">
+            <li>
+              <strong>CNIC Verified</strong>
+              <span>Real user onboarding</span>
+            </li>
+            <li>
+              <strong>Spam Blocked</strong>
+              <span>Shopkeeper duplicate control</span>
+            </li>
+            <li>
+              <strong>1 User 1 Add</strong>
+              <span>Cleaner marketplace quality</span>
+            </li>
+            <li>
+              <strong>Pakistan First</strong>
+              <span>Local city + area focused</span>
+            </li>
+          </ul>
 
           <div className="hero-actions">
             <Link href="/sell" className="btn-hero-primary">
