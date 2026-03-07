@@ -6,7 +6,6 @@ import {
   NotFoundException,
   UnprocessableEntityException
 } from "@nestjs/common";
-import { marketplaceCategoryCatalog } from "@aikad/shared";
 import {
   ChatMessageType,
   ChatThreadStatus,
@@ -14,6 +13,15 @@ import {
   ListingStatus,
   Prisma
 } from "@prisma/client";
+import { marketplaceCategoryCatalog } from "@aikad/shared";
+import {
+  buildCategorySearchText as buildCategorySearchTextValue,
+  buildQueryTerms as buildQueryTermsValue,
+  detectQueryCategorySignals,
+  expandSemanticTerms as expandSemanticTermsValue,
+  minimumSemanticScore as minimumSemanticScoreValue,
+  scoreSearchDocument
+} from "../search/search-intelligence";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { TrustScoreService } from "../trust-score/trust-score.service";
@@ -26,35 +34,6 @@ type ListingSearchSortBy =
   | "price_desc"
   | "date_desc"
   | "date_asc";
-
-const SEARCH_SYNONYM_MAP: Record<string, string[]> = {
-  bicycle: ["cycle", "bike", "bikes", "cycles"],
-  bicycles: ["bicycle", "cycle", "bike", "bikes", "cycles"],
-  cycle: ["bicycle", "bicycles", "bike", "bikes", "cycles"],
-  cycles: ["cycle", "bicycle", "bikes"],
-  bike: ["bicycle", "cycle", "motorcycle", "bikes"],
-  bikes: ["bike", "bicycle", "motorcycle", "cycles"],
-  motorcycle: ["bike", "bikes", "motorbike"],
-  motorcycles: ["motorcycle", "bike", "bikes"],
-  mobile: ["mobiles", "phone", "phones", "smartphone", "smartphones", "cellphone"],
-  mobiles: ["mobile", "phone", "phones", "smartphone", "smartphones"],
-  phone: ["mobile", "mobiles", "smartphone", "cellphone"],
-  phones: ["phone", "mobile", "mobiles", "smartphones"],
-  smartphone: ["mobile", "phone", "android", "iphone"],
-  smartphones: ["smartphone", "mobile", "phones"],
-  car: ["cars", "vehicle", "vehicles", "auto", "automobile"],
-  cars: ["car", "vehicle", "vehicles", "auto"],
-  vehicle: ["vehicles", "car", "cars", "auto"],
-  vehicles: ["vehicle", "cars", "car", "auto"],
-  laptop: ["laptops", "computer", "computers", "notebook"],
-  laptops: ["laptop", "computer", "computers"],
-  sofa: ["couch", "settee", "sofas"],
-  sofas: ["sofa", "couch", "settee"],
-  tv: ["television", "televisions", "led", "lcd"],
-  television: ["tv", "led", "lcd"],
-  fridge: ["refrigerator", "freezer", "fridges"],
-  fridges: ["fridge", "refrigerator", "freezer"]
-};
 
 @Injectable()
 export class ListingsService {
@@ -1048,71 +1027,7 @@ export class ListingsService {
     categoryPath?: string;
     trust: number;
   }) {
-    const titleLower = this.normalizeSearchText(params.title);
-    const textLower = this.normalizeSearchText(params.text);
-    const categoryLower = this.normalizeSearchText(params.categoryPath ?? "");
-    const queryLower = this.normalizeSearchText(params.query);
-    const titleTokens = this.tokenizeSearchText(params.title);
-    const textTokens = this.tokenizeSearchText(params.text);
-    const categoryTokens = this.tokenizeSearchText(params.categoryPath ?? "");
-    let score = 0;
-
-    if (titleLower === queryLower) {
-      score += 9;
-    } else if (titleLower.startsWith(queryLower)) {
-      score += 7;
-    } else if (titleLower.includes(queryLower)) {
-      score += 5;
-    }
-
-    if (textLower.includes(queryLower)) {
-      score += 2.5;
-    }
-    if (categoryLower.includes(queryLower)) {
-      score += 3.4;
-    }
-
-    for (const term of params.terms) {
-      if (term.length < 2) {
-        continue;
-      }
-      const normalizedTerm = this.normalizeSearchText(term);
-      if (titleLower === normalizedTerm) {
-        score += 3.2;
-      } else if (titleLower.startsWith(normalizedTerm)) {
-        score += 2.6;
-      } else if (titleLower.includes(normalizedTerm)) {
-        score += 1.8;
-      }
-      if (textLower.includes(normalizedTerm)) {
-        score += 0.7;
-      }
-      if (categoryLower.includes(normalizedTerm)) {
-        score += 1.4;
-      }
-    }
-
-    for (const token of this.tokenizeSearchText(params.query)) {
-      if (titleTokens.includes(token)) {
-        score += 2.3;
-      } else if (this.hasFuzzyTokenMatch(titleTokens, token)) {
-        score += 1.7;
-      }
-
-      if (categoryTokens.includes(token)) {
-        score += 1.7;
-      } else if (this.hasFuzzyTokenMatch(categoryTokens, token)) {
-        score += 1.1;
-      }
-
-      if (textTokens.includes(token)) {
-        score += 0.9;
-      } else if (this.hasFuzzyTokenMatch(textTokens, token)) {
-        score += 0.45;
-      }
-    }
-
-    return score + params.trust / 120;
+    return scoreSearchDocument(params);
   }
 
   private sanitizeSortBy(sortBy?: string): ListingSearchSortBy {
@@ -1128,70 +1043,7 @@ export class ListingsService {
   }
 
   private buildQueryTerms(query: string, extraTerms?: string[]) {
-    const base = query
-      .toLowerCase()
-      .split(/[\s,./\\\-_:;]+/)
-      .map((token) => this.normalizeToken(token))
-      .filter((token) => token.length >= 2);
-    const knownCities = [
-      "karachi",
-      "lahore",
-      "islamabad",
-      "rawalpindi",
-      "faisalabad",
-      "multan",
-      "peshawar",
-      "hyderabad",
-      "quetta",
-      "gujranwala",
-      "sialkot",
-      "sargodha"
-    ];
-    if (query.length >= 2) {
-      base.unshift(this.normalizeSearchText(query));
-    }
-
-    for (const token of [...base]) {
-      const normalized = token.replace(/\s+/g, "");
-      if (normalized.length < 5) {
-        continue;
-      }
-      for (const city of knownCities) {
-        const index = normalized.indexOf(city);
-        if (index < 0) {
-          continue;
-        }
-
-        const before = normalized.slice(0, index);
-        const after = normalized.slice(index + city.length);
-        if (before.length >= 2) {
-          base.push(before);
-        }
-        if (after.length >= 2) {
-          base.push(after);
-        }
-        base.push(city);
-      }
-    }
-
-    for (const token of [...base]) {
-      base.push(this.toSingularToken(token));
-      const synonyms = SEARCH_SYNONYM_MAP[token] ?? [];
-      for (const synonym of synonyms) {
-        base.push(this.normalizeSearchText(synonym));
-      }
-    }
-
-    if (extraTerms?.length) {
-      for (const term of extraTerms) {
-        const clean = this.normalizeSearchText(term);
-        if (clean.length >= 2) {
-          base.push(clean);
-        }
-      }
-    }
-
-    return Array.from(new Set(base));
+    return buildQueryTermsValue(query, extraTerms);
   }
 
   private applyNormalizedSort<
@@ -1497,17 +1349,7 @@ export class ListingsService {
   }
 
   private expandSemanticTerms(query: string) {
-    const tokens = this.tokenizeSearchText(query);
-    const expanded = new Set(tokens);
-
-    for (const token of tokens) {
-      const synonyms = SEARCH_SYNONYM_MAP[token] ?? [];
-      for (const synonym of synonyms) {
-        expanded.add(this.normalizeSearchText(synonym));
-      }
-    }
-
-    return Array.from(expanded);
+    return expandSemanticTermsValue(query);
   }
 
   private buildCategorySearchText(category?: {
@@ -1515,66 +1357,12 @@ export class ListingsService {
     slug?: string | null;
     parent?: { name?: string | null; slug?: string | null } | null;
   } | null) {
-    if (!category) {
-      return "";
-    }
-
-    return [
-      category.parent?.name,
-      category.parent?.slug,
-      category.name,
-      category.slug
-    ]
-      .filter(Boolean)
-      .join(" ");
+    return buildCategorySearchTextValue(category);
   }
 
   private async resolveQueryCategorySignals(query: string, queryTerms: string[]) {
-    const normalizedQuery = this.normalizeSearchText(query);
-    if (!normalizedQuery) {
-      return {
-        categoryIds: [] as string[],
-        semanticTerms: [] as string[]
-      };
-    }
-
-    const matchedSlugs = new Set<string>();
-    const semanticTerms = new Set<string>();
-
-    for (const root of marketplaceCategoryCatalog) {
-      const rootTerms = this.buildCategoryAliasTerms(root.name, root.slug);
-      const rootMatched = this.matchesCategorySearchQuery(normalizedQuery, queryTerms, rootTerms);
-
-      if (rootMatched) {
-        matchedSlugs.add(root.slug);
-        for (const child of root.subcategories) {
-          matchedSlugs.add(child.slug);
-        }
-        for (const term of rootTerms) {
-          semanticTerms.add(term);
-        }
-      }
-
-      for (const subcategory of root.subcategories) {
-        const subTerms = this.buildCategoryAliasTerms(subcategory.name, subcategory.slug);
-        const combinedTerms = [...rootTerms, ...subTerms];
-
-        if (!this.matchesCategorySearchQuery(normalizedQuery, queryTerms, combinedTerms)) {
-          continue;
-        }
-
-        matchedSlugs.add(root.slug);
-        matchedSlugs.add(subcategory.slug);
-        for (const child of root.subcategories) {
-          matchedSlugs.add(child.slug);
-        }
-        for (const term of combinedTerms) {
-          semanticTerms.add(term);
-        }
-      }
-    }
-
-    if (matchedSlugs.size === 0) {
+    const signals = detectQueryCategorySignals(query, queryTerms);
+    if (signals.matchedSlugs.length === 0) {
       return {
         categoryIds: [] as string[],
         semanticTerms: [] as string[]
@@ -1584,7 +1372,7 @@ export class ListingsService {
     const rows = await this.prisma.category.findMany({
       where: {
         slug: {
-          in: Array.from(matchedSlugs)
+          in: signals.matchedSlugs
         }
       },
       select: { id: true }
@@ -1592,80 +1380,12 @@ export class ListingsService {
 
     return {
       categoryIds: rows.map((row) => row.id),
-      semanticTerms: Array.from(semanticTerms)
+      semanticTerms: signals.semanticTerms
     };
   }
 
-  private buildCategoryAliasTerms(name: string, slug: string) {
-    const base = new Set<string>();
-    const sourceTerms = [
-      this.normalizeSearchText(name),
-      this.normalizeSearchText(slug.replace(/-/g, " "))
-    ];
-
-    for (const source of sourceTerms) {
-      if (!source) {
-        continue;
-      }
-      base.add(source);
-      for (const token of this.tokenizeSearchText(source)) {
-        base.add(token);
-        base.add(this.toSingularToken(token));
-        const synonyms = SEARCH_SYNONYM_MAP[token] ?? [];
-        for (const synonym of synonyms) {
-          base.add(this.normalizeSearchText(synonym));
-        }
-      }
-    }
-
-    return Array.from(base).filter((term) => term.length >= 2);
-  }
-
-  private matchesCategorySearchQuery(
-    normalizedQuery: string,
-    queryTerms: string[],
-    categoryTerms: string[]
-  ) {
-    const relevantTerms = new Set<string>([
-      normalizedQuery,
-      ...queryTerms.map((term) => this.normalizeSearchText(term)),
-      ...categoryTerms.map((term) => this.normalizeSearchText(term))
-    ]);
-    const categoryTokens = Array.from(new Set(categoryTerms.flatMap((term) => this.tokenizeSearchText(term))));
-
-    for (const term of relevantTerms) {
-      if (!term || term.length < 2) {
-        continue;
-      }
-
-      if (categoryTerms.some((categoryTerm) => categoryTerm.includes(term) || term.includes(categoryTerm))) {
-        return true;
-      }
-
-      const termTokens = this.tokenizeSearchText(term);
-      if (
-        termTokens.some(
-          (token) =>
-            categoryTokens.includes(token) || this.hasFuzzyTokenMatch(categoryTokens, token)
-        )
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   private minimumSemanticScore(queryTerms: string[]) {
-    if (queryTerms.length <= 1) {
-      return 1.15;
-    }
-
-    if (queryTerms.length <= 3) {
-      return 1.4;
-    }
-
-    return 1.6;
+    return minimumSemanticScoreValue(queryTerms);
   }
 
   private mergeListingsById<
@@ -1678,107 +1398,6 @@ export class ListingsService {
       }
     }
     return Array.from(merged.values());
-  }
-
-  private normalizeSearchText(value: string) {
-    return value
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  private normalizeToken(value: string) {
-    return this.normalizeSearchText(value).replace(/\s+/g, "");
-  }
-
-  private tokenizeSearchText(value: string) {
-    const normalized = this.normalizeSearchText(value);
-    if (!normalized) {
-      return [];
-    }
-
-    const tokens = normalized
-      .split(/\s+/)
-      .map((token) => this.normalizeToken(token))
-      .filter((token) => token.length >= 2);
-
-    const expanded = new Set<string>();
-    for (const token of tokens) {
-      expanded.add(token);
-      expanded.add(this.toSingularToken(token));
-    }
-    return Array.from(expanded).filter((token) => token.length >= 2);
-  }
-
-  private toSingularToken(token: string) {
-    if (token.endsWith("ies") && token.length > 4) {
-      return `${token.slice(0, -3)}y`;
-    }
-    if (token.endsWith("es") && token.length > 4) {
-      return token.slice(0, -2);
-    }
-    if (token.endsWith("s") && token.length > 3) {
-      return token.slice(0, -1);
-    }
-    return token;
-  }
-
-  private hasFuzzyTokenMatch(tokens: string[], target: string) {
-    const normalizedTarget = this.toSingularToken(this.normalizeToken(target));
-    if (normalizedTarget.length < 3) {
-      return false;
-    }
-
-    return tokens.some((token) => {
-      const normalizedToken = this.toSingularToken(this.normalizeToken(token));
-      if (!normalizedToken || Math.abs(normalizedToken.length - normalizedTarget.length) > 2) {
-        return false;
-      }
-
-      if (normalizedToken === normalizedTarget) {
-        return true;
-      }
-
-      const maxDistance = Math.max(normalizedToken.length, normalizedTarget.length) >= 7 ? 2 : 1;
-      return this.levenshteinDistance(normalizedToken, normalizedTarget) <= maxDistance;
-    });
-  }
-
-  private levenshteinDistance(a: string, b: string) {
-    if (a === b) {
-      return 0;
-    }
-    if (!a.length) {
-      return b.length;
-    }
-    if (!b.length) {
-      return a.length;
-    }
-
-    const matrix = Array.from({ length: a.length + 1 }, () =>
-      Array<number>(b.length + 1).fill(0)
-    );
-
-    for (let i = 0; i <= a.length; i += 1) {
-      matrix[i][0] = i;
-    }
-    for (let j = 0; j <= b.length; j += 1) {
-      matrix[0][j] = j;
-    }
-
-    for (let i = 1; i <= a.length; i += 1) {
-      for (let j = 1; j <= b.length; j += 1) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] + cost
-        );
-      }
-    }
-
-    return matrix[a.length][b.length];
   }
 
   private validateMediaConstraints(

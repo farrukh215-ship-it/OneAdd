@@ -30,6 +30,22 @@ const INITIAL_SKELETON_COUNT = 8;
 const urduTagline =
   "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 const quickFilters = ["Latest", "Verified", "Karachi", "Lahore", "Islamabad", "Under 50K"];
+const heroProofs = [
+  { title: "CNIC Verified", detail: "Real household onboarding" },
+  { title: "Spam Blocked", detail: "Duplicate seller noise control" },
+  { title: "1 User 1 Add", detail: "Cleaner marketplace quality" },
+  { title: "Pakistan First", detail: "City + area focused discovery" }
+];
+const heroMetrics = [
+  { value: "100%", label: "Real Users" },
+  { value: "1 Add", label: "Per Person" },
+  { value: "PK", label: "Local First" }
+];
+const searchSignals = [
+  "Title + category intelligence",
+  "City / area aware discovery",
+  "Typos aur close matches handled"
+];
 
 type HeroCard = {
   listingId?: string;
@@ -508,6 +524,20 @@ export function HomeFeed() {
       <section className="hero">
         <div className="hero-left">
           <aside className="hero-search-sidebar">
+            <div className="hero-search-head">
+              <p className="hero-search-kicker">Premium search stack</p>
+              <h2 className="hero-search-title">Jo cheez chahiye, seedha usi ke closest results.</h2>
+              <p className="hero-search-copy">
+                Product, category, subcategory aur city ko ek tighter discovery flow me rakha gaya hai.
+              </p>
+              <div className="hero-search-signal-list">
+                {searchSignals.map((item) => (
+                  <span className="hero-search-signal" key={item}>
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
               <label className="search-field search-field-keyword">
                 <span className="search-field-label">Product</span>
@@ -617,14 +647,21 @@ export function HomeFeed() {
 
               if (item.listingId) {
                 return (
-                  <Link href={`/listing/${item.listingId}`} className="hero-card" key={`${item.title}-${index}`}>
+                  <Link
+                    href={`/listing/${item.listingId}`}
+                    className={`hero-card ${index === 0 ? "hero-card-featured" : "hero-card-compact"}`}
+                    key={`${item.title}-${index}`}
+                  >
                     {cardBody}
                   </Link>
                 );
               }
 
               return (
-                <article className="hero-card" key={`${item.title}-${index}`}>
+                <article
+                  className={`hero-card ${index === 0 ? "hero-card-featured" : "hero-card-compact"}`}
+                  key={`${item.title}-${index}`}
+                >
                   {cardBody}
                 </article>
               );
@@ -648,57 +685,46 @@ export function HomeFeed() {
             owners ki duplicate ADDs block,</strong> sirf real household seller ko priority.
           </p>
           <ul className="hero-proof-list" aria-label="Trust highlights">
-            <li>
-              <strong>CNIC Verified</strong>
-              <span>Real user onboarding</span>
-            </li>
-            <li>
-              <strong>Spam Blocked</strong>
-              <span>Shopkeeper duplicate control</span>
-            </li>
-            <li>
-              <strong>1 User 1 Add</strong>
-              <span>Cleaner marketplace quality</span>
-            </li>
-            <li>
-              <strong>Pakistan First</strong>
-              <span>Local city + area focused</span>
-            </li>
+            {heroProofs.map((item) => (
+              <li key={item.title}>
+                <strong>{item.title}</strong>
+                <span>{item.detail}</span>
+              </li>
+            ))}
           </ul>
 
-          <div className="hero-actions">
-            <Link href="/sell" className="btn-hero-primary">
-              {"\ud83c\udfe0"} Apna Saaman Becho
-            </Link>
-            <Link href="/search" className="btn-hero-secondary">
-              {"\ud83d\udd0d"} Dhundo
-            </Link>
-          </div>
+          <div className="hero-lower">
+            <div className="hero-actions">
+              <Link href="/sell" className="btn-hero-primary">
+                {"\ud83c\udfe0"} Apna Saaman Becho
+              </Link>
+              <Link href="/search" className="btn-hero-secondary">
+                {"\ud83d\udd0d"} Dhundo
+              </Link>
+            </div>
 
-          <div className="hero-stats">
-            <div className="stat-item">
-              <div className="stat-num">100%</div>
-              <div className="stat-label">Real Users</div>
+            <div className="hero-stats">
+              {heroMetrics.map((item) => (
+                <div className="stat-item" key={item.label}>
+                  <div className="stat-num">{item.value}</div>
+                  <div className="stat-label">{item.label}</div>
+                </div>
+              ))}
             </div>
-            <div className="stat-item">
-              <div className="stat-num">1 Add</div>
-              <div className="stat-label">Per Person</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-num">PK</div>
-              <div className="stat-label">Local First</div>
-            </div>
-          </div>
 
-          <div className="hero-logo-panel" aria-label="TGMG Brand">
-            <Image
-              src="/brand/tgmg-full.png"
-              alt="TGMG"
-              width={380}
-              height={212}
-              className="hero-full-logo hero-full-logo-right"
-              priority
-            />
+            <div className="hero-logo-panel" aria-label="TGMG Brand">
+              <Image
+                src="/brand/tgmg-full.png"
+                alt="TGMG"
+                width={380}
+                height={212}
+                className="hero-full-logo hero-full-logo-right"
+                priority
+              />
+              <p className="hero-logo-note">
+                Verified, cleaner aur city-aware household marketplace.
+              </p>
+            </div>
           </div>
         </div>
       </section>

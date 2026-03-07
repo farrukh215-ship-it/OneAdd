@@ -1,8 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { ListingStatus } from "@prisma/client";
+import { ListingStatus, Prisma } from "@prisma/client";
 import { Request } from "express";
+import {
+  buildCategorySearchText,
+  buildQueryTerms,
+  detectQueryCategorySignals,
+  minimumSemanticScore,
+  normalizeSearchText,
+  scoreSearchDocument
+} from "./search-intelligence";
 import { PrismaService } from "../prisma/prisma.service";
 
 type SuggestionType = "page" | "category" | "listing" | "chat" | "saved";
@@ -44,30 +52,93 @@ export class SearchService {
 
   async getSuggestions(request: Request, query: string, limit = 20) {
     const take = Math.min(Math.max(limit, 5), 50);
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
+    const queryTerms = buildQueryTerms(q);
+    const categorySignals = q
+      ? detectQueryCategorySignals(q, queryTerms)
+      : { matchedSlugs: [] as string[], semanticTerms: [] as string[] };
+    const searchTerms = buildQueryTerms(q, categorySignals.semanticTerms);
+    const normalizedQuery = normalizeSearchText(q);
     const userId = await this.extractUserId(request);
+    const matchedCategoryRows =
+      categorySignals.matchedSlugs.length > 0
+        ? await this.prisma.category.findMany({
+            where: {
+              slug: {
+                in: categorySignals.matchedSlugs
+              }
+            },
+            select: { id: true }
+          })
+        : [];
 
     const [categoryRows, listingRows, chatRows, savedRows] = await Promise.all([
       this.prisma.category.findMany({
-        where: q
+        where: normalizedQuery
           ? {
               OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { slug: { contains: q, mode: "insensitive" } }
+                ...searchTerms.flatMap<Prisma.CategoryWhereInput>((term) => [
+                  { name: { contains: term, mode: "insensitive" } },
+                  { slug: { contains: term, mode: "insensitive" } }
+                ]),
+                ...(categorySignals.matchedSlugs.length > 0
+                  ? [{ slug: { in: categorySignals.matchedSlugs } }]
+                  : [])
               ]
             }
           : undefined,
         orderBy: [{ depth: "asc" }, { name: "asc" }],
-        take: 8
+        take: 24,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          depth: true,
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              slug: true
+            }
+          }
+        }
       }),
       this.prisma.listing.findMany({
         where: {
           status: ListingStatus.ACTIVE,
-          ...(q
+          ...(normalizedQuery
             ? {
                 OR: [
-                  { title: { contains: q, mode: "insensitive" } },
-                  { description: { contains: q, mode: "insensitive" } }
+                  ...searchTerms.flatMap<Prisma.ListingWhereInput>((term) => [
+                    { title: { contains: term, mode: "insensitive" } },
+                    { description: { contains: term, mode: "insensitive" } },
+                    { user: { city: { contains: term, mode: "insensitive" } } },
+                    {
+                      category: {
+                        OR: [
+                          { name: { contains: term, mode: "insensitive" } },
+                          { slug: { contains: term, mode: "insensitive" } },
+                          {
+                            parent: {
+                              is: {
+                                name: { contains: term, mode: "insensitive" }
+                              }
+                            }
+                          },
+                          {
+                            parent: {
+                              is: {
+                                slug: { contains: term, mode: "insensitive" }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]),
+                  ...(matchedCategoryRows.length > 0
+                    ? [{ categoryId: { in: matchedCategoryRows.map((item) => item.id) } }]
+                    : [])
                 ]
               }
             : {})
@@ -77,17 +148,40 @@ export class SearchService {
           id: true,
           title: true,
           currency: true,
-          price: true
+          price: true,
+          description: true,
+          createdAt: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          },
+          user: {
+            select: {
+              city: true
+            }
+          }
         },
-        take: 8
+        take: 48
       }),
       userId
         ? this.prisma.chatThread.findMany({
             where: {
               OR: [{ buyerId: userId }, { sellerId: userId }],
-              listing: q
+              listing: normalizedQuery
                 ? {
-                    title: { contains: q, mode: "insensitive" }
+                    OR: searchTerms.map((term) => ({
+                      title: { contains: term, mode: "insensitive" }
+                    }))
                   }
                 : undefined
             },
@@ -105,9 +199,11 @@ export class SearchService {
         ? this.prisma.savedListing.findMany({
             where: {
               userId,
-              listing: q
+              listing: normalizedQuery
                 ? {
-                    title: { contains: q, mode: "insensitive" }
+                    OR: searchTerms.map((term) => ({
+                      title: { contains: term, mode: "insensitive" }
+                    }))
                   }
                 : undefined
             },
@@ -126,13 +222,16 @@ export class SearchService {
     ]);
 
     const pageMatches = PAGE_SUGGESTIONS.filter((page) => {
-      if (!q) {
+      if (!normalizedQuery) {
         return true;
       }
-      return (
-        page.label.toLowerCase().includes(q) ||
-        page.keywords.some((keyword) => keyword.includes(q))
-      );
+      const haystack = `${page.label} ${page.keywords.join(" ")}`;
+      return scoreSearchDocument({
+        query: normalizedQuery,
+        terms: searchTerms,
+        title: page.label,
+        text: haystack
+      }) > 0;
     }).map<SuggestionItem>((page) => ({
       id: page.id,
       type: "page",
@@ -140,21 +239,64 @@ export class SearchService {
       href: page.href
     }));
 
-    const categorySuggestions = categoryRows.map<SuggestionItem>((category) => ({
-      id: category.id,
-      type: "category",
-      label: category.name,
-      href: `/search?category=${encodeURIComponent(category.slug)}`,
-      meta: category.depth > 0 ? "Subcategory" : "Category"
-    }));
+    const categorySuggestions = categoryRows
+      .map((category) => {
+        const categoryPath = buildCategorySearchText(category);
+        const score = scoreSearchDocument({
+          query: normalizedQuery,
+          terms: searchTerms,
+          title: category.name,
+          text: `${category.name} ${category.slug} ${categoryPath}`,
+          categoryPath
+        });
 
-    const listingSuggestions = listingRows.map<SuggestionItem>((listing) => ({
-      id: listing.id,
-      type: "listing",
-      label: listing.title,
-      href: `/listing/${listing.id}`,
-      meta: `${listing.currency} ${listing.price}`
-    }));
+        return {
+          score,
+          item: {
+            id: category.id,
+            type: "category" as const,
+            label: category.name,
+            href: `/search?category=${encodeURIComponent(category.slug)}`,
+            meta: category.depth > 0 ? "Subcategory" : "Main Category"
+          }
+        };
+      })
+      .filter(({ score }) => score >= (normalizedQuery ? 0.6 : 0))
+      .sort((a, b) => b.score - a.score)
+      .map(({ item }) => item);
+
+    const listingThreshold = minimumSemanticScore(searchTerms) * 0.6;
+    const listingSuggestions = listingRows
+      .map((listing) => {
+        const categoryPath = buildCategorySearchText(listing.category);
+        const city = this.extractMetadataValue(listing.description ?? "", "city") || listing.user?.city || "";
+        const score = scoreSearchDocument({
+          query: normalizedQuery,
+          terms: searchTerms,
+          title: listing.title,
+          text: `${listing.title} ${listing.description ?? ""} ${city} ${categoryPath}`,
+          categoryPath
+        });
+
+        const metaParts = [
+          city.trim(),
+          `${listing.currency} ${listing.price}`
+        ].filter(Boolean);
+
+        return {
+          score,
+          item: {
+            id: listing.id,
+            type: "listing" as const,
+            label: listing.title,
+            href: `/listing/${listing.id}`,
+            meta: metaParts.join(" • ")
+          }
+        };
+      })
+      .filter(({ score }) => score >= (normalizedQuery ? listingThreshold : 0))
+      .sort((a, b) => b.score - a.score)
+      .map(({ item }) => item);
 
     const chatSuggestions = chatRows.reduce<SuggestionItem[]>((acc, row) => {
       if (!row.listing) {
@@ -187,9 +329,9 @@ export class SearchService {
     }, []);
 
     const merged = [
-      ...pageMatches,
       ...categorySuggestions,
       ...listingSuggestions,
+      ...pageMatches,
       ...chatSuggestions,
       ...savedSuggestions
     ];
@@ -222,5 +364,10 @@ export class SearchService {
     } catch {
       return null;
     }
+  }
+
+  private extractMetadataValue(description: string, key: "city" | "location") {
+    const match = description.match(new RegExp(`\\b${key}\\s*:\\s*([^\\n]+)`, "i"));
+    return match?.[1]?.trim() ?? "";
   }
 }
