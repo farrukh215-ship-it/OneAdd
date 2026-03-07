@@ -125,10 +125,27 @@ function extractApiErrorMessage(payload: unknown): string | null {
     return maybeMessage;
   }
 
+  if (Array.isArray(maybeMessage)) {
+    const joined = maybeMessage
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .join(" ");
+    if (joined) {
+      return joined;
+    }
+  }
+
   if (maybeMessage && typeof maybeMessage === "object") {
     const nested = (maybeMessage as { message?: unknown }).message;
     if (typeof nested === "string") {
       return nested;
+    }
+    if (Array.isArray(nested)) {
+      const joined = nested
+        .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+        .join(" ");
+      if (joined) {
+        return joined;
+      }
     }
   }
 

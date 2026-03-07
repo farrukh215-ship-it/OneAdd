@@ -105,6 +105,13 @@ const heroFallback: HeroCard[] = [
     desc: "Perfect panel, no repair",
     city: "Islamabad",
     price: "PKR 135,000"
+  },
+  {
+    icon: "\ud83d\ude97",
+    title: "Suzuki Cultus VXR",
+    desc: "Neat family car, Lahore registered",
+    city: "Lahore",
+    price: "PKR 2,100,000"
   }
 ];
 
@@ -125,7 +132,7 @@ function dedupeById(listings: Listing[]) {
 }
 
 function heroCardsFromListings(listings: Listing[]) {
-  const fromListings: HeroCard[] = listings.slice(0, 3).map((item) => ({
+  const fromListings: HeroCard[] = listings.slice(0, 4).map((item) => ({
     listingId: item.id,
     imageUrl: getPrimaryImage(item),
     icon: "\ud83c\udfe1",
@@ -141,7 +148,7 @@ function heroCardsFromListings(listings: Listing[]) {
     categoryPath: displayCategoryPath(item.mainCategoryName, item.subCategoryName)
   }));
 
-  if (fromListings.length < 3) {
+  if (fromListings.length < 4) {
     return [...fromListings, ...heroFallback.slice(fromListings.length)];
   }
   return fromListings;
