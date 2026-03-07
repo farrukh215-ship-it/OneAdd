@@ -3,6 +3,8 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
+  ServiceUnavailableException,
   UnauthorizedException
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -28,6 +30,7 @@ import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
 import { PasswordResetRequestDto } from "./dto/password-reset-request.dto";
 import { PasswordResetVerifyDto } from "./dto/password-reset-verify.dto";
 import { SignupDto } from "./dto/signup.dto";
+import { NoopSmsProvider } from "./sms/noop-sms.provider";
 import { SMS_PROVIDER, SmsProvider } from "./sms/sms-provider.interface";
 
 type AuthPayload = {
@@ -80,6 +83,8 @@ const resetAttemptStore = new Map<
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -89,7 +94,7 @@ export class AuthService {
 
   async signup(dto: SignupDto, request: Request): Promise<AuthPayload> {
     const email = this.normalizeAndValidateEmail(dto.email);
-    const phone = dto.phone.trim();
+    const phone = this.normalizePakistanPhone(dto.phone);
     const cnic = dto.cnic.trim();
     this.assertAdult(dto.dateOfBirth);
     this.assertStrongPassword(dto.password);
@@ -99,7 +104,13 @@ export class AuthService {
     );
 
     const existing = await this.prisma.user.findFirst({
-      where: { OR: [{ email }, { phone }, { cnic }] },
+      where: {
+        OR: [
+          { email },
+          { cnic },
+          { phone: { in: this.getPhoneLookupCandidates(phone) } }
+        ]
+      },
       select: { email: true, phone: true, cnic: true }
     });
 
@@ -144,7 +155,7 @@ export class AuthService {
   }
 
   async requestOtp(dto: OtpRequestDto, request: Request) {
-    const phone = dto.phone.trim();
+    const phone = this.normalizePakistanPhone(dto.phone);
     const isSignupRequest = dto.forSignup === true;
     const purpose = dto.purpose ?? (isSignupRequest ? OtpPurpose.SIGNUP : OtpPurpose.LOGIN);
     const ip = getIpAddress(request);
@@ -174,12 +185,18 @@ export class AuthService {
       );
     }
 
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+    const user = await this.findUserByPhone(phone);
     if (isSignupRequest && user) {
       throw new BadRequestException("Aik number pe sirf aik account banta hai.");
     }
     if (!isSignupRequest && !user) {
       throw new BadRequestException("No account found for this phone.");
+    }
+    if (!this.isTestingPhone(phone) && this.smsProvider instanceof NoopSmsProvider) {
+      this.logger.error(`OTP requested for ${phone} but SMS provider is noop.`);
+      throw new ServiceUnavailableException(
+        "OTP delivery service abhi configured nahi hai. Support se rabta karein."
+      );
     }
 
     const otp = this.isTestingPhone(phone) ? TESTING_OTP : this.generateOtp();
@@ -202,10 +219,18 @@ export class AuthService {
     });
 
     if (!this.isTestingPhone(phone)) {
-      await this.smsProvider.send({
-        to: phone,
-        message: `Your OTP is ${otp}. It will expire in ${expiresMinutes} minutes.`
-      });
+      try {
+        await this.smsProvider.send({
+          to: phone,
+          message: `Your OTP is ${otp}. It will expire in ${expiresMinutes} minutes.`
+        });
+      } catch (error) {
+        await this.prisma.otpCode.delete({ where: { id: otpRecord.id } }).catch(() => undefined);
+        this.logger.error(`Failed to deliver OTP to ${phone}`, error instanceof Error ? error.stack : undefined);
+        throw new ServiceUnavailableException(
+          "OTP send nahi ho saka. Thori dair baad dobara try karein."
+        );
+      }
     }
 
     return {
@@ -216,7 +241,7 @@ export class AuthService {
   }
 
   async verifyOtp(dto: OtpVerifyDto, request: Request) {
-    const phone = dto.phone.trim();
+    const phone = this.normalizePakistanPhone(dto.phone);
     const purpose = dto.purpose ?? OtpPurpose.LOGIN;
     const ip = getIpAddress(request);
     const userAgent = request.headers["user-agent"] ?? null;
@@ -322,16 +347,19 @@ export class AuthService {
 
   async requestPasswordReset(dto: PasswordResetRequestDto, request: Request) {
     const email = dto.email.trim().toLowerCase();
-    const phone = dto.phone.trim();
+    const phone = this.normalizePakistanPhone(dto.phone);
     const resetAttemptKey = this.buildAttemptKey(`${email}|${phone}`, getIpAddress(request));
     this.assertAttemptAllowed(resetAttemptStore, resetAttemptKey, "password reset");
 
-    const user = await this.prisma.user.findUnique({
-      where: { email },
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        phone: { in: this.getPhoneLookupCandidates(phone) }
+      },
       select: { id: true, phone: true }
     });
 
-    if (!user || user.phone !== phone) {
+    if (!user || !this.arePhonesEquivalent(user.phone, phone)) {
       this.recordAttemptFailure(resetAttemptStore, resetAttemptKey, RESET_ATTEMPT_WINDOW_MS, RESET_ATTEMPT_MAX);
       throw new BadRequestException("Account not found for this email and phone.");
     }
@@ -346,11 +374,14 @@ export class AuthService {
 
   async verifyPasswordReset(dto: PasswordResetVerifyDto, request: Request) {
     const email = dto.email.trim().toLowerCase();
-    const phone = dto.phone.trim();
-    const user = await this.prisma.user.findUnique({
-      where: { email }
+    const phone = this.normalizePakistanPhone(dto.phone);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        phone: { in: this.getPhoneLookupCandidates(phone) }
+      }
     });
-    if (!user || user.phone !== phone) {
+    if (!user || !this.arePhonesEquivalent(user.phone, phone)) {
       throw new BadRequestException("Account not found for this email and phone.");
     }
 
@@ -541,7 +572,7 @@ export class AuthService {
 
   private async validateOtpVerificationToken(token: string, user: User) {
     const payload = await this.decodeOtpVerificationToken(token);
-    if (payload.phone !== user.phone) {
+    if (!payload.phone || !this.arePhonesEquivalent(payload.phone, user.phone)) {
       throw new UnauthorizedException("Invalid OTP verification token.");
     }
 
@@ -560,7 +591,7 @@ export class AuthService {
 
   private async validateSignupOtpVerificationToken(token: string, phone: string) {
     const payload = await this.decodeOtpVerificationToken(token);
-    if (payload.phone !== phone) {
+    if (!payload.phone || !this.arePhonesEquivalent(payload.phone, phone)) {
       throw new UnauthorizedException("OTP token does not match signup phone.");
     }
     if (payload.purpose && payload.purpose !== OtpPurpose.SIGNUP) {
@@ -770,7 +801,7 @@ export class AuthService {
     }
 
     const tokenPhone = decodedToken.phone_number?.trim();
-    if (!tokenPhone || tokenPhone !== phone) {
+    if (!tokenPhone || !this.arePhonesEquivalent(tokenPhone, phone)) {
       throw new UnauthorizedException("Phone verification failed.");
     }
   }
@@ -849,7 +880,48 @@ export class AuthService {
   }
 
   private isTestingPhone(phone: string) {
-    return TESTING_PHONE_NUMBERS.has(phone.trim());
+    const normalized = this.normalizePakistanPhone(phone);
+    return Array.from(TESTING_PHONE_NUMBERS).some((item) => this.arePhonesEquivalent(item, normalized));
+  }
+
+  private async findUserByPhone(phone: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        phone: {
+          in: this.getPhoneLookupCandidates(phone)
+        }
+      }
+    });
+  }
+
+  private getPhoneLookupCandidates(phone: string) {
+    const normalized = this.normalizePakistanPhone(phone);
+    const local = normalized.startsWith("+92") ? `0${normalized.slice(3)}` : normalized;
+    return Array.from(new Set([phone.trim(), normalized, local]));
+  }
+
+  private arePhonesEquivalent(left: string, right: string) {
+    return this.normalizePakistanPhone(left) === this.normalizePakistanPhone(right);
+  }
+
+  private normalizePakistanPhone(rawPhone: string) {
+    const compact = String(rawPhone ?? "").trim().replace(/[^\d+]/g, "");
+    if (!compact) {
+      return "";
+    }
+    if (compact.startsWith("+92") && compact.length === 13) {
+      return compact;
+    }
+    if (compact.startsWith("0092") && compact.length === 14) {
+      return `+${compact.slice(2)}`;
+    }
+    if (compact.startsWith("92") && compact.length === 12) {
+      return `+${compact}`;
+    }
+    if (compact.startsWith("03") && compact.length === 11) {
+      return `+92${compact.slice(1)}`;
+    }
+    return compact;
   }
 
   private getFirebaseAuth():

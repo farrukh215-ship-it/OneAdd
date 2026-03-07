@@ -14,6 +14,7 @@ type EnvConfig = {
   SMS4CONNECT_BASE_URL?: string;
   SMS4CONNECT_API_KEY?: string;
   SMS4CONNECT_SENDER_ID?: string;
+  ALLOW_NOOP_SMS_IN_PRODUCTION?: string;
   PUSH_PROVIDER?: string;
   FIREBASE_SERVICE_ACCOUNT_PATH?: string;
   FCM_PROJECT_ID?: string;
@@ -67,6 +68,15 @@ export function validateEnvironment(config: EnvConfig) {
   ) {
     throw new Error(
       "SMS4CONNECT_API_KEY and SMS4CONNECT_SENDER_ID are required when SMS_PROVIDER=sms4connect."
+    );
+  }
+  if (
+    nodeEnv === "production" &&
+    (config.SMS_PROVIDER ?? "noop") !== "sms4connect" &&
+    config.ALLOW_NOOP_SMS_IN_PRODUCTION !== "true"
+  ) {
+    throw new Error(
+      "SMS_PROVIDER must be sms4connect in production unless ALLOW_NOOP_SMS_IN_PRODUCTION=true."
     );
   }
   if (
@@ -129,6 +139,7 @@ export function validateEnvironment(config: EnvConfig) {
     SMS4CONNECT_BASE_URL: config.SMS4CONNECT_BASE_URL ?? "https://api.sms4connect.com",
     SMS4CONNECT_API_KEY: config.SMS4CONNECT_API_KEY ?? "",
     SMS4CONNECT_SENDER_ID: config.SMS4CONNECT_SENDER_ID ?? "",
+    ALLOW_NOOP_SMS_IN_PRODUCTION: config.ALLOW_NOOP_SMS_IN_PRODUCTION ?? "false",
     PUSH_PROVIDER: config.PUSH_PROVIDER ?? "noop",
     FIREBASE_SERVICE_ACCOUNT_PATH: config.FIREBASE_SERVICE_ACCOUNT_PATH ?? "",
     FCM_PROJECT_ID: config.FCM_PROJECT_ID ?? "",

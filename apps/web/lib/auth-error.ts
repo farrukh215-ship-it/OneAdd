@@ -52,6 +52,17 @@ export function toUserFriendlyAuthError(input: unknown) {
     return "OTP bhejna possible nahi hua. Dobara try karein.";
   }
 
+  if (
+    message.includes("otp delivery service") ||
+    message.includes("configured nahi hai")
+  ) {
+    return "OTP service abhi active nahi hai. Support se rabta karein ya thori dair baad dobara try karein.";
+  }
+
+  if (message.includes("otp send nahi ho saka") || message.includes("failed to send otp sms")) {
+    return "OTP receive nahi ho saka. SMS service me masla hai, thori dair baad dobara try karein.";
+  }
+
   if (message.includes("otp resend failed")) {
     return "Naya OTP bhejna possible nahi hua. Dobara try karein.";
   }

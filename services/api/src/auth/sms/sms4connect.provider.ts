@@ -31,7 +31,15 @@ export class Sms4ConnectProvider implements SmsProvider {
       })
     });
 
-    if (!response.ok) {
+    const rawBody = await response.text();
+    const normalizedBody = rawBody.toLowerCase();
+
+    if (
+      !response.ok ||
+      normalizedBody.includes("error") ||
+      normalizedBody.includes("failed") ||
+      normalizedBody.includes("invalid")
+    ) {
       throw new HttpException(
         "Failed to send OTP SMS.",
         HttpStatus.BAD_GATEWAY
