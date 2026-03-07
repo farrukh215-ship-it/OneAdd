@@ -96,6 +96,10 @@ function getPasswordStrength(password: string) {
   return { label: "Strong", value: 100 };
 }
 
+function isStrongPassword(password: string) {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
+}
+
 export function SignupCard() {
   const router = useRouter();
   const [form, setForm] = useState<SignupFormState>(initialState);
@@ -140,6 +144,7 @@ export function SignupCard() {
   const phoneValid = phonePattern.test(form.phone.trim());
   const cnicValid = cnicPattern.test(form.cnic.trim());
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+  const passwordStrong = isStrongPassword(form.password);
   const passwordsMatch =
     form.password.length > 0 && form.password === form.confirmPassword;
 
@@ -149,7 +154,7 @@ export function SignupCard() {
       form.fatherName.trim().length > 0,
       cnicValid,
       form.email.includes("@"),
-      form.password.length >= 8,
+      passwordStrong,
       passwordsMatch,
       form.dateOfBirth.length > 0,
       form.gender.length > 0,
@@ -157,7 +162,7 @@ export function SignupCard() {
     ];
     const done = checks.filter(Boolean).length;
     return Math.round((done / checks.length) * 100);
-  }, [form, cnicValid, passwordsMatch, phoneValid]);
+  }, [form, cnicValid, passwordStrong, passwordsMatch, phoneValid]);
 
   function fieldClass(valid: boolean, touched: boolean) {
     if (!touched) return "input";
@@ -169,7 +174,9 @@ export function SignupCard() {
     if (!form.fatherName.trim()) return "Father Name required hai.";
     if (!cnicValid) return "CNIC format 00000-0000000-0 hona chahiye.";
     if (!form.email.includes("@")) return "Valid email enter karein.";
-    if (form.password.length < 8) return "Password kam az kam 8 characters ho.";
+    if (!passwordStrong) {
+      return "Password strong hona chahiye (8+ chars, uppercase, lowercase, number, special char).";
+    }
     if (!passwordsMatch) return "Password aur confirm password match nahi kar rahe.";
     if (!form.dateOfBirth) return "Date of birth required hai.";
     if (isLessThan18(form.dateOfBirth)) {
@@ -355,7 +362,7 @@ export function SignupCard() {
           </div>
         ) : null}
         <input
-          className={fieldClass(form.password.length >= 8, form.password.length > 0)}
+          className={fieldClass(passwordStrong, form.password.length > 0)}
           type="password"
           placeholder="Password"
           value={form.password}
@@ -371,6 +378,13 @@ export function SignupCard() {
           </div>
           <small>{strength.label} password</small>
         </div>
+        {form.password.length > 0 ? (
+          <div className={`microValidationHint ${passwordStrong ? "ok" : "error"}`}>
+            {passwordStrong
+              ? "Password backend rules ke mutabiq strong hai."
+              : "8+ chars, uppercase, lowercase, number aur special char lazmi hai."}
+          </div>
+        ) : null}
         <input
           className={fieldClass(passwordsMatch, form.confirmPassword.length > 0)}
           type="password"

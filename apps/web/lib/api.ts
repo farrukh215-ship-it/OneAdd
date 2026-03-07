@@ -107,18 +107,37 @@ async function apiRequest<T>(
       payload = null;
     }
 
-    const message =
-      typeof payload === "object" &&
-      payload !== null &&
-      "message" in payload &&
-      typeof (payload as { message?: unknown }).message === "string"
-        ? (payload as { message: string }).message
-        : `Request failed: ${response.status}`;
+    const message = extractApiErrorMessage(payload) ?? `Request failed: ${response.status}`;
 
     throw new ApiError(message, response.status, payload);
   }
 
   return (await response.json()) as T;
+}
+
+function extractApiErrorMessage(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const maybeMessage = (payload as { message?: unknown }).message;
+  if (typeof maybeMessage === "string") {
+    return maybeMessage;
+  }
+
+  if (maybeMessage && typeof maybeMessage === "object") {
+    const nested = (maybeMessage as { message?: unknown }).message;
+    if (typeof nested === "string") {
+      return nested;
+    }
+  }
+
+  const maybeError = (payload as { error?: unknown }).error;
+  if (typeof maybeError === "string") {
+    return maybeError;
+  }
+
+  return null;
 }
 
 type ListingsPage = {

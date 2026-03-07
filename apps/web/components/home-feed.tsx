@@ -515,16 +515,13 @@ export function HomeFeed() {
   );
   const heroCards = useMemo(() => heroCardsFromListings(heroSourceListings.slice(0, 8)), [heroSourceListings]);
   const displayedHeroCards = useMemo(() => {
-    if (heroCards.length <= 1) {
+    if (heroCards.length <= 4) {
       return heroCards;
     }
 
-    const featured = heroCards[featuredHeroIndex % heroCards.length];
-    const support = heroCards
-      .filter((_, index) => index !== featuredHeroIndex % heroCards.length)
-      .slice(0, 2);
-
-    return [featured, ...support];
+    return Array.from({ length: 4 }, (_, offset) => {
+      return heroCards[(featuredHeroIndex + offset) % heroCards.length];
+    });
   }, [featuredHeroIndex, heroCards]);
   const heroListingIds = useMemo(
     () => new Set(displayedHeroCards.map((item) => item.listingId).filter(Boolean)),
@@ -750,7 +747,7 @@ export function HomeFeed() {
                 return (
                   <Link
                     href={`/listing/${item.listingId}`}
-                    className={`hero-card ${index === 0 ? "hero-card-featured" : "hero-card-compact"}`}
+                    className="hero-card hero-card-compact"
                     key={`${item.title}-${index}`}
                   >
                     {cardBody}
@@ -760,7 +757,7 @@ export function HomeFeed() {
 
               return (
                 <article
-                  className={`hero-card ${index === 0 ? "hero-card-featured" : "hero-card-compact"}`}
+                  className="hero-card hero-card-compact"
                   key={`${item.title}-${index}`}
                 >
                   {cardBody}
