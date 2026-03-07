@@ -26,7 +26,6 @@ import {
 } from "../lib/ui-contract";
 import { useAuthToken } from "../lib/use-auth-token";
 import { LiveSearchInput } from "./live-search-input";
-import { InteractiveGlobe } from "./interactive-globe";
 
 const INITIAL_SKELETON_COUNT = 8;
 const urduTagline =
@@ -44,15 +43,11 @@ const heroMetrics = [
   { value: "PK", label: "Local First" }
 ];
 const searchSignals = [
-  "No fraud, no fake showroom flooding",
-  "Verified home sellers with real identity checks",
-  "Smart search with close-match and city awareness"
+  "Laakhon ads me se asli dhoondna band karo",
+  "Yahan sirf woh hain jo sach mein bechna chahte hain",
+  "Woh zamana gaya jab tasweer kuch aur hoti thi, cheez kuch aur nikalti thi"
 ];
-const heroEditorialNotes = [
-  "No showroom spam",
-  "No repeat seller clutter",
-  "Verified household listings only"
-];
+const heroEditorialNotes = ["No fraud noise", "No repeat shopkeeper clutter", "Verified home-to-home flow"];
 
 type HeroCard = {
   listingId?: string;
@@ -188,22 +183,22 @@ function ListingCard({ listing }: ListingCardProps) {
     void toggleSavedListingPreference(listing.id, isLoggedIn).then(setSaved);
   }
 
-  function goToPrevImage(event: MouseEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-    setActiveImageIndex((prev) => (prev <= 0 ? visibleImageIndexes.length - 1 : prev - 1));
-  }
-
-  function goToNextImage(event: MouseEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-    setActiveImageIndex((prev) => (prev + 1) % visibleImageIndexes.length);
-  }
-
   useEffect(() => {
     setActiveImageIndex(0);
     setFailedImageIndexes(new Set());
   }, [listing.id]);
+
+  useEffect(() => {
+    if (visibleImageIndexes.length <= 1) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveImageIndex((prev) => (prev + 1) % visibleImageIndexes.length);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [visibleImageIndexes.length]);
 
   useEffect(() => {
     if (activeImageIndex >= visibleImageIndexes.length) {
@@ -248,16 +243,6 @@ function ListingCard({ listing }: ListingCardProps) {
             <div className="listingImagePlaceholder" aria-hidden="true" />
           )}
         </div>
-        {visibleImageIndexes.length > 1 ? (
-          <div className="listingSlideControls">
-            <button className="listingSlideBtn" onClick={goToPrevImage} type="button">
-              {"<"}
-            </button>
-            <button className="listingSlideBtn" onClick={goToNextImage} type="button">
-              {">"}
-            </button>
-          </div>
-        ) : null}
       </div>
       <div className="listing-body">
         <p className="listing-cat">TGMG Verified</p>
@@ -550,10 +535,12 @@ export function HomeFeed() {
                   <strong>Asli ghar ke seller, clean discovery aur zero duplicate clutter.</strong>
                 </div>
               </div>
-              <p className="hero-search-kicker">Trusted household discovery</p>
-              <h2 className="hero-search-title">Fraud kam, fake ads kam, relevant asli listings zyada.</h2>
+              <p className="hero-search-kicker">Asli household discovery</p>
+              <h2 className="hero-search-title">
+                Hazaaron fake ads ke beech ek asli listing - woh ek yahan hai.
+              </h2>
               <p className="hero-search-copy">
-                Product, category, subcategory aur city ko is tarah organise kiya gaya hai ke buyer seedha verified home seller tak pohanch sake.
+                Jo cheez dhoondh rahe ho, koi na koi zaroor bech raha hai - bas asli jagah chahiye thi.
               </p>
               <div className="hero-search-signal-list">
                 {searchSignals.map((item) => (
@@ -702,7 +689,10 @@ export function HomeFeed() {
           </div>
 
           <h1 className="hero-heading">
-            Tera <em>Ghar</em> Mera Ghar
+            <span className="hero-heading-line">
+              Tera <span className="hero-heading-accent">Ghar</span>
+            </span>
+            <span className="hero-heading-line">Mera Ghar</span>
           </h1>
           <div className="hero-mobile-logo" aria-hidden="true">
             <Image
@@ -716,8 +706,8 @@ export function HomeFeed() {
 
           <p className="hero-urdu urdu-text">{urduTagline}</p>
           <p className="hero-desc">
-            Pakistan ka real-person marketplace. <strong>Shopkeepers, duplicate ads aur fake seller
-            noise ko block karke</strong> sirf asli household sellers ko front par laya gaya hai.
+            Pakistan ka real-person marketplace. <strong>Fake seller noise, duplicate showroom clutter aur
+            repeat ads ko block karke</strong> sirf asli home seller listings ko front par laya gaya hai.
           </p>
           <div className="hero-editorial-strip">
             {heroEditorialNotes.map((item) => (
@@ -783,42 +773,6 @@ export function HomeFeed() {
           <span className="trust-text">Made for Pakistan</span>
         </div>
       </div>
-
-      <section className="showcaseSection">
-        <div className="showcaseIntro">
-          <p className="section-eyebrow">Marketplace Preview</p>
-          <h2 className="section-title">Real sellers, premium browsing, faster trust signals.</h2>
-          <p className="showcaseCopy">
-            Screenshots, seller trust, category discovery aur response cues ko ek clean premium
-            browsing layer me organise kiya gaya hai.
-          </p>
-        </div>
-        <div className="showcaseStage">
-          <InteractiveGlobe />
-          <div className="showcaseGlassCard showcaseGlassCard--primary">
-            {heroCards[0]?.imageUrl ? (
-              <img src={heroCards[0].imageUrl} alt={heroCards[0].title} className="showcaseShot" />
-            ) : null}
-            <div className="showcaseGlassOverlay">
-              <span className="sellerBadge sellerBadge--verified">Verified flow</span>
-              <strong>{heroCards[0]?.title ?? "Household listing preview"}</strong>
-              <p>{heroCards[0]?.city ?? "Pakistan"}</p>
-            </div>
-          </div>
-          <div className="showcaseGlassStack">
-            {heroCards.slice(1, 3).map((item) => (
-              <article className="showcaseGlassCard" key={item.title}>
-                {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="showcaseShot" /> : null}
-                <div className="showcaseGlassOverlay compact">
-                  <strong>{item.title}</strong>
-                  <p>{item.price}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="categories-section">
         <header className="section-header">
           <div>

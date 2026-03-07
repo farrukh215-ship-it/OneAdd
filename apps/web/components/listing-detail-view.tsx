@@ -95,6 +95,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportFeedback, setReportFeedback] = useState("");
   const [openPublicContactFor, setOpenPublicContactFor] = useState("");
+  const [pressedGalleryControl, setPressedGalleryControl] = useState<"prev" | "next" | null>(null);
   const isLoggedIn = mounted && Boolean(token);
   const currentUserId = useMemo(() => getUserIdFromToken(token), [token]);
   const isListingOwner = Boolean(currentUserId && listing.user?.id && currentUserId === listing.user.id);
@@ -257,13 +258,33 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   function showPrevImage() {
     if (visibleImages.length <= 1) return;
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(16);
+    }
+    setPressedGalleryControl("prev");
     setSelectedImageIndex((prev) => (prev <= 0 ? visibleImages.length - 1 : prev - 1));
   }
 
   function showNextImage() {
     if (visibleImages.length <= 1) return;
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(16);
+    }
+    setPressedGalleryControl("next");
     setSelectedImageIndex((prev) => (prev + 1) % visibleImages.length);
   }
+
+  useEffect(() => {
+    if (!pressedGalleryControl) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setPressedGalleryControl((prev) => (prev === pressedGalleryControl ? null : prev));
+    }, 180);
+
+    return () => window.clearTimeout(timer);
+  }, [pressedGalleryControl]);
 
   async function submitReport() {
     if (!isLoggedIn) {
@@ -319,10 +340,18 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
             )}
             {visibleImages.length > 1 ? (
               <div className="listingMainControls">
-                <button className="listingMainControlBtn" type="button" onClick={showPrevImage}>
+                <button
+                  className={`listingMainControlBtn ${pressedGalleryControl === "prev" ? "isPressed" : ""}`}
+                  type="button"
+                  onClick={showPrevImage}
+                >
                   {"\u2039"}
                 </button>
-                <button className="listingMainControlBtn" type="button" onClick={showNextImage}>
+                <button
+                  className={`listingMainControlBtn ${pressedGalleryControl === "next" ? "isPressed" : ""}`}
+                  type="button"
+                  onClick={showNextImage}
+                >
                   {"\u203a"}
                 </button>
               </div>

@@ -6989,3 +6989,203 @@ body.uiPremiumV1 .trust-bar {
     font-size: 17px;
   }
 }
+
+body.uiPremiumV1 .hero-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 10.6ch;
+}
+
+body.uiPremiumV1 .hero-heading::after,
+body.uiPremiumV1 .hero-heading em::after {
+  display: none;
+}
+
+body.uiPremiumV1 .hero-heading-line {
+  display: block;
+}
+
+body.uiPremiumV1 .hero-heading-accent {
+  position: relative;
+  display: inline-block;
+  color: #c8603a;
+  padding-bottom: 18px;
+}
+
+body.uiPremiumV1 .hero-heading-accent::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c8603a 0%, rgba(200, 96, 58, 0.35) 100%);
+}
+
+body.uiPremiumV1 .hero-search-copy {
+  font-size: 16px;
+  line-height: 1.72;
+}
+
+body.uiPremiumV1 .hero-search-signal-list {
+  gap: 10px;
+}
+
+body.uiPremiumV1 .hero-card-stack {
+  align-items: start;
+}
+
+body.uiPremiumV1 .listing-card {
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 18px;
+}
+
+body.uiPremiumV1 .listing-img {
+  position: relative;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.95), rgba(245, 233, 219, 0.82)),
+    linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,241,232,0.88));
+}
+
+body.uiPremiumV1 .listing-img-inner {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  display: grid;
+  place-items: center;
+}
+
+body.uiPremiumV1 .listingCardMedia {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 18px;
+}
+
+body.uiPremiumV1 .listingImagePlaceholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.82), rgba(235, 218, 201, 0.62)),
+    linear-gradient(180deg, rgba(247,241,234,0.86), rgba(237,225,212,0.78));
+}
+
+body.uiPremiumV1 .listingTitleRow {
+  gap: 18px;
+  align-items: start;
+}
+
+body.uiPremiumV1 .listing-title {
+  max-width: 15ch;
+}
+
+body.uiPremiumV1 .listing-price {
+  white-space: nowrap;
+}
+
+body.uiPremiumV1 .listingMetaBlock {
+  display: grid;
+  gap: 6px;
+}
+
+body.uiPremiumV1 .listingMetaPrimary,
+body.uiPremiumV1 .listingMetaSecondary,
+body.uiPremiumV1 .listingSupportMeta,
+body.uiPremiumV1 .listingTimelineMeta {
+  line-height: 1.5;
+}
+
+body.uiPremiumV1 .listing-desc {
+  max-width: 52ch;
+  color: #795846;
+}
+
+body.uiPremiumV1 .listingFooterCluster {
+  padding-top: 2px;
+}
+
+body.uiPremiumV1 .listingMainControlBtn {
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+body.uiPremiumV1 .listingMainControlBtn.isPressed,
+body.uiPremiumV1 .listingMainControlBtn:active {
+  transform: scale(0.92);
+  background: rgba(200, 96, 58, 0.14);
+  box-shadow: 0 0 0 6px rgba(200, 96, 58, 0.08);
+}
+
+@media (max-width: 780px) {
+  body.uiPremiumV1 .hero-heading {
+    max-width: 100%;
+  }
+
+  body.uiPremiumV1 .hero-heading-accent {
+    padding-bottom: 14px;
+  }
+
+  body.uiPremiumV1 .hero-heading-accent::after {
+    bottom: 4px;
+    height: 4px;
+  }
+
+  body.uiPremiumV1 .listing-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  body.uiPremiumV1 .listing-img {
+    border-radius: 18px;
+  }
+
+  body.uiPremiumV1 .listing-img-inner {
+    padding: 10px;
+  }
+
+  body.uiPremiumV1 .listing-body {
+    gap: 8px;
+  }
+
+  body.uiPremiumV1 .listing-title {
+    max-width: none;
+    font-size: 18px;
+    line-height: 1.08;
+  }
+
+  body.uiPremiumV1 .listing-price {
+    font-size: 18px;
+  }
+
+  body.uiPremiumV1 .listing-price span {
+    margin-top: 4px;
+  }
+
+  body.uiPremiumV1 .listing-desc {
+    -webkit-line-clamp: 3;
+    max-width: none;
+    font-size: 13px;
+  }
+
+  body.uiPremiumV1 .listingMetaPrimary {
+    font-size: 10px;
+  }
+
+  body.uiPremiumV1 .listingMetaSecondary,
+  body.uiPremiumV1 .listingSupportMeta,
+  body.uiPremiumV1 .listingTimelineMeta {
+    font-size: 11px;
+  }
+}
