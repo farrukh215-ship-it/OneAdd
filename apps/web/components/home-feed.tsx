@@ -26,6 +26,7 @@ import {
 } from "../lib/ui-contract";
 import { useAuthToken } from "../lib/use-auth-token";
 import { LiveSearchInput } from "./live-search-input";
+import { InteractiveGlobe } from "./interactive-globe";
 
 const INITIAL_SKELETON_COUNT = 8;
 const urduTagline =
@@ -793,12 +794,7 @@ export function HomeFeed() {
           </p>
         </div>
         <div className="showcaseStage">
-          <div className="showcaseOrbScene" aria-hidden="true">
-            <div className="showcaseOrbCore" />
-            <div className="showcaseOrbRing showcaseOrbRing--one" />
-            <div className="showcaseOrbRing showcaseOrbRing--two" />
-            <div className="showcaseOrbGlow" />
-          </div>
+          <InteractiveGlobe />
           <div className="showcaseGlassCard showcaseGlassCard--primary">
             {heroCards[0]?.imageUrl ? (
               <img src={heroCards[0].imageUrl} alt={heroCards[0].title} className="showcaseShot" />

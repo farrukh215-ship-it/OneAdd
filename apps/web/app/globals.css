@@ -6714,7 +6714,13 @@ body.uiPremiumV1 .trust-bar {
   align-items: center;
 }
 
-.showcaseOrbScene {
+.interactiveGlobe {
+  position: relative;
+  display: grid;
+  gap: 14px;
+}
+
+.interactiveGlobeAura {
   position: relative;
   min-height: 320px;
   border-radius: 28px;
@@ -6724,47 +6730,150 @@ body.uiPremiumV1 .trust-bar {
     linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,245,234,0.82));
 }
 
-.showcaseOrbCore,
-.showcaseOrbGlow {
+.interactiveGlobeStage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 1200px;
+}
+
+.interactiveGlobeSphere {
+  position: relative;
+  width: min(100%, 278px);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transform:
+    rotateX(var(--globe-tilt-x, -14deg))
+    rotateY(var(--globe-tilt-y, 12deg));
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,0.96), rgba(255,255,255,0) 28%),
+    radial-gradient(circle at 64% 62%, rgba(225, 170, 136, 0.34), rgba(225, 170, 136, 0) 32%),
+    radial-gradient(circle at 50% 48%, rgba(200, 96, 58, 0.2), rgba(200, 96, 58, 0.08) 46%, rgba(77, 43, 26, 0.84) 100%);
+  box-shadow:
+    inset -34px -36px 64px rgba(45, 24, 15, 0.34),
+    inset 22px 22px 42px rgba(255,255,255,0.18),
+    0 28px 60px rgba(59, 31, 20, 0.2);
+  transition: transform 180ms ease-out;
+  animation: globeIdleFloat 7s ease-in-out infinite;
+}
+
+.interactiveGlobeGrid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.globeLatitude,
+.globeMeridian {
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
+  border: 1px solid rgba(255,255,255,0.22);
   border-radius: 999px;
+  opacity: 0.82;
 }
 
-.showcaseOrbCore {
-  width: 130px;
-  height: 130px;
-  background: radial-gradient(circle at 35% 35%, #f5d2b9 0%, #c8603a 42%, #603724 100%);
-  box-shadow: inset -18px -20px 36px rgba(59, 30, 17, 0.24);
-  animation: orbFloat 6.5s ease-in-out infinite;
+.globeLatitude--1 { width: 86%; height: 18%; }
+.globeLatitude--2 { width: 94%; height: 36%; }
+.globeLatitude--3 { width: 100%; height: 54%; }
+.globeLatitude--4 { width: 94%; height: 72%; }
+.globeLatitude--5 { width: 82%; height: 90%; }
+
+.globeMeridian {
+  width: 48%;
+  height: 100%;
 }
 
-.showcaseOrbGlow {
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(200, 96, 58, 0.18), transparent 68%);
-  filter: blur(8px);
+.globeMeridian--1 { transform: translate(-50%, -50%) rotate(0deg); }
+.globeMeridian--2 { transform: translate(-50%, -50%) rotate(30deg); }
+.globeMeridian--3 { transform: translate(-50%, -50%) rotate(60deg); }
+.globeMeridian--4 { transform: translate(-50%, -50%) rotate(90deg); }
+.globeMeridian--5 { transform: translate(-50%, -50%) rotate(120deg); }
+.globeMeridian--6 { transform: translate(-50%, -50%) rotate(150deg); }
+
+.globeMarker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -50%);
 }
 
-.showcaseOrbRing {
+.globeMarkerDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 6px rgba(255,255,255,0.16);
+}
+
+.globeMarker--primary .globeMarkerDot {
+  background: #f7f7f7;
+}
+
+.globeMarker--accent .globeMarkerDot {
+  background: #f6bd94;
+}
+
+.globeMarker--muted .globeMarkerDot {
+  background: #cfa992;
+}
+
+.globeMarkerLabel {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.92);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.interactiveGlobeShine {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 24% 22%, rgba(255,255,255,0.44), rgba(255,255,255,0) 24%),
+    radial-gradient(circle at 58% 58%, rgba(255,255,255,0.08), rgba(255,255,255,0) 40%);
+  mix-blend-mode: screen;
+}
+
+.interactiveGlobeRing {
   position: absolute;
   inset: 50% auto auto 50%;
-  border: 1px solid rgba(124, 91, 73, 0.18);
+  border: 1px solid rgba(124, 91, 73, 0.16);
   border-radius: 999px;
-  transform: translate(-50%, -50%) rotateX(70deg);
+  transform: translate(-50%, -50%) rotateX(72deg);
 }
 
-.showcaseOrbRing--one {
-  width: 260px;
-  height: 260px;
-  animation: ringSpin 12s linear infinite;
-}
-
-.showcaseOrbRing--two {
+.interactiveGlobeRing--outer {
   width: 320px;
-  height: 180px;
+  height: 320px;
+  animation: ringSpin 18s linear infinite;
+}
+
+.interactiveGlobeRing--inner {
+  width: 244px;
+  height: 244px;
   animation: ringSpinReverse 16s linear infinite;
+}
+
+.interactiveGlobeLegend {
+  display: grid;
+  gap: 8px;
+  max-width: 36ch;
+}
+
+.interactiveGlobeLegend p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #7a5d4c;
 }
 
 .showcaseGlassStack {
@@ -6823,9 +6932,19 @@ body.uiPremiumV1 .trust-bar {
   font-size: 16px;
 }
 
-@keyframes orbFloat {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-  50% { transform: translate(-50%, -50%) translateY(-10px); }
+@keyframes globeIdleFloat {
+  0%, 100% {
+    transform:
+      rotateX(var(--globe-tilt-x, -14deg))
+      rotateY(var(--globe-tilt-y, 12deg))
+      translateY(0);
+  }
+  50% {
+    transform:
+      rotateX(calc(var(--globe-tilt-x, -14deg) + 2deg))
+      rotateY(calc(var(--globe-tilt-y, 12deg) - 3deg))
+      translateY(-6px);
+  }
 }
 
 @keyframes ringSpin {
@@ -6843,8 +6962,12 @@ body.uiPremiumV1 .trust-bar {
     grid-template-columns: 1fr;
   }
 
-  .showcaseOrbScene {
+  .interactiveGlobeAura {
     min-height: 220px;
+  }
+
+  .interactiveGlobeLegend {
+    max-width: none;
   }
 }
 
