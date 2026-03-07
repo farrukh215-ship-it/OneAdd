@@ -21,6 +21,7 @@ import {
   displayListedDate,
   displayLocation,
   displayRelativeTime,
+  displaySellerBadge,
   displaySellerLastSeen
 } from "../lib/ui-contract";
 import { useAuthToken } from "../lib/use-auth-token";
@@ -157,6 +158,7 @@ function ListingCard({ listing }: ListingCardProps) {
       : "";
   const condition = (listing.status || "USED").replace(/_/g, " ");
   const trustScore = listing.user?.trustScore?.score ?? 0;
+  const sellerBadge = displaySellerBadge(trustScore);
   const responseBadge =
     trustScore >= 80 ? "Replies < 10m" : trustScore >= 60 ? "Replies < 30m" : "Replies < 2h";
   const [saved, setSaved] = useState(false);
@@ -268,6 +270,9 @@ function ListingCard({ listing }: ListingCardProps) {
         <div className="listingMetaBlock">
           <p className="listingMetaPrimary">{categoryPath}</p>
           <p className="listingMetaSecondary">{locationLabel}</p>
+        </div>
+        <div className="listingBadgeRow">
+          <span className={`sellerBadge sellerBadge--${sellerBadge.tone}`}>{sellerBadge.label}</span>
         </div>
         <p className="listing-desc">{compactCopy(listing.description, 72)}</p>
         <div className="listingFooterCluster">
@@ -777,6 +782,46 @@ export function HomeFeed() {
           <span className="trust-text">Made for Pakistan</span>
         </div>
       </div>
+
+      <section className="showcaseSection">
+        <div className="showcaseIntro">
+          <p className="section-eyebrow">Marketplace Preview</p>
+          <h2 className="section-title">Real sellers, premium browsing, faster trust signals.</h2>
+          <p className="showcaseCopy">
+            Screenshots, seller trust, category discovery aur response cues ko ek clean premium
+            browsing layer me organise kiya gaya hai.
+          </p>
+        </div>
+        <div className="showcaseStage">
+          <div className="showcaseOrbScene" aria-hidden="true">
+            <div className="showcaseOrbCore" />
+            <div className="showcaseOrbRing showcaseOrbRing--one" />
+            <div className="showcaseOrbRing showcaseOrbRing--two" />
+            <div className="showcaseOrbGlow" />
+          </div>
+          <div className="showcaseGlassCard showcaseGlassCard--primary">
+            {heroCards[0]?.imageUrl ? (
+              <img src={heroCards[0].imageUrl} alt={heroCards[0].title} className="showcaseShot" />
+            ) : null}
+            <div className="showcaseGlassOverlay">
+              <span className="sellerBadge sellerBadge--verified">Verified flow</span>
+              <strong>{heroCards[0]?.title ?? "Household listing preview"}</strong>
+              <p>{heroCards[0]?.city ?? "Pakistan"}</p>
+            </div>
+          </div>
+          <div className="showcaseGlassStack">
+            {heroCards.slice(1, 3).map((item) => (
+              <article className="showcaseGlassCard" key={item.title}>
+                {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="showcaseShot" /> : null}
+                <div className="showcaseGlassOverlay compact">
+                  <strong>{item.title}</strong>
+                  <p>{item.price}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="categories-section">
         <header className="section-header">

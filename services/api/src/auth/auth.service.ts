@@ -525,7 +525,12 @@ export class AuthService {
         city: true,
         dateOfBirth: true,
         gender: true,
-        profilePhotoUrl: true
+        profilePhotoUrl: true,
+        trustScore: {
+          select: {
+            score: true
+          }
+        }
       }
     });
     if (!user) {

@@ -19,6 +19,7 @@ import {
   displayCategoryPath,
   displayListedDate,
   displayLocation,
+  displaySellerBadge,
   displaySellerLastSeen,
   displayTrustScoreNote
 } from "../lib/ui-contract";
@@ -132,6 +133,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [cityLabel, areaLabelFromLocation] = locationLabel.split(" / ");
   const normalizedAreaLabel = exactLocation || areaLabelFromLocation || "";
   const trustScore = listing.user?.trustScore?.score ?? 0;
+  const sellerBadge = displaySellerBadge(trustScore);
   const trustLabel =
     trustScore >= 80 ? "Highly Trusted" : trustScore >= 50 ? "Trusted Seller" : "New Seller";
 
@@ -389,6 +391,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <section className="sellerTrustCard">
             <p className="sellerName">{listing.user?.fullName || "Verified Seller"}</p>
             <div className="sellerTrustRow">
+              <span className={`sellerBadge sellerBadge--${sellerBadge.tone}`}>{sellerBadge.label}</span>
               <span className="trustPill high">{trustLabel}</span>
               <span className="sellerTrustScore">Trust score: {trustScore}</span>
             </div>

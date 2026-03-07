@@ -121,8 +121,24 @@ export class ChatService {
         OR: [{ buyerId: userId }, { sellerId: userId }]
       },
       include: {
-        buyer: { select: { id: true, fullName: true, phone: true, city: true } },
-        seller: { select: { id: true, fullName: true, phone: true, city: true } },
+        buyer: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            city: true,
+            trustScore: { select: { score: true } }
+          }
+        },
+        seller: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            city: true,
+            trustScore: { select: { score: true } }
+          }
+        },
         listing: {
           select: {
             id: true,

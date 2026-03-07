@@ -11,7 +11,7 @@ import {
 } from "../../lib/api";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { ChatMessage, ChatThread } from "../../lib/types";
-import { displayCategoryPath } from "../../lib/ui-contract";
+import { displayCategoryPath, displaySellerBadge } from "../../lib/ui-contract";
 
 function getUserIdFromToken(token: string) {
   try {
@@ -205,6 +205,11 @@ export default function ChatPage() {
                 const peerName =
                   (thread.buyer?.id === currentUserId ? thread.seller?.fullName : thread.buyer?.fullName) ||
                   "Conversation";
+                const peerTrustScore =
+                  thread.buyer?.id === currentUserId
+                    ? thread.seller?.trustScore?.score ?? 0
+                    : thread.buyer?.trustScore?.score ?? 0;
+                const peerBadge = displaySellerBadge(peerTrustScore);
                 return (
                   <button
                     key={thread.id}
@@ -220,6 +225,9 @@ export default function ChatPage() {
                       Uploaded by {(thread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
                       {peerName.split(" ")[0]}
                     </p>
+                    <div className="chatThreadBadgeRow">
+                      <span className={`sellerBadge sellerBadge--${peerBadge.tone}`}>{peerBadge.label}</span>
+                    </div>
                     {displayCategoryPath(
                       thread.listing?.mainCategoryName,
                       thread.listing?.subCategoryName
@@ -249,6 +257,10 @@ export default function ChatPage() {
 
           {activeThread ? (
             <header className="chatPanelHeader">
+              {(() => {
+                const activePeerBadge = displaySellerBadge(activePeer?.trustScore?.score ?? 0);
+                return (
+                  <>
               <h2>{activeThread.listing?.title || "Conversation"}</h2>
               <p className="chatThreadMeta">
                 Uploaded by {(activeThread.seller?.fullName || "Seller").split(" ")[0]} | Chat with{" "}
@@ -266,6 +278,9 @@ export default function ChatPage() {
                   )}
                 </p>
               ) : null}
+              <div className="chatThreadBadgeRow">
+                <span className={`sellerBadge sellerBadge--${activePeerBadge.tone}`}>{activePeerBadge.label}</span>
+              </div>
               {activePeer?.city ? <p className="chatThreadMeta">City: {activePeer.city}</p> : null}
               {activePeer?.phone ? (
                 <div className="chatPeerActions">
@@ -279,6 +294,9 @@ export default function ChatPage() {
                   {showPeerContact ? <span className="revealedContact">{activePeer.phone}</span> : null}
                 </div>
               ) : null}
+                  </>
+                );
+              })()}
             </header>
           ) : null}
 

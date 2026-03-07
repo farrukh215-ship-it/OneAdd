@@ -55,12 +55,18 @@ export type ChatThread = {
     fullName?: string;
     phone?: string;
     city?: string;
+    trustScore?: {
+      score: number;
+    } | null;
   };
   seller?: {
     id: string;
     fullName?: string;
     phone?: string;
     city?: string;
+    trustScore?: {
+      score: number;
+    } | null;
   };
 };
 
@@ -133,7 +139,11 @@ export type SearchSuggestion = {
 export type SellerOverviewMetrics = {
   totalAds: number;
   activeAds: number;
+  soldAds: number;
+  savedCount: number;
   totalViews: number;
   chatStarts: number;
   offersCount: number;
+  conversionRate: number;
+  offerRate: number;
 };

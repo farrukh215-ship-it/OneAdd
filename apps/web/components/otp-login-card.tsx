@@ -58,6 +58,13 @@ export function OtpLoginCard() {
   const confirmationRef = useRef<ConfirmationResult | null>(null);
 
   const canLogin = useMemo(() => email.includes("@") && password.length >= 8, [email, password]);
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const resetEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail.trim());
+
+  function fieldClass(valid: boolean, touched: boolean) {
+    if (!touched) return "input";
+    return `input ${valid ? "inputSuccess validationPulseOk" : "inputError validationPulseError"}`;
+  }
 
   useEffect(() => {
     if (otpResendIn <= 0) return;
@@ -289,7 +296,7 @@ export function OtpLoginCard() {
       <p className="helperText">Email aur password se login karein.</p>
       <form className="stack" onSubmit={onLogin}>
         <input
-          className="input"
+          className={fieldClass(emailValid, email.length > 0)}
           type="email"
           placeholder="Email"
           value={email}
@@ -297,8 +304,13 @@ export function OtpLoginCard() {
           autoComplete="email"
           required
         />
+        {email.length > 0 ? (
+          <div className={`microValidationHint ${emailValid ? "ok" : "error"}`}>
+            {emailValid ? "Email looks valid." : "Valid email address enter karein."}
+          </div>
+        ) : null}
         <input
-          className="input"
+          className={fieldClass(password.length >= 8, password.length > 0)}
           type="password"
           placeholder="Password"
           value={password}
@@ -306,6 +318,11 @@ export function OtpLoginCard() {
           autoComplete="current-password"
           required
         />
+        {password.length > 0 ? (
+          <div className={`microValidationHint ${password.length >= 8 ? "ok" : "error"}`}>
+            {password.length >= 8 ? "Password length accepted." : "Password kam az kam 8 characters ka hona chahiye."}
+          </div>
+        ) : null}
         <label className="toggle">
           <input
             type="checkbox"
@@ -344,7 +361,7 @@ export function OtpLoginCard() {
             {resetStep === "request" ? (
               <form className="stack" onSubmit={onResetRequest}>
                 <input
-                  className="input"
+                  className={fieldClass(resetEmailValid, resetEmail.length > 0)}
                   type="email"
                   placeholder="Account Email"
                   value={resetEmail}
@@ -353,7 +370,7 @@ export function OtpLoginCard() {
                   required
                 />
                 <input
-                  className="input"
+                  className={fieldClass(phonePattern.test(resetPhone.trim()), resetPhone.length > 3)}
                   placeholder="+923004203035"
                   value={resetPhone}
                   onChange={(event) => setResetPhone(normalizePhoneInput(event.target.value))}

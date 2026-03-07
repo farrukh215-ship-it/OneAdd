@@ -727,6 +727,7 @@ export async function getMe() {
     dateOfBirth: string;
     gender: "MALE" | "FEMALE" | "OTHER";
     profilePhotoUrl: string | null;
+    trustScore?: { score: number } | null;
   }>("/auth/me", {
     auth: true
   });

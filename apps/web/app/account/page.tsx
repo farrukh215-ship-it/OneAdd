@@ -19,13 +19,19 @@ import { toUserFriendlyAuthError } from "../../lib/auth-error";
 import { resolveMediaUrl } from "../../lib/media-url";
 import { useAuthToken } from "../../lib/use-auth-token";
 import { Listing, SellerOverviewMetrics } from "../../lib/types";
-import { displayCategoryPath, displayListedDate, displayLocation } from "../../lib/ui-contract";
+import {
+  displayCategoryPath,
+  displayListedDate,
+  displayLocation,
+  displaySellerBadge
+} from "../../lib/ui-contract";
 
 type ProfileState = {
   fullName: string;
   email: string;
   phone: string;
   city: string;
+  trustScore: number;
 };
 
 function getImageCandidates(listing: Listing) {
@@ -125,7 +131,8 @@ export default function AccountPage() {
           fullName: me.fullName,
           email: me.email,
           phone: me.phone,
-          city: me.city
+          city: me.city,
+          trustScore: me.trustScore?.score ?? 0
         });
         setItems(listings);
         setMetrics(overview);
@@ -229,6 +236,11 @@ export default function AccountPage() {
     );
   }
 
+  const sellerBadge = displaySellerBadge(profile?.trustScore ?? 0);
+  const conversionSummary = metrics
+    ? `${metrics.conversionRate}% view-to-chat | ${metrics.offerRate}% chat-to-offer`
+    : "";
+
   return (
     <main className="screen accountScreen">
       <section className="panel accountPanel">
@@ -253,6 +265,15 @@ export default function AccountPage() {
             ? `${profile.email} | ${profile.phone} | ${profile.city || "Pakistan"}`
             : "Loading profile..."}
         </p>
+        {profile ? (
+          <div className="sellerDashboardHero">
+            <div className="sellerDashboardBadgeCluster">
+              <span className={`sellerBadge sellerBadge--${sellerBadge.tone}`}>{sellerBadge.label}</span>
+              <span className="sellerDashboardTrustMeta">Trust score: {profile.trustScore}</span>
+            </div>
+            <p className="sellerDashboardSummary">{sellerBadge.note}</p>
+          </div>
+        ) : null}
 
         {loading ? <p className="helperText">Loading listings...</p> : null}
         {error ? <p className="error">{error}</p> : null}
@@ -278,6 +299,19 @@ export default function AccountPage() {
             <div className="accountMetricCard">
               <p>Offers</p>
               <strong>{metrics.offersCount}</strong>
+            </div>
+            <div className="accountMetricCard">
+              <p>Saves</p>
+              <strong>{metrics.savedCount}</strong>
+            </div>
+            <div className="accountMetricCard">
+              <p>Sold</p>
+              <strong>{metrics.soldAds}</strong>
+            </div>
+            <div className="accountMetricCard feature">
+              <p>Conversion</p>
+              <strong>{metrics.conversionRate}%</strong>
+              <span>{conversionSummary}</span>
             </div>
           </div>
         ) : null}

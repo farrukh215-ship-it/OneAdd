@@ -7,13 +7,21 @@ export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSellerOverview(userId: string) {
-    const [totalAds, activeAds, totalViews, chatStarts, offersCount] =
+    const [totalAds, activeAds, soldAds, savedCount, totalViews, chatStarts, offersCount] =
       await Promise.all([
         this.prisma.listing.count({
           where: { userId }
         }),
         this.prisma.listing.count({
           where: { userId, status: ListingStatus.ACTIVE }
+        }),
+        this.prisma.listing.count({
+          where: { userId, status: ListingStatus.SOLD }
+        }),
+        this.prisma.savedListing.count({
+          where: {
+            listing: { userId }
+          }
         }),
         this.prisma.listingViewEvent.count({
           where: {
@@ -41,12 +49,21 @@ export class AnalyticsService {
         })
       ]);
 
+    const conversionRate =
+      totalViews > 0 ? Number(((chatStarts / totalViews) * 100).toFixed(1)) : 0;
+    const offerRate =
+      chatStarts > 0 ? Number(((offersCount / chatStarts) * 100).toFixed(1)) : 0;
+
     return {
       totalAds,
       activeAds,
+      soldAds,
+      savedCount,
       totalViews,
       chatStarts,
-      offersCount
+      offersCount,
+      conversionRate,
+      offerRate
     };
   }
 

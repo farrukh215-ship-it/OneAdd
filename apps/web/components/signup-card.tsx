@@ -113,6 +113,7 @@ export function SignupCard() {
   const strength = useMemo(() => getPasswordStrength(form.password), [form.password]);
   const phoneValid = phonePattern.test(form.phone.trim());
   const cnicValid = cnicPattern.test(form.cnic.trim());
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
   const passwordsMatch =
     form.password.length > 0 && form.password === form.confirmPassword;
 
@@ -131,6 +132,11 @@ export function SignupCard() {
     const done = checks.filter(Boolean).length;
     return Math.round((done / checks.length) * 100);
   }, [form, cnicValid, passwordsMatch, phoneValid]);
+
+  function fieldClass(valid: boolean, touched: boolean) {
+    if (!touched) return "input";
+    return `input ${valid ? "inputSuccess validationPulseOk" : "inputError validationPulseError"}`;
+  }
 
   function validateBeforeOtp() {
     if (!form.fullName.trim()) return "Full Name required hai.";
@@ -264,7 +270,7 @@ export function SignupCard() {
 
       <form className="stack" onSubmit={onCreateAccount}>
         <input
-          className="input"
+          className={fieldClass(form.fullName.trim().length >= 3, form.fullName.length > 0)}
           placeholder="Full Name"
           value={form.fullName}
           onChange={(event) =>
@@ -274,7 +280,7 @@ export function SignupCard() {
           required
         />
         <input
-          className="input"
+          className={fieldClass(form.fatherName.trim().length >= 3, form.fatherName.length > 0)}
           placeholder="Father Name"
           value={form.fatherName}
           onChange={(event) =>
@@ -284,7 +290,7 @@ export function SignupCard() {
           required
         />
         <input
-          className={`input ${form.cnic.length > 0 && !cnicValid ? "inputError" : ""}`}
+          className={fieldClass(cnicValid, form.cnic.length > 0)}
           placeholder="CNIC (00000-0000000-0)"
           value={form.cnic}
           onChange={(event) =>
@@ -293,8 +299,13 @@ export function SignupCard() {
           autoComplete="off"
           required
         />
+        {form.cnic.length > 0 ? (
+          <div className={`microValidationHint ${cnicValid ? "ok" : "error"}`}>
+            {cnicValid ? "CNIC format looks good." : "CNIC format 00000-0000000-0 hona chahiye."}
+          </div>
+        ) : null}
         <input
-          className="input"
+          className={fieldClass(emailValid, form.email.length > 0)}
           type="email"
           placeholder="Email"
           value={form.email}
@@ -304,8 +315,13 @@ export function SignupCard() {
           autoComplete="email"
           required
         />
+        {form.email.length > 0 ? (
+          <div className={`microValidationHint ${emailValid ? "ok" : "error"}`}>
+            {emailValid ? "Email verified for account creation." : "Valid email address enter karein."}
+          </div>
+        ) : null}
         <input
-          className="input"
+          className={fieldClass(form.password.length >= 8, form.password.length > 0)}
           type="password"
           placeholder="Password"
           value={form.password}
@@ -322,9 +338,7 @@ export function SignupCard() {
           <small>{strength.label} password</small>
         </div>
         <input
-          className={`input ${
-            form.confirmPassword.length > 0 && !passwordsMatch ? "inputError" : ""
-          }`}
+          className={fieldClass(passwordsMatch, form.confirmPassword.length > 0)}
           type="password"
           placeholder="Confirm Password"
           value={form.confirmPassword}
@@ -334,8 +348,13 @@ export function SignupCard() {
           autoComplete="new-password"
           required
         />
+        {form.confirmPassword.length > 0 ? (
+          <div className={`microValidationHint ${passwordsMatch ? "ok" : "error"}`}>
+            {passwordsMatch ? "Passwords match." : "Password aur confirm password same honay chahiye."}
+          </div>
+        ) : null}
         <input
-          className="input"
+          className={fieldClass(!isLessThan18(form.dateOfBirth), form.dateOfBirth.length > 0)}
           type="date"
           value={form.dateOfBirth}
           onChange={(event) =>
@@ -360,7 +379,7 @@ export function SignupCard() {
           <option value="OTHER">Other</option>
         </select>
         <input
-          className={`input ${form.phone.length > 0 && !phoneValid ? "inputError" : ""}`}
+          className={fieldClass(phoneValid, form.phone.length > 3)}
           placeholder="+923004203035"
           value={form.phone}
           onChange={(event) =>
@@ -372,6 +391,11 @@ export function SignupCard() {
           autoComplete="tel"
           required
         />
+        {form.phone.length > 3 ? (
+          <div className={`microValidationHint ${phoneValid ? "ok" : "error"}`}>
+            {phoneValid ? "Phone ready for OTP verification." : "Phone format +923004203035 hona chahiye."}
+          </div>
+        ) : null}
         <div className="helperText">Form completion: {completionScore}%</div>
         <button className="btn" type="submit" disabled={loading}>
           {loading ? "Please wait..." : "Create Account"}

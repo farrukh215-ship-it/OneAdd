@@ -2,6 +2,7 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type CardVariant = "elevated" | "outlined" | "flat";
 export type InputState = "default" | "focused" | "invalid" | "disabled";
 export type BadgeTone = "neutral" | "success" | "warn" | "danger" | "muted";
+export type SellerBadgeTone = "verified" | "trusted" | "responsive" | "new";
 
 type ListingDisplayParams = {
   city?: string | null;
@@ -82,4 +83,33 @@ export function displayTrustScoreNote(score: number) {
     return "Trusted seller: profile details and response quality are improving.";
   }
   return "Trust score 0 means new seller profile; verified details and successful deals increase it.";
+}
+
+export function displaySellerBadge(score: number) {
+  if (score >= 80) {
+    return {
+      label: "Verified Seller",
+      tone: "verified" as SellerBadgeTone,
+      note: "High trust, verified details, stronger buyer confidence."
+    };
+  }
+  if (score >= 55) {
+    return {
+      label: "Trusted Seller",
+      tone: "trusted" as SellerBadgeTone,
+      note: "Consistent profile quality and healthy response signals."
+    };
+  }
+  if (score >= 30) {
+    return {
+      label: "Responsive Seller",
+      tone: "responsive" as SellerBadgeTone,
+      note: "Active seller profile with improving trust signals."
+    };
+  }
+  return {
+    label: "New Seller",
+    tone: "new" as SellerBadgeTone,
+    note: "New seller profile. Verified details and successful deals build trust."
+  };
 }

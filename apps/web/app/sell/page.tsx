@@ -307,6 +307,11 @@ export default function SellPage() {
     if (video && (video.durationSec ?? 0) > 30) errs.push("Video duration 30 sec se kam honi chahiye.");
     return errs;
   }, [form.categoryId, form.city, form.description, form.exactLocation, form.price, form.title, images.length, mainCategoryId, video]);
+
+  function wizardFieldClass(valid: boolean, touched: boolean) {
+    if (!touched) return "input";
+    return `input ${valid ? "inputSuccess validationPulseOk" : "inputError validationPulseError"}`;
+  }
   useEffect(() => {
     if (!mounted) {
       return;
@@ -830,7 +835,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Main Category
                 <select
-                  className="input"
+                  className={wizardFieldClass(Boolean(mainCategoryId), Boolean(mainCategoryId))}
                   value={mainCategoryId}
                   onChange={(event) => {
                     const nextRootId = event.target.value;
@@ -850,7 +855,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Sub Category
                 <select
-                  className="input"
+                  className={wizardFieldClass(Boolean(form.categoryId), Boolean(form.categoryId))}
                   value={form.categoryId}
                   onChange={(event) => setForm((prev) => ({ ...prev, categoryId: event.target.value }))}
                   disabled={!mainCategoryId}
@@ -881,7 +886,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Kya bech rahe ho? (Title)
                 <input
-                  className="input"
+                  className={wizardFieldClass(form.title.trim().length >= 6, form.title.length > 0)}
                   value={form.title}
                   onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
                 />
@@ -889,7 +894,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Daam (PKR)
                 <input
-                  className="input"
+                  className={wizardFieldClass(Boolean(form.price.trim()) && Number(form.price) > 0, form.price.length > 0)}
                   inputMode="numeric"
                   value={form.price}
                   onChange={(event) => setForm((prev) => ({ ...prev, price: event.target.value }))}
@@ -898,7 +903,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Condition
                 <select
-                  className="input"
+                  className={wizardFieldClass(Boolean(form.condition), true)}
                   value={form.condition}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, condition: event.target.value as Condition }))
@@ -912,7 +917,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Aap kahan hain? (Location)
                 <select
-                  className="input"
+                  className={wizardFieldClass(Boolean(form.city.trim()), Boolean(form.city.trim()))}
                   value={form.city}
                   onChange={(event) =>
                     setForm((prev) => ({
@@ -933,7 +938,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Area (Commercial / Residential)
                 <select
-                  className="input"
+                  className={wizardFieldClass(Boolean(form.exactLocation.trim()), Boolean(form.city.trim()))}
                   value={areaSelectValue}
                   disabled={!form.city.trim()}
                   onChange={(event) => {
@@ -960,7 +965,7 @@ export default function SellPage() {
                 <label className="filterLabel">
                   Exact location (Area / Mohalla / Near landmark)
                   <input
-                    className="input"
+                    className={wizardFieldClass(form.exactLocation.trim().length >= 3, form.exactLocation.length > 0)}
                     placeholder="e.g. Johar Town Block H3, Near Emporium"
                     value={form.exactLocation}
                     onChange={(event) =>
@@ -994,7 +999,7 @@ export default function SellPage() {
               <label className="filterLabel">
                 Apni cheez ke baare mein batao
                 <textarea
-                  className="input"
+                  className={wizardFieldClass(form.description.trim().length >= 24, form.description.length > 0)}
                   rows={5}
                   value={form.description}
                   onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
