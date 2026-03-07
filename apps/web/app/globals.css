@@ -5702,6 +5702,81 @@ body.uiPremiumV1 .filter-bar {
   margin-bottom: 24px;
 }
 
+body.uiPremiumV1 .marketplaceSectionStack {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+body.uiPremiumV1 .marketplaceShelf {
+  padding: 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(215, 180, 151, 0.34);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 241, 232, 0.9));
+  box-shadow: 0 18px 34px rgba(94, 60, 37, 0.06);
+}
+
+body.uiPremiumV1 .marketplaceShelfHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+body.uiPremiumV1 .marketplaceShelfTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+body.uiPremiumV1 .marketplaceShelfIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(247, 232, 218, 0.96), rgba(255, 255, 255, 0.96));
+  border: 1px solid rgba(215, 180, 151, 0.32);
+  font-size: 24px;
+}
+
+body.uiPremiumV1 .marketplaceShelfTitle {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1;
+}
+
+body.uiPremiumV1 .marketplaceShelfMeta {
+  margin: 6px 0 0;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9f7864;
+}
+
+body.uiPremiumV1 .marketplaceShelfLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(215, 180, 151, 0.34);
+  background: rgba(255, 255, 255, 0.8);
+  color: #b66946;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+body.uiPremiumV1 .marketplaceShelfGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
 body.uiPremiumV1 .listing-card {
   display: grid;
   grid-template-columns: minmax(168px, 0.85fr) minmax(0, 1fr);
@@ -5854,6 +5929,10 @@ body.uiPremiumV1 .footer-bottom {
   }
 
   body.uiPremiumV1 .footer-top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.uiPremiumV1 .marketplaceShelfGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -7600,6 +7679,20 @@ body.uiPremiumV1 .listing-card--recent .listingTimelineMeta {
 }
 
 @media (max-width: 640px) {
+  body.uiPremiumV1 .marketplaceShelf {
+    padding: 18px;
+  }
+
+  body.uiPremiumV1 .marketplaceShelfHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
   body.uiPremiumV1 .recentListingsGrid {
     grid-template-columns: 1fr;
     gap: 16px;

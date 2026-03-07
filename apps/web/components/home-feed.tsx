@@ -202,6 +202,27 @@ function curateRecentListings(listings: Listing[]) {
   return curated;
 }
 
+function buildMarketplaceSections(categories: MarketplaceCategory[], listings: Listing[]) {
+  return categories
+    .map((category) => {
+      const items = dedupeById(
+        listings.filter((listing) => {
+          const mainMatch =
+            (listing.mainCategoryName ?? "").trim().toLowerCase() === category.name.trim().toLowerCase();
+          const subMatch = category.subcategories.some(
+            (subcategory) =>
+              (listing.subCategoryName ?? "").trim().toLowerCase() === subcategory.name.trim().toLowerCase()
+          );
+          return mainMatch || subMatch;
+        })
+      ).slice(0, 4);
+
+      return { category, items };
+    })
+    .filter((section) => section.items.length > 0)
+    .slice(0, 6);
+}
+
 type ListingCardProps = {
   listing: Listing;
   variant?: "feed" | "recent";
@@ -581,6 +602,10 @@ export function HomeFeed() {
 
     return visibleItems;
   }, [latestItems, recentListingIds, visibleItems]);
+  const marketplaceSections = useMemo(
+    () => buildMarketplaceSections(categories, visibleItems),
+    [categories, visibleItems]
+  );
 
   useEffect(() => {
     if (heroCards.length <= 1) {
@@ -948,8 +973,8 @@ export function HomeFeed() {
       <section className="listings-section">
         <header className="section-header">
           <div>
-            <p className="section-eyebrow">Fresh Picks</p>
-            <h2 className="section-title">Marketplace Feed</h2>
+            <p className="section-eyebrow">Marketplace Browse</p>
+            <h2 className="section-title">Category Wise Listings</h2>
           </div>
           <Link href="/search" className="section-link">
             Aur Listings -&gt;
@@ -979,6 +1004,35 @@ export function HomeFeed() {
               ))}
             </div>
           </>
+        ) : null}
+
+        {marketplaceSections.length > 0 ? (
+          <div className="marketplaceSectionStack">
+            {marketplaceSections.map(({ category, items }) => (
+              <section className="marketplaceShelf" key={category.id}>
+                <header className="marketplaceShelfHeader">
+                  <div className="marketplaceShelfTitleWrap">
+                    <span className="marketplaceShelfIcon" aria-hidden="true">
+                      {category.icon}
+                    </span>
+                    <div>
+                      <h3 className="marketplaceShelfTitle">{category.name}</h3>
+                      <p className="marketplaceShelfMeta">{items.length} curated listings</p>
+                    </div>
+                  </div>
+                  <Link href={categoryHref(category.slug)} className="marketplaceShelfLink">
+                    View More
+                  </Link>
+                </header>
+
+                <div className="marketplaceShelfGrid">
+                  {items.map((listing) => (
+                    <ListingCard listing={listing} key={`section-${category.slug}-${listing.id}`} variant="recent" />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         ) : null}
 
         {listingSectionBody}
