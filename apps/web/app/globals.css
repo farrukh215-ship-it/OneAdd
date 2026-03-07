@@ -7022,19 +7022,70 @@ body.uiPremiumV1 .hero-heading-accent::after {
   height: 5px;
   border-radius: 999px;
   background: linear-gradient(90deg, #c8603a 0%, rgba(200, 96, 58, 0.35) 100%);
+  animation: heroAccentPulse 2.8s ease-in-out infinite;
 }
 
 body.uiPremiumV1 .hero-search-copy {
   font-size: 16px;
   line-height: 1.72;
+  max-width: none;
+  text-align: justify;
+  text-wrap: pretty;
 }
 
 body.uiPremiumV1 .hero-search-signal-list {
   gap: 10px;
 }
 
+body.uiPremiumV1 .hero-search-title {
+  text-wrap: balance;
+}
+
 body.uiPremiumV1 .hero-card-stack {
   align-items: start;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-header {
+  grid-template-columns: 190px minmax(0, 1fr) auto;
+  gap: 18px;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-img {
+  width: 190px;
+  height: 190px;
+  min-height: 190px;
+  border-radius: 24px;
+  padding: 14px;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-img-media {
+  object-fit: contain;
+  box-sizing: border-box;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-title {
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 0.98;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-desc {
+  font-size: 15px;
+  -webkit-line-clamp: 3;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-desc,
+body.uiPremiumV1 .listing-card--recent .listingMetaBlock,
+body.uiPremiumV1 .listing-card--recent .listingFooterCluster,
+body.uiPremiumV1 .listing-card--recent .listingTimelineMeta {
+  display: block;
+}
+
+body.uiPremiumV1 .recentListingsGrid .listing-card {
+  align-items: start;
+}
+
+body.uiPremiumV1 .recentListingsGrid .listing-body {
+  align-content: start;
 }
 
 body.uiPremiumV1 .listing-card {
@@ -7127,6 +7178,17 @@ body.uiPremiumV1 .listingMainControlBtn:active {
   box-shadow: 0 0 0 6px rgba(200, 96, 58, 0.08);
 }
 
+@keyframes heroAccentPulse {
+  0%, 100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(1.08);
+    opacity: 0.86;
+  }
+}
+
 @media (max-width: 780px) {
   body.uiPremiumV1 .hero-heading {
     max-width: 100%;
@@ -7145,6 +7207,25 @@ body.uiPremiumV1 .listingMainControlBtn:active {
     grid-template-columns: 96px minmax(0, 1fr);
     gap: 12px;
     align-items: start;
+  }
+
+  body.uiPremiumV1 .hero-card-featured .hcard-header {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  body.uiPremiumV1 .hero-card-featured .hcard-img {
+    width: 112px;
+    height: 112px;
+    min-height: 112px;
+    padding: 10px;
+    border-radius: 20px;
+  }
+
+  body.uiPremiumV1 .hero-card-featured .hcard-price {
+    margin-top: 6px;
+    font-size: 20px;
+    grid-column: 2;
   }
 
   body.uiPremiumV1 .listing-img {
@@ -7187,5 +7268,25 @@ body.uiPremiumV1 .listingMainControlBtn:active {
   body.uiPremiumV1 .listingSupportMeta,
   body.uiPremiumV1 .listingTimelineMeta {
     font-size: 11px;
+  }
+
+  .desktopActionPanel,
+  .shareActionsPanel {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  body.uiPremiumV1 .listings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.uiPremiumV1 .recentListingsGrid .listing-card {
+    grid-template-columns: 102px minmax(0, 1fr);
+  }
+
+  body.uiPremiumV1 .recentListingsGrid .listing-img {
+    min-height: 102px;
+    height: 102px;
   }
 }

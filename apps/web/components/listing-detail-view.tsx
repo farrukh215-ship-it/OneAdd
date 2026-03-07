@@ -531,11 +531,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           <button className="btn secondary" onClick={toggleSaved} type="button">
             {saved ? "Saved" : "Save"}
           </button>
-          {!isLoggedIn ? (
-            <Link href="/account" className="btn secondary">
-              Login
-            </Link>
-          ) : null}
         </div>
         {contactVisible ? <div className="revealedContact mobileDockContact">{phone}</div> : null}
       </div>

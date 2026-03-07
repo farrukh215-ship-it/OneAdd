@@ -134,9 +134,10 @@ function compactCopy(text: string, maxLength = 76) {
 
 type ListingCardProps = {
   listing: Listing;
+  variant?: "feed" | "recent";
 };
 
-function ListingCard({ listing }: ListingCardProps) {
+function ListingCard({ listing, variant = "feed" }: ListingCardProps) {
   const images = useMemo(
     () => listing.media.filter((item) => item.type === "IMAGE"),
     [listing.media]
@@ -207,7 +208,7 @@ function ListingCard({ listing }: ListingCardProps) {
   }, [activeImageIndex, visibleImageIndexes.length]);
 
   return (
-    <Link className="listing-card" href={`/listing/${listing.id}`}>
+    <Link className={`listing-card listing-card--${variant}`} href={`/listing/${listing.id}`}>
       <div className="listing-img">
         <span className="listing-condition">{condition}</span>
         <button
@@ -324,6 +325,7 @@ export function HomeFeed() {
   const [searchCategorySlug, setSearchCategorySlug] = useState("");
   const [searchSubcategorySlug, setSearchSubcategorySlug] = useState("");
   const [searchCity, setSearchCity] = useState("");
+  const [featuredHeroIndex, setFeaturedHeroIndex] = useState(0);
   const selectedSearchCategory = useMemo(
     () => categories.find((item) => item.slug === searchCategorySlug) ?? null,
     [categories, searchCategorySlug]
@@ -462,10 +464,22 @@ export function HomeFeed() {
     () => dedupeById([...visibleItems, ...dedupedRecentItems]),
     [dedupedRecentItems, visibleItems]
   );
-  const heroCards = useMemo(() => heroCardsFromListings(heroSourceListings), [heroSourceListings]);
+  const heroCards = useMemo(() => heroCardsFromListings(heroSourceListings.slice(0, 8)), [heroSourceListings]);
+  const displayedHeroCards = useMemo(() => {
+    if (heroCards.length <= 1) {
+      return heroCards;
+    }
+
+    const featured = heroCards[featuredHeroIndex % heroCards.length];
+    const support = heroCards
+      .filter((_, index) => index !== featuredHeroIndex % heroCards.length)
+      .slice(0, 2);
+
+    return [featured, ...support];
+  }, [featuredHeroIndex, heroCards]);
   const heroListingIds = useMemo(
-    () => new Set(heroCards.map((item) => item.listingId).filter(Boolean)),
-    [heroCards]
+    () => new Set(displayedHeroCards.map((item) => item.listingId).filter(Boolean)),
+    [displayedHeroCards]
   );
   const recentListingIds = useMemo(
     () => new Set(dedupedRecentItems.map((item) => item.id)),
@@ -476,6 +490,30 @@ export function HomeFeed() {
       visibleItems.filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id)),
     [heroListingIds, recentListingIds, visibleItems]
   );
+  const feedItems = useMemo(() => {
+    if (latestItems.length > 0) {
+      return latestItems;
+    }
+
+    const fallbackWithoutRecent = visibleItems.filter((item) => !recentListingIds.has(item.id));
+    if (fallbackWithoutRecent.length > 0) {
+      return fallbackWithoutRecent;
+    }
+
+    return visibleItems;
+  }, [latestItems, recentListingIds, visibleItems]);
+
+  useEffect(() => {
+    if (heroCards.length <= 1) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setFeaturedHeroIndex((prev) => (prev + 1) % heroCards.length);
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [heroCards]);
 
   const listingSectionBody = useMemo(() => {
     if (loading) {
@@ -493,7 +531,7 @@ export function HomeFeed() {
       );
     }
 
-    const shouldShowEmpty = hasLoadedOnce && latestItems.length === 0 && !loading && !error;
+    const shouldShowEmpty = hasLoadedOnce && feedItems.length === 0 && !loading && !error;
     if (shouldShowEmpty) {
       return (
         <div className="feedStateCard">
@@ -506,14 +544,14 @@ export function HomeFeed() {
     return (
       <>
         <div className="listings-grid">
-          {latestItems.map((listing) => (
-            <ListingCard listing={listing} key={listing.id} />
+          {feedItems.map((listing) => (
+            <ListingCard listing={listing} key={listing.id} variant="feed" />
           ))}
         </div>
         {loadingMore ? <FeedSkeleton /> : null}
       </>
     );
-  }, [error, hasLoadedOnce, latestItems, loading, loadingMore, visibleItems.length]);
+  }, [error, feedItems, hasLoadedOnce, loading, loadingMore, visibleItems.length]);
 
   return (
     <>
@@ -537,10 +575,10 @@ export function HomeFeed() {
               </div>
               <p className="hero-search-kicker">Asli household discovery</p>
               <h2 className="hero-search-title">
-                Hazaaron fake ads ke beech ek asli listing - woh ek yahan hai.
+                Hazaaron fake ads ke beech ek asli listing. Woh ek yahan hai.
               </h2>
               <p className="hero-search-copy">
-                Jo cheez dhoondh rahe ho, koi na koi zaroor bech raha hai - bas asli jagah chahiye thi.
+                Jo cheez dhoondh rahe ho, koi na koi zaroor bech raha hai. Bas asli jagah chahiye thi.
               </p>
               <div className="hero-search-signal-list">
                 {searchSignals.map((item) => (
@@ -616,7 +654,7 @@ export function HomeFeed() {
           </aside>
 
           <div className="hero-card-stack">
-            {heroCards.map((item, index) => {
+            {displayedHeroCards.map((item, index) => {
               const cardBody = (
                 <>
                   <div className="hcard-header">
@@ -829,7 +867,7 @@ export function HomeFeed() {
         <header className="section-header">
           <div>
             <p className="section-eyebrow">Fresh Picks</p>
-            <h2 className="section-title">Latest Listings</h2>
+            <h2 className="section-title">Marketplace Feed</h2>
           </div>
           <Link href="/search" className="section-link">
             Aur Listings -&gt;
@@ -853,9 +891,9 @@ export function HomeFeed() {
                 <h3 className="section-title">Recently Viewed</h3>
               </div>
             </header>
-            <div className="listings-grid">
+            <div className="listings-grid recentListingsGrid">
               {dedupedRecentItems.map((listing) => (
-                <ListingCard listing={listing} key={`recent-${listing.id}`} />
+                <ListingCard listing={listing} key={`recent-${listing.id}`} variant="recent" />
               ))}
             </div>
           </>
