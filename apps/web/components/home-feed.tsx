@@ -132,6 +132,46 @@ function compactCopy(text: string, maxLength = 76) {
   return `${normalized.slice(0, maxLength).trimEnd()}...`;
 }
 
+function compactListingDescription(text: string, maxLength = 110) {
+  const normalized = text
+    .replace(/\bcondition\s*:\s*[^,\n]+/gi, "")
+    .replace(/\bcity\s*:\s*[^,\n]+/gi, "")
+    .replace(/\b(location|area)\s*:\s*[^,\n]+/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+,/g, ",")
+    .trim();
+  return compactCopy(normalized, maxLength);
+}
+
+function curateRecentListings(listings: Listing[]) {
+  const seen = new Set<string>();
+  const curated: Listing[] = [];
+
+  for (const item of listings) {
+    const image = getPrimaryImage(item);
+    const title = item.title.trim();
+    const description = compactListingDescription(item.description ?? "", 80);
+    if (!title || !image || !description) {
+      continue;
+    }
+
+    const duplicateKey = [
+      title.toLowerCase(),
+      (item.subCategoryName || item.mainCategoryName || "").toLowerCase(),
+      item.price,
+      item.user?.id ?? ""
+    ].join("|");
+
+    if (seen.has(duplicateKey)) {
+      continue;
+    }
+    seen.add(duplicateKey);
+    curated.push(item);
+  }
+
+  return curated;
+}
+
 type ListingCardProps = {
   listing: Listing;
   variant?: "feed" | "recent";
@@ -173,6 +213,10 @@ function ListingCard({ listing, variant = "feed" }: ListingCardProps) {
   const categoryPath =
     displayCategoryPath(listing.mainCategoryName, listing.subCategoryName) ||
     "Verified household listing";
+  const descriptionPreview = compactListingDescription(
+    listing.description ?? "",
+    variant === "recent" ? 96 : 72
+  );
 
   useEffect(() => {
     setSaved(getSavedListingIdsLocal().includes(listing.id));
@@ -261,16 +305,18 @@ function ListingCard({ listing, variant = "feed" }: ListingCardProps) {
         <div className="listingBadgeRow">
           <span className={`sellerBadge sellerBadge--${sellerBadge.tone}`}>{sellerBadge.label}</span>
         </div>
-        <p className="listing-desc">{compactCopy(listing.description, 72)}</p>
+        <p className="listing-desc">{descriptionPreview}</p>
         <div className="listingFooterCluster">
           <div className="listing-footer">
             <span className="badge-verified">Asli Banda</span>
             <span className="listing-loc">{displayRelativeTime(listing.createdAt)}</span>
           </div>
-          <div className="listingSupportMeta">
-            <span>{responseBadge}</span>
-            <span>{displaySellerLastSeen(listing.user?.lastSeenAt)}</span>
-          </div>
+          {variant === "recent" ? null : (
+            <div className="listingSupportMeta">
+              <span>{responseBadge}</span>
+              <span>{displaySellerLastSeen(listing.user?.lastSeenAt)}</span>
+            </div>
+          )}
         </div>
         <p className="listingTimelineMeta">{displayListedDate(listing.createdAt)}</p>
       </div>
@@ -459,7 +505,10 @@ export function HomeFeed() {
       }),
     [blockedSellerIds, recentItems]
   );
-  const dedupedRecentItems = useMemo(() => dedupeById(visibleRecentItems), [visibleRecentItems]);
+  const dedupedRecentItems = useMemo(
+    () => curateRecentListings(dedupeById(visibleRecentItems)).slice(0, 4),
+    [visibleRecentItems]
+  );
   const heroSourceListings = useMemo(
     () => dedupeById([...visibleItems, ...dedupedRecentItems]),
     [dedupedRecentItems, visibleItems]

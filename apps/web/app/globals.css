@@ -7290,3 +7290,266 @@ body.uiPremiumV1 .listingMainControlBtn:active {
     height: 102px;
   }
 }
+
+body.uiPremiumV1 .recentListingsGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+body.uiPremiumV1 .listing-card--recent {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
+  min-height: 0;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-img {
+  width: 132px;
+  min-width: 132px;
+  height: 132px;
+  min-height: 132px;
+  border-radius: 22px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-img-inner {
+  padding: 12px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingCardMedia {
+  object-fit: cover;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-body {
+  gap: 8px;
+  align-content: start;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingTitleRow {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-title {
+  font-size: 28px;
+  line-height: 0.98;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-price {
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-price span {
+  display: none;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingMetaBlock {
+  gap: 4px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingMetaPrimary {
+  font-size: 11px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingMetaSecondary {
+  font-size: 14px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingBadgeRow {
+  margin-top: 2px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingFooterCluster {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.uiPremiumV1 .listing-card--recent .listing-footer {
+  justify-content: space-between;
+}
+
+body.uiPremiumV1 .listing-card--recent .listingTimelineMeta {
+  margin-top: 0;
+  font-size: 11px;
+}
+
+.listingGalleryDots {
+  display: none;
+}
+
+.mobileActionSheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(39, 26, 19, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  z-index: 205;
+}
+
+.mobileActionSheetBackdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobileActionSheet {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: 220;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(251,244,236,0.97)),
+    rgba(255,255,255,0.96);
+  border: 1px solid rgba(212, 180, 154, 0.5);
+  box-shadow: 0 24px 60px rgba(63, 38, 26, 0.18);
+  padding: 14px;
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+}
+
+.mobileActionSheet.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mobileActionSheetHeader {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mobileActionSheetGrip {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(92, 61, 46, 0.18);
+}
+
+.mobileActionSheetTitle {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mobileActionSheetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mobileActionSheetReport {
+  margin-top: 12px;
+}
+
+@media (max-width: 920px) {
+  .desktopActionPanel,
+  .shareActionsPanel {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .listingThumbRow {
+    display: none;
+  }
+
+  .listingGalleryDots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .listingGalleryDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: 0;
+    padding: 0;
+    background: rgba(112, 84, 66, 0.22);
+    transition:
+      transform 160ms ease,
+      background 160ms ease;
+  }
+
+  .listingGalleryDot.active {
+    background: var(--clay);
+    transform: scale(1.18);
+  }
+}
+
+@media (max-width: 640px) {
+  body.uiPremiumV1 .recentListingsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  body.uiPremiumV1 .listing-card--recent {
+    grid-template-columns: 118px minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px;
+  }
+
+  body.uiPremiumV1 .listing-card--recent .listing-img {
+    width: 118px;
+    min-width: 118px;
+    height: 118px;
+    min-height: 118px;
+  }
+
+  body.uiPremiumV1 .listing-card--recent .listing-title {
+    font-size: 20px;
+    line-height: 1.04;
+  }
+
+  body.uiPremiumV1 .listing-card--recent .listing-price {
+    font-size: 16px;
+  }
+
+  body.uiPremiumV1 .listing-card--recent .listingMetaSecondary,
+  body.uiPremiumV1 .listing-card--recent .listing-desc {
+    font-size: 13px;
+  }
+
+  .mobileStickyCta {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .mobileStickyCtaGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobileActionSheet {
+    left: 10px;
+    right: 10px;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    border-radius: 24px;
+    padding: 12px;
+  }
+}

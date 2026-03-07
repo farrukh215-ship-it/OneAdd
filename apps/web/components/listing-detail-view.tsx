@@ -96,6 +96,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const [reportFeedback, setReportFeedback] = useState("");
   const [openPublicContactFor, setOpenPublicContactFor] = useState("");
   const [pressedGalleryControl, setPressedGalleryControl] = useState<"prev" | "next" | null>(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const isLoggedIn = mounted && Boolean(token);
   const currentUserId = useMemo(() => getUserIdFromToken(token), [token]);
   const isListingOwner = Boolean(currentUserId && listing.user?.id && currentUserId === listing.user.id);
@@ -142,6 +143,9 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
   const whatsappHref = `https://wa.me/${waPhone}?text=${encodeURIComponent(
     `Assalam o Alaikum, ${listing.title} ke baray me baat karni hai. https://www.teragharmeraghar.com/listing/${listing.id}`
   )}`;
+  const listingLink = `https://www.teragharmeraghar.com/listing/${listing.id}`;
+  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(listingLink)}`;
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`${listing.title} - ${listingLink}`)}`;
 
   const publicChatSection = (
     <section className="sellerTrustCard listingPublicChatSection">
@@ -207,6 +211,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
     setReportReason("Fake or misleading listing");
     setSellerBlocked(isSellerBlockedLocal(listing.user?.id));
     setOpenPublicContactFor("");
+    setMobileActionsOpen(false);
   }, [listing.id]);
 
   useEffect(() => {
@@ -227,6 +232,15 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   function toggleSaved() {
     void toggleSavedListingPreference(listing.id, isLoggedIn).then(setSaved);
+  }
+
+  async function copyListingLink() {
+    try {
+      await navigator.clipboard.writeText(listingLink);
+      setReportFeedback("Listing link copy ho gaya.");
+    } catch {
+      setReportFeedback("Link copy nahi ho saka.");
+    }
   }
 
   function toggleSellerBlocked() {
@@ -372,6 +386,19 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
               ))}
             </div>
           ) : null}
+          {visibleImages.length > 1 ? (
+            <div className="listingGalleryDots" aria-label="Gallery pagination">
+              {visibleImages.map((item, index) => (
+                <button
+                  key={`${item.id}-dot`}
+                  type="button"
+                  className={`listingGalleryDot ${selectedImageIndex === index ? "active" : ""}`}
+                  aria-label={`Show image ${index + 1}`}
+                  onClick={() => setSelectedImageIndex(index)}
+                />
+              ))}
+            </div>
+          ) : null}
 
           {video ? (
             <video
@@ -504,15 +531,6 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
       <div className="mobileStickyCta">
         <div className="mobileStickyCtaHandle" aria-hidden="true" />
         <div className="mobileStickyCtaGrid">
-          {isLoggedIn && listing.showPhone && phone ? (
-            <button
-              className="btn secondary"
-              onClick={() => setContactVisible((prev) => !prev)}
-              type="button"
-            >
-              {contactVisible ? "Hide Contact" : "Show Contact"}
-            </button>
-          ) : null}
           {listing.allowChat ? (
             <button className="btn" onClick={startChat} disabled={chatLoading} type="button">
               {chatLoading ? "Opening..." : "Start Chat"}
@@ -520,19 +538,81 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
           ) : (
             <span className="pill muted">Chat off</span>
           )}
-          {isLoggedIn && listing.allowSMS && phone ? (
-            <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
-              <span className="actionIcon" aria-hidden="true">
-                WA
-              </span>
-              WhatsApp
-            </a>
-          ) : null}
           <button className="btn secondary" onClick={toggleSaved} type="button">
             {saved ? "Saved" : "Save"}
           </button>
+          <button
+            className="btn secondary"
+            onClick={() => setMobileActionsOpen((prev) => !prev)}
+            type="button"
+          >
+            {mobileActionsOpen ? "Close" : "Actions"}
+          </button>
         </div>
         {contactVisible ? <div className="revealedContact mobileDockContact">{phone}</div> : null}
+        <div
+          className={`mobileActionSheetBackdrop ${mobileActionsOpen ? "open" : ""}`}
+          onClick={() => setMobileActionsOpen(false)}
+        />
+        <section className={`mobileActionSheet ${mobileActionsOpen ? "open" : ""}`}>
+          <div className="mobileActionSheetHeader">
+            <div className="mobileActionSheetGrip" aria-hidden="true" />
+            <p className="mobileActionSheetTitle">Listing actions</p>
+          </div>
+          <div className="mobileActionSheetGrid">
+            {isLoggedIn && listing.showPhone && phone ? (
+              <button
+                className="btn secondary"
+                onClick={() => setContactVisible((prev) => !prev)}
+                type="button"
+              >
+                {contactVisible ? "Hide Contact" : "Show Contact"}
+              </button>
+            ) : null}
+            {isLoggedIn && listing.allowSMS && phone ? (
+              <a className="btn secondary" href={whatsappHref} target="_blank" rel="noreferrer">
+                <span className="actionIcon" aria-hidden="true">
+                  WA
+                </span>
+                WhatsApp
+              </a>
+            ) : null}
+            {listing.user?.id ? (
+              <button className="btn secondary" onClick={toggleSellerBlocked} type="button">
+                {sellerBlocked ? "Unblock Seller" : "Block Seller"}
+              </button>
+            ) : null}
+            <button className="btn secondary" onClick={() => setReportMode((prev) => !prev)} type="button">
+              {reportMode ? "Cancel Report" : "Report Listing"}
+            </button>
+            <a className="btn secondary" href={facebookShareUrl} target="_blank" rel="noreferrer">
+              Share Facebook
+            </a>
+            <a className="btn secondary" href={whatsappShareUrl} target="_blank" rel="noreferrer">
+              Share WhatsApp
+            </a>
+            <button className="btn secondary" onClick={copyListingLink} type="button">
+              Copy Link
+            </button>
+          </div>
+          {reportMode ? (
+            <div className="stack mobileActionSheetReport">
+              <label className="filterLabel">
+                Report reason
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={reportReason}
+                  onChange={(event) => setReportReason(event.target.value)}
+                  placeholder="Issue explain karein (fake item, scam, wrong info...)"
+                />
+              </label>
+              <button className="btn secondary" type="button" onClick={submitReport} disabled={reportLoading}>
+                {reportLoading ? "Submitting..." : "Submit Report"}
+              </button>
+            </div>
+          ) : null}
+        </section>
       </div>
     </main>
   );
