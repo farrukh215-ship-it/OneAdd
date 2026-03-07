@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SmsMessage, SmsProvider } from "./sms-provider.interface";
 
@@ -12,9 +12,8 @@ export class Sms4ConnectProvider implements SmsProvider {
     const senderId = this.configService.get<string>("SMS4CONNECT_SENDER_ID");
 
     if (!baseUrl || !apiKey || !senderId) {
-      throw new HttpException(
-        "SMS4Connect configuration is missing.",
-        HttpStatus.INTERNAL_SERVER_ERROR
+      throw new ServiceUnavailableException(
+        "OTP service abhi active nahi hai. SMS configuration missing hai."
       );
     }
 
@@ -40,9 +39,8 @@ export class Sms4ConnectProvider implements SmsProvider {
       normalizedBody.includes("failed") ||
       normalizedBody.includes("invalid")
     ) {
-      throw new HttpException(
-        "Failed to send OTP SMS.",
-        HttpStatus.BAD_GATEWAY
+      throw new ServiceUnavailableException(
+        "OTP send nahi ho saka. SMS service response invalid tha."
       );
     }
   }

@@ -54,12 +54,18 @@ export function toUserFriendlyAuthError(input: unknown) {
 
   if (
     message.includes("otp delivery service") ||
-    message.includes("configured nahi hai")
+    message.includes("configured nahi hai") ||
+    message.includes("sms configuration missing") ||
+    message.includes("sms4connect configuration is missing")
   ) {
     return "OTP service abhi active nahi hai. Support se rabta karein ya thori dair baad dobara try karein.";
   }
 
-  if (message.includes("otp send nahi ho saka") || message.includes("failed to send otp sms")) {
+  if (
+    message.includes("otp send nahi ho saka") ||
+    message.includes("failed to send otp sms") ||
+    message.includes("sms service response invalid")
+  ) {
     return "OTP receive nahi ho saka. SMS service me masla hai, thori dair baad dobara try karein.";
   }
 
