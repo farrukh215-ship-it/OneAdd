@@ -71,15 +71,6 @@ export function validateEnvironment(config: EnvConfig) {
     );
   }
   if (
-    nodeEnv === "production" &&
-    (config.SMS_PROVIDER ?? "noop") !== "sms4connect" &&
-    config.ALLOW_NOOP_SMS_IN_PRODUCTION !== "true"
-  ) {
-    throw new Error(
-      "SMS_PROVIDER must be sms4connect in production unless ALLOW_NOOP_SMS_IN_PRODUCTION=true."
-    );
-  }
-  if (
     config.PUSH_PROVIDER === "fcm" &&
     !config.FIREBASE_SERVICE_ACCOUNT_PATH &&
     (!config.FCM_PROJECT_ID || !config.FCM_CLIENT_EMAIL || !config.FCM_PRIVATE_KEY)
