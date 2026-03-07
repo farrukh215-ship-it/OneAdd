@@ -909,7 +909,7 @@ export class ListingsService {
 
       const merged = this.mergeListingsById([...listings, ...supplemental]);
       const threshold = this.minimumSemanticScore(queryTerms);
-      const ranked = merged
+      const scored = merged
         .map((item) => {
           const categoryPath = this.buildCategorySearchText(item.category);
           const text = `${item.title} ${item.description} ${categoryPath}`.toLowerCase();
@@ -923,7 +923,9 @@ export class ListingsService {
           });
 
           return { item, score };
-        })
+        });
+
+      const ranked = scored
         .filter(({ item, score }) => score >= threshold || listings.some((entry) => entry.id === item.id))
         .sort((a, b) => {
           if (a.score !== b.score) {
@@ -950,7 +952,17 @@ export class ListingsService {
         })
         .map(({ item }) => item);
 
-      const sorted = this.applyListingSort(ranked.slice(0, take), sortBy);
+      const fallbackRanked =
+        ranked.length > 0
+          ? ranked
+          : scored
+              .filter(({ score }) =>
+                categorySignals.categoryIds.length > 0 ? score >= 0.45 : score >= 0.9
+              )
+              .sort((a, b) => b.score - a.score)
+              .map(({ item }) => item);
+
+      const sorted = this.applyListingSort(fallbackRanked.slice(0, take), sortBy);
       return sorted.map((item) => this.normalizeListingForClient(item));
     }
 

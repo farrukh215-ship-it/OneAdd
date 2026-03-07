@@ -5845,3 +5845,283 @@ body.uiPremiumV1 .footer-bottom {
     font-size: 22px;
   }
 }
+
+body.uiPremiumV1 .hero {
+  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+  gap: 24px;
+}
+
+body.uiPremiumV1 .hero-right {
+  order: 1;
+  justify-content: flex-start;
+  gap: 16px;
+  min-height: 100%;
+}
+
+body.uiPremiumV1 .hero-left {
+  order: 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+body.uiPremiumV1 .hero-search-sidebar {
+  padding: 20px;
+  gap: 16px;
+}
+
+body.uiPremiumV1 .hero-search-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+body.uiPremiumV1 .hero-search-brand-logo {
+  width: 132px;
+  height: auto;
+}
+
+body.uiPremiumV1 .hero-search-brand-copy {
+  display: grid;
+  gap: 4px;
+}
+
+body.uiPremiumV1 .hero-search-brand-copy span {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a07763;
+}
+
+body.uiPremiumV1 .hero-search-brand-copy strong {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #5f3c2b;
+}
+
+body.uiPremiumV1 .hero-search-box {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.uiPremiumV1 .hero-search-box .search-field-keyword,
+body.uiPremiumV1 .hero-search-box .search-btn {
+  grid-column: span 2;
+}
+
+body.uiPremiumV1 .hero-card-stack {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+body.uiPremiumV1 .hero-card-featured {
+  grid-column: span 2;
+  padding: 16px;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-header {
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+body.uiPremiumV1 .hero-card-featured .hcard-img {
+  min-height: 220px;
+}
+
+body.uiPremiumV1 .hero-card-compact {
+  min-height: 148px;
+}
+
+body.uiPremiumV1 .hero-card-compact .hcard-header {
+  grid-template-columns: 84px minmax(0, 1fr);
+}
+
+body.uiPremiumV1 .hero-card-compact .hcard-price {
+  margin-top: 10px;
+}
+
+body.uiPremiumV1 .hero-editorial-kicker {
+  margin: 0;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #ba704d;
+}
+
+body.uiPremiumV1 .hero-editorial-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+body.uiPremiumV1 .hero-editorial-note {
+  padding: 9px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(215, 180, 151, 0.34);
+  background: rgba(255, 255, 255, 0.72);
+  color: #724f3d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+body.uiPremiumV1 .hero-lower {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+body.uiPremiumV1 .hero-stats {
+  justify-content: flex-start;
+}
+
+body.uiPremiumV1 .trust-bar {
+  gap: 14px;
+  justify-content: space-between;
+}
+
+body.uiPremiumV1 .cats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+body.uiPremiumV1 .cat-card {
+  min-height: 158px;
+}
+
+body.uiPremiumV1 .listing-card {
+  grid-template-columns: 198px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px;
+}
+
+body.uiPremiumV1 .listing-img {
+  min-height: 156px;
+}
+
+body.uiPremiumV1 .listing-body {
+  gap: 8px;
+}
+
+body.uiPremiumV1 .listing-title {
+  font-size: 22px;
+}
+
+body.uiPremiumV1 .listing-desc {
+  -webkit-line-clamp: 2;
+}
+
+body.uiPremiumV1 .listingMetaPrimary {
+  font-size: 10px;
+}
+
+body.uiPremiumV1 .listingMetaSecondary,
+body.uiPremiumV1 .listingTimelineMeta,
+body.uiPremiumV1 .listingSupportMeta {
+  font-size: 12px;
+}
+
+body.uiPremiumV1 .section-header {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1180px) {
+  body.uiPremiumV1 .cats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  body.uiPremiumV1 .hero {
+    grid-template-columns: 1fr;
+  }
+
+  body.uiPremiumV1 .hero-right,
+  body.uiPremiumV1 .hero-left {
+    order: initial;
+  }
+
+  body.uiPremiumV1 .hero-search-box {
+    grid-template-columns: 1fr;
+  }
+
+  body.uiPremiumV1 .hero-search-box .search-field-keyword,
+  body.uiPremiumV1 .hero-search-box .search-btn {
+    grid-column: span 1;
+  }
+
+  body.uiPremiumV1 .cats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  body.uiPremiumV1 .hero-card-stack {
+    grid-template-columns: 1fr;
+  }
+
+  body.uiPremiumV1 .hero-card-featured {
+    grid-column: span 1;
+  }
+
+  body.uiPremiumV1 .hero-card-featured .hcard-header,
+  body.uiPremiumV1 .listing-card,
+  body.uiPremiumV1 .listingTitleRow,
+  body.uiPremiumV1 .listingFooterCluster {
+    grid-template-columns: 1fr;
+  }
+
+  body.uiPremiumV1 .listing-price,
+  body.uiPremiumV1 .listingSupportMeta {
+    text-align: left;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  body.uiPremiumV1 .hero-search-brand {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  body.uiPremiumV1 .hero-search-brand-logo {
+    width: 118px;
+  }
+
+  body.uiPremiumV1 .hero-heading {
+    font-size: 44px;
+  }
+
+  body.uiPremiumV1 .hero-proof-list li {
+    min-height: auto;
+  }
+
+  body.uiPremiumV1 .cats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  body.uiPremiumV1 .cat-card {
+    min-height: 132px;
+    padding: 14px 12px;
+  }
+
+  body.uiPremiumV1 .listing-card {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  body.uiPremiumV1 .listing-img {
+    min-height: 132px;
+  }
+
+  body.uiPremiumV1 .listing-title {
+    font-size: 18px;
+  }
+
+  body.uiPremiumV1 .listing-price {
+    font-size: 20px;
+  }
+}

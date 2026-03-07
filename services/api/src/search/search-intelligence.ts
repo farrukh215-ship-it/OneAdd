@@ -5,20 +5,25 @@ export const SEARCH_SYNONYM_MAP: Record<string, string[]> = {
   bicycles: ["bicycle", "cycle", "bike", "bikes", "cycles"],
   cycle: ["bicycle", "bicycles", "bike", "bikes", "cycles"],
   cycles: ["cycle", "bicycle", "bikes"],
+  cycel: ["cycle", "bicycle", "bicycles", "bike", "bikes"],
+  bicyle: ["bicycle", "bicycles", "cycle", "bike", "bikes"],
   bike: ["bicycle", "cycle", "motorcycle", "bikes"],
   bikes: ["bike", "bicycle", "motorcycle", "cycles"],
   motorcycle: ["bike", "bikes", "motorbike"],
   motorcycles: ["motorcycle", "bike", "bikes"],
   mobile: ["mobiles", "phone", "phones", "smartphone", "smartphones", "cellphone"],
   mobiles: ["mobile", "phone", "phones", "smartphone", "smartphones"],
+  moble: ["mobile", "mobiles", "phone", "phones", "smartphone"],
   phone: ["mobile", "mobiles", "smartphone", "cellphone"],
   phones: ["phone", "mobile", "mobiles", "smartphones"],
   smartphone: ["mobile", "phone", "android", "iphone"],
   smartphones: ["smartphone", "mobile", "phones"],
   car: ["cars", "vehicle", "vehicles", "auto", "automobile"],
   cars: ["car", "vehicle", "vehicles", "auto"],
+  culctus: ["cultus", "car", "cars", "vehicle", "vehicles"],
   vehicle: ["vehicles", "car", "cars", "auto"],
   vehicles: ["vehicle", "cars", "car", "auto"],
+  vehical: ["vehicle", "vehicles", "car", "cars", "auto"],
   property: ["house", "home", "apartment", "flat", "plot", "rent", "sale"],
   house: ["home", "property", "apartment", "flat"],
   home: ["house", "property"],
@@ -262,35 +267,66 @@ export function hasFuzzyTokenMatch(tokens: string[], target: string) {
   });
 }
 
+export function scoreCategoryQueryMatch(
+  normalizedQuery: string,
+  queryTerms: string[],
+  categoryTerms: string[]
+) {
+  const categoryTokens = Array.from(
+    new Set(categoryTerms.flatMap((term) => tokenizeSearchText(term)))
+  );
+  const queryTokens = Array.from(
+    new Set(
+      [normalizedQuery, ...queryTerms]
+        .flatMap((term) => tokenizeSearchText(term))
+        .filter((token) => token.length >= 2)
+    )
+  );
+
+  const normalizedCategoryTerms = categoryTerms
+    .map((term) => normalizeSearchText(term))
+    .filter(Boolean);
+
+  if (
+    normalizedQuery.length >= 4 &&
+    normalizedCategoryTerms.some((term) => term === normalizedQuery)
+  ) {
+    return 5;
+  }
+
+  let score = 0;
+
+  for (const token of queryTokens) {
+    if (categoryTokens.includes(token)) {
+      score += token.length >= 5 ? 2 : 1.35;
+      continue;
+    }
+
+    if (hasFuzzyTokenMatch(categoryTokens, token)) {
+      score += 0.9;
+    }
+  }
+
+  if (
+    normalizedQuery.length >= 5 &&
+    normalizedCategoryTerms.some((term) => term.includes(normalizedQuery))
+  ) {
+    score += 1.2;
+  }
+
+  return score;
+}
+
 export function matchesCategorySearchQuery(
   normalizedQuery: string,
   queryTerms: string[],
   categoryTerms: string[]
 ) {
-  const relevantTerms = new Set<string>([
-    normalizedQuery,
-    ...queryTerms.map((term) => normalizeSearchText(term))
-  ]);
-  const categoryTokens = Array.from(
-    new Set(categoryTerms.flatMap((term) => tokenizeSearchText(term)))
+  const score = scoreCategoryQueryMatch(normalizedQuery, queryTerms, categoryTerms);
+  const hasLongToken = tokenizeSearchText(`${normalizedQuery} ${queryTerms.join(" ")}`).some(
+    (token) => token.length >= 5
   );
-
-  for (const term of relevantTerms) {
-    if (!term || term.length < 2) {
-      continue;
-    }
-
-    const termTokens = tokenizeSearchText(term);
-    if (
-      termTokens.some(
-        (token) => categoryTokens.includes(token) || hasFuzzyTokenMatch(categoryTokens, token)
-      )
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+  return score >= 1.35 || (hasLongToken && score >= 0.9);
 }
 
 export function detectQueryCategorySignals(query: string, queryTerms: string[]) {
@@ -304,11 +340,37 @@ export function detectQueryCategorySignals(query: string, queryTerms: string[]) 
 
   const matchedSlugs = new Set<string>();
   const semanticTerms = new Set<string>();
+  const rootScores = new Map<string, number>();
 
   for (const root of marketplaceCategoryCatalog) {
     const rootTerms = buildCategoryAliasTerms(root.name, root.slug);
-    const rootMatched = matchesCategorySearchQuery(normalizedQuery, queryTerms, rootTerms);
+    const rootScore = scoreCategoryQueryMatch(normalizedQuery, queryTerms, rootTerms);
 
+    if (rootScore > 0) {
+      rootScores.set(root.slug, Math.max(rootScores.get(root.slug) ?? 0, rootScore));
+    }
+
+    for (const subcategory of root.subcategories) {
+      const subTerms = buildCategoryAliasTerms(subcategory.name, subcategory.slug);
+      const subScore = scoreCategoryQueryMatch(normalizedQuery, queryTerms, subTerms);
+      if (subScore <= 0) {
+        continue;
+      }
+
+      rootScores.set(root.slug, Math.max(rootScores.get(root.slug) ?? 0, subScore));
+    }
+  }
+
+  const strongestRootScore = Math.max(...rootScores.values(), 0);
+
+  for (const root of marketplaceCategoryCatalog) {
+    const rootScore = rootScores.get(root.slug) ?? 0;
+    if (rootScore <= 0 || rootScore < strongestRootScore * 0.76) {
+      continue;
+    }
+
+    const rootTerms = buildCategoryAliasTerms(root.name, root.slug);
+    const rootMatched = matchesCategorySearchQuery(normalizedQuery, queryTerms, rootTerms);
     if (rootMatched) {
       matchedSlugs.add(root.slug);
       for (const child of root.subcategories) {

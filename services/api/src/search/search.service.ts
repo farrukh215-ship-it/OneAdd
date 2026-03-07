@@ -261,11 +261,11 @@ export class SearchService {
           }
         };
       })
-      .filter(({ score }) => score >= (normalizedQuery ? 0.6 : 0))
+      .filter(({ score }) => score >= (normalizedQuery ? 0.45 : 0))
       .sort((a, b) => b.score - a.score)
       .map(({ item }) => item);
 
-    const listingThreshold = minimumSemanticScore(searchTerms) * 0.6;
+    const listingThreshold = minimumSemanticScore(searchTerms) * 0.5;
     const listingSuggestions = listingRows
       .map((listing) => {
         const categoryPath = buildCategorySearchText(listing.category);

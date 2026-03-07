@@ -46,6 +46,11 @@ const searchSignals = [
   "City / area aware discovery",
   "Typos aur close matches handled"
 ];
+const heroEditorialNotes = [
+  "Real household listings only",
+  "Category-aware discovery",
+  "Fast city and area filtering"
+];
 
 type HeroCard = {
   listingId?: string;
@@ -525,10 +530,24 @@ export function HomeFeed() {
         <div className="hero-left">
           <aside className="hero-search-sidebar">
             <div className="hero-search-head">
+              <div className="hero-search-brand">
+                <Image
+                  src="/brand/tgmg-full.png"
+                  alt="TGMG"
+                  width={244}
+                  height={136}
+                  className="hero-search-brand-logo"
+                  priority
+                />
+                <div className="hero-search-brand-copy">
+                  <span>Verified marketplace</span>
+                  <strong>Search, shortlist aur seedha asli seller tak pohanchain.</strong>
+                </div>
+              </div>
               <p className="hero-search-kicker">Premium search stack</p>
-              <h2 className="hero-search-title">Jo cheez chahiye, seedha usi ke closest results.</h2>
+              <h2 className="hero-search-title">Jo chahiye, us category ke strongest relevant results.</h2>
               <p className="hero-search-copy">
-                Product, category, subcategory aur city ko ek tighter discovery flow me rakha gaya hai.
+                Product, category, subcategory aur city ko ek cleaner discovery flow me rakha gaya hai.
               </p>
               <div className="hero-search-signal-list">
                 {searchSignals.map((item) => (
@@ -670,6 +689,7 @@ export function HomeFeed() {
         </div>
 
         <div className="hero-right">
+          <p className="hero-editorial-kicker">Pakistan ka premium household marketplace</p>
           <div className="hero-badge">
             <span className="hero-badge-dot" />
             <span>Live Marketplace - Pakistan</span>
@@ -684,6 +704,13 @@ export function HomeFeed() {
             Pakistan ka pehla real-person used marketplace. <strong>Shopkeepers aur showroom
             owners ki duplicate ADDs block,</strong> sirf real household seller ko priority.
           </p>
+          <div className="hero-editorial-strip">
+            {heroEditorialNotes.map((item) => (
+              <span className="hero-editorial-note" key={item}>
+                {item}
+              </span>
+            ))}
+          </div>
           <ul className="hero-proof-list" aria-label="Trust highlights">
             {heroProofs.map((item) => (
               <li key={item.title}>
@@ -710,20 +737,6 @@ export function HomeFeed() {
                   <div className="stat-label">{item.label}</div>
                 </div>
               ))}
-            </div>
-
-            <div className="hero-logo-panel" aria-label="TGMG Brand">
-              <Image
-                src="/brand/tgmg-full.png"
-                alt="TGMG"
-                width={380}
-                height={212}
-                className="hero-full-logo hero-full-logo-right"
-                priority
-              />
-              <p className="hero-logo-note">
-                Verified, cleaner aur city-aware household marketplace.
-              </p>
             </div>
           </div>
         </div>
