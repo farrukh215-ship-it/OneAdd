@@ -28,15 +28,7 @@ import { useAuthToken } from "../lib/use-auth-token";
 import { LiveSearchInput } from "./live-search-input";
 
 const INITIAL_SKELETON_COUNT = 8;
-const urduTagline =
-  "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 const quickFilters = ["Latest", "Verified", "Karachi", "Lahore", "Islamabad", "Under 50K"];
-const heroProofs = [
-  { title: "CNIC + identity checked", detail: "Verified household seller onboarding" },
-  { title: "Repeat ads blocked", detail: "Shopkeeper aur duplicate spam filtered" },
-  { title: "Home-to-home selling", detail: "Sirf asli ghar ke products ko priority" },
-  { title: "City + area clear", detail: "Buyer ko seller location samajhne me asani" }
-];
 const heroMetrics = [
   { value: "100%", label: "Real Users" },
   { value: "1 Add", label: "Per Person" },
@@ -47,7 +39,38 @@ const searchSignals = [
   "Yahan sirf woh hain jo sach mein bechna chahte hain",
   "Woh zamana gaya jab tasweer kuch aur hoti thi, cheez kuch aur nikalti thi"
 ];
-const heroEditorialNotes = ["No fraud noise", "No repeat shopkeeper clutter", "Verified home-to-home flow"];
+const heroStoryPanels = [
+  {
+    eyebrow: "Asli household discovery",
+    title: "Hazaaron fake ads ke beech ek asli listing. Woh ek yahan hai.",
+    body:
+      "Yahan duplicate showroom clutter, repeat seller noise aur random fake push ko filter karke sirf relevant household listings front par rakhi jati hain."
+  },
+  {
+    eyebrow: "Verified seller clarity",
+    title: "Jo cheez dhoondh rahe ho, koi na koi zaroor bech raha hai. Bas asli jagah chahiye thi.",
+    body:
+      "Phone, furniture, cycle ya car. Discovery flow is tarah tuned hai ke buyer seedha verified home seller tak pohanch sake."
+  },
+  {
+    eyebrow: "No showroom flooding",
+    title: "Laakhon ads mein se asli dhoondna band karo.",
+    body:
+      "Is marketplace me repeat shopkeeper clutter aur fake spam ko compress kiya jata hai, taake quality results upar aur jaldi milen."
+  },
+  {
+    eyebrow: "Trust-first browsing",
+    title: "Yahan sirf woh hain jo sach mein bechna chahte hain.",
+    body:
+      "CNIC-backed onboarding, cleaner seller signals aur city-aware listings buyer ko behtar decision context deti hain."
+  },
+  {
+    eyebrow: "Home-to-home marketplace",
+    title: "Woh zamana gaya jab tasweer kuch aur hoti thi, cheez kuch aur nikalti thi.",
+    body:
+      "Media quality, seller trust cues aur listing structure ko is liye tighten kiya gaya hai ke browsing professional lage aur risk kam ho."
+  }
+];
 
 type HeroCard = {
   listingId?: string;
@@ -372,6 +395,7 @@ export function HomeFeed() {
   const [searchSubcategorySlug, setSearchSubcategorySlug] = useState("");
   const [searchCity, setSearchCity] = useState("");
   const [featuredHeroIndex, setFeaturedHeroIndex] = useState(0);
+  const [heroStoryIndex, setHeroStoryIndex] = useState(0);
   const selectedSearchCategory = useMemo(
     () => categories.find((item) => item.slug === searchCategorySlug) ?? null,
     [categories, searchCategorySlug]
@@ -562,6 +586,16 @@ export function HomeFeed() {
 
     return () => window.clearInterval(timer);
   }, [heroCards]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setHeroStoryIndex((prev) => (prev + 1) % heroStoryPanels.length);
+    }, 10000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const activeHeroStory = heroStoryPanels[heroStoryIndex] ?? heroStoryPanels[0];
 
   const listingSectionBody = useMemo(() => {
     if (loading) {
@@ -790,26 +824,19 @@ export function HomeFeed() {
             />
           </div>
 
-          <p className="hero-urdu urdu-text">{urduTagline}</p>
-          <p className="hero-desc">
-            Pakistan ka real-person marketplace. <strong>Fake seller noise, duplicate showroom clutter aur
-            repeat ads ko block karke</strong> sirf asli home seller listings ko front par laya gaya hai.
-          </p>
-          <div className="hero-editorial-strip">
-            {heroEditorialNotes.map((item) => (
-              <span className="hero-editorial-note" key={item}>
-                {item}
-              </span>
-            ))}
+          <div className="hero-story-panel" key={activeHeroStory.title}>
+            <span className="hero-story-eyebrow">{activeHeroStory.eyebrow}</span>
+            <h2 className="hero-story-title">{activeHeroStory.title}</h2>
+            <p className="hero-story-copy">{activeHeroStory.body}</p>
+            <div className="hero-story-progress" aria-hidden="true">
+              {heroStoryPanels.map((item, index) => (
+                <span
+                  key={item.title}
+                  className={index === heroStoryIndex ? "is-active" : ""}
+                />
+              ))}
+            </div>
           </div>
-          <ul className="hero-proof-list" aria-label="Trust highlights">
-            {heroProofs.map((item) => (
-              <li key={item.title}>
-                <strong>{item.title}</strong>
-                <span>{item.detail}</span>
-              </li>
-            ))}
-          </ul>
 
           <div className="hero-lower">
             <div className="hero-actions">
