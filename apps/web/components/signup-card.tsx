@@ -1,9 +1,15 @@
 ﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ConfirmationResult,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
+} from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { ApiError, requestOtp, signup, verifyOtp } from "../lib/api";
+import { ApiError, verifyFirebaseLogin } from "../lib/api";
 import { toUserFriendlyAuthError } from "../lib/auth-error";
+import { getFirebaseAuth, isFirebaseConfigured } from "../lib/firebase";
 
 type SignupFormState = {
   fullName: string;
@@ -100,7 +106,9 @@ export function SignupCard() {
   const [otpResendIn, setOtpResendIn] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const requestIdRef = useRef("");
+  const recaptchaElementRef = useRef<HTMLDivElement | null>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const confirmationRef = useRef<ConfirmationResult | null>(null);
 
   useEffect(() => {
     if (otpResendIn <= 0) return;
@@ -109,6 +117,24 @@ export function SignupCard() {
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [otpResendIn]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured() || !recaptchaElementRef.current) {
+      return;
+    }
+
+    const auth = getFirebaseAuth();
+    recaptchaVerifierRef.current = new RecaptchaVerifier(
+      auth,
+      recaptchaElementRef.current,
+      { size: "invisible" }
+    );
+
+    return () => {
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+    };
+  }, []);
 
   const strength = useMemo(() => getPasswordStrength(form.password), [form.password]);
   const phoneValid = phonePattern.test(form.phone.trim());
@@ -154,8 +180,20 @@ export function SignupCard() {
   }
 
   async function requestSignupOtp() {
-    const response = await requestOtp(form.phone.trim(), { forSignup: true });
-    requestIdRef.current = response.requestId;
+    if (!isFirebaseConfigured()) {
+      throw new Error("Phone verification abhi available nahi hai. Thori dair baad dobara try karein.");
+    }
+    if (!recaptchaVerifierRef.current) {
+      throw new Error("Verification load nahi ho saki. Page refresh karke dobara try karein.");
+    }
+
+    const auth = getFirebaseAuth();
+    const confirmation = await signInWithPhoneNumber(
+      auth,
+      form.phone.trim(),
+      recaptchaVerifierRef.current
+    );
+    confirmationRef.current = confirmation;
     setOtpModalOpen(true);
     setOtpResendIn(otpResendSeconds);
   }
@@ -209,7 +247,7 @@ export function SignupCard() {
     setError("");
     setMessage("");
 
-    if (!requestIdRef.current) {
+    if (!confirmationRef.current) {
       setError("Pehle OTP request karein.");
       return;
     }
@@ -220,26 +258,22 @@ export function SignupCard() {
 
     setLoading(true);
     try {
-      const verification = await verifyOtp({
-        requestId: requestIdRef.current,
-        phone: form.phone.trim(),
-        otp: otp.trim(),
-        purpose: "SIGNUP"
-      });
+      const credential = await confirmationRef.current.confirm(otp.trim());
+      const idToken = await credential.user.getIdToken(true);
 
-      await signup({
+      await verifyFirebaseLogin({
+        idToken,
         fullName: form.fullName.trim(),
         fatherName: form.fatherName.trim(),
         cnic: form.cnic.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        phone: form.phone.trim(),
         dateOfBirth: form.dateOfBirth,
         gender: form.gender,
-        otpVerificationToken: verification.verificationToken
+        city: "Unknown"
       });
 
-      requestIdRef.current = "";
+      confirmationRef.current = null;
       setOtpModalOpen(false);
       setMessage("Account create ho gaya aur login ho chuka hai.");
       router.push("/");
@@ -401,6 +435,8 @@ export function SignupCard() {
           {loading ? "Please wait..." : "Create Account"}
         </button>
       </form>
+
+      <div ref={recaptchaElementRef} />
 
       {otpModalOpen ? (
         <div className="modalBackdrop" role="dialog" aria-modal="true">

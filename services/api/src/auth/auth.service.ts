@@ -491,7 +491,7 @@ export class AuthService {
       throw new UnauthorizedException("Invalid Firebase idToken.");
     }
 
-    const phone = decodedToken.phone_number?.trim();
+    const phone = this.normalizePakistanPhone(decodedToken.phone_number?.trim() ?? "");
     if (!phone) {
       throw new UnauthorizedException("Phone number is missing in Firebase token.");
     }
@@ -500,7 +500,7 @@ export class AuthService {
       throw new BadRequestException("Email is required for Firebase login.");
     }
 
-    let user = await this.prisma.user.findUnique({ where: { phone } });
+    let user = await this.findUserByPhone(phone);
     if (user && user.email.toLowerCase() !== normalizedEmail) {
       throw new UnauthorizedException("Email and phone do not match.");
     }
@@ -511,10 +511,19 @@ export class AuthService {
       this.assertAdult(String(dto.dateOfBirth));
       this.assertStrongPassword(String(dto.password));
       const existing = await this.prisma.user.findFirst({
-        where: { OR: [{ email }, { cnic }] },
-        select: { email: true, cnic: true }
+        where: {
+          OR: [
+            { email },
+            { cnic },
+            { phone: { in: this.getPhoneLookupCandidates(phone) } }
+          ]
+        },
+        select: { email: true, cnic: true, phone: true }
       });
 
+      if (existing?.phone && this.arePhonesEquivalent(existing.phone, phone)) {
+        throw new BadRequestException("Aik number pe sirf aik account banta hai.");
+      }
       if (existing?.cnic === cnic) {
         throw new BadRequestException("CNIC already registered.");
       }
