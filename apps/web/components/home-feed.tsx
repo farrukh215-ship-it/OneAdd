@@ -234,7 +234,7 @@ function ListingCard({ listing, variant = "feed" }: ListingCardProps) {
   }, [listing.id]);
 
   useEffect(() => {
-    if (visibleImageIndexes.length <= 1) {
+    if (variant === "recent" || visibleImageIndexes.length <= 1) {
       return;
     }
 
@@ -536,7 +536,9 @@ export function HomeFeed() {
   );
   const latestItems = useMemo(
     () =>
-      visibleItems.filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id)),
+      visibleItems
+        .filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id))
+        .slice(0, 2),
     [heroListingIds, recentListingIds, visibleItems]
   );
   const feedItems = useMemo(() => {
