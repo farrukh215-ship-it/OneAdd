@@ -5,6 +5,13 @@ import { AdminShell } from "../../components/admin-shell";
 import { Panel, PanelHeader, TableState } from "../../components/ui";
 import { adminApi } from "../../lib/api";
 
+function formatDate(value?: string | Date | null) {
+  if (!value) return "N/A";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
+
 export default function UsersPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +43,12 @@ export default function UsersPage() {
           <table className="table executiveTable">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Email</th>
+                <th>User</th>
+                <th>ID / CNIC</th>
+                <th>Contact</th>
+                <th>City</th>
+                <th>Trust</th>
+                <th>Activity</th>
                 <th>Blocked</th>
                 <th>Shadow Banned</th>
                 <th>Actions</th>
@@ -46,8 +57,30 @@ export default function UsersPage() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.fullName}</td>
-                  <td>{item.email}</td>
+                  <td>
+                    <strong>{item.fullName || "Unnamed User"}</strong>
+                  </td>
+                  <td>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <span>{item.id}</span>
+                      <span>{item.cnic || "CNIC missing"}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <span>{item.phone || "Phone missing"}</span>
+                      <span>{item.email || "Email missing"}</span>
+                    </div>
+                  </td>
+                  <td>{item.city || "Unknown"}</td>
+                  <td>{item.trustScore?.score ?? 0}</td>
+                  <td>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      <span>Created: {formatDate(item.createdAt)}</span>
+                      <span>Updated: {formatDate(item.updatedAt)}</span>
+                      <span>Last seen: {formatDate(item.lastSeenAt)}</span>
+                    </div>
+                  </td>
                   <td>{String(item.isBlocked)}</td>
                   <td>{String(item.shadowBanned)}</td>
                   <td className="actions">

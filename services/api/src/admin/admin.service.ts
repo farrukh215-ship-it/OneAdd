@@ -126,21 +126,33 @@ export class AdminService {
     });
   }
 
-  getUsers() {
-    return this.prisma.user.findMany({
+  async getUsers() {
+    const users = await this.prisma.user.findMany({
       select: {
         id: true,
         fullName: true,
         email: true,
         phone: true,
         cnic: true,
+        city: true,
+        createdAt: true,
+        updatedAt: true,
         isBlocked: true,
         shadowBanned: true,
-        createdAt: true,
+        deviceFingerprints: {
+          take: 1,
+          orderBy: { lastSeenAt: "desc" },
+          select: { lastSeenAt: true }
+        },
         trustScore: { select: { score: true } }
       },
       orderBy: { createdAt: "desc" }
     });
+
+    return users.map(({ deviceFingerprints, ...user }) => ({
+      ...user,
+      lastSeenAt: deviceFingerprints[0]?.lastSeenAt ?? null
+    }));
   }
 
   getAuditLogs(limit = 100) {

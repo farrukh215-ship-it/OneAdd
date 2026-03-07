@@ -31,10 +31,10 @@ const urduTagline =
   "\u062A\u06CC\u0631\u0627 \u062F\u0644 \u06A9\u0627 \u0633\u0627\u0645\u0627\u0646 - \u0645\u06CC\u0631\u06D2 \u06AF\u06BE\u0631 \u06A9\u0627 \u062D\u0635\u06C1";
 const quickFilters = ["Latest", "Verified", "Karachi", "Lahore", "Islamabad", "Under 50K"];
 const heroProofs = [
-  { title: "CNIC Verified", detail: "Real household onboarding" },
-  { title: "Spam Blocked", detail: "Duplicate seller noise control" },
-  { title: "1 User 1 Add", detail: "Cleaner marketplace quality" },
-  { title: "Pakistan First", detail: "City + area focused discovery" }
+  { title: "CNIC + identity checked", detail: "Verified household seller onboarding" },
+  { title: "Repeat ads blocked", detail: "Shopkeeper aur duplicate spam filtered" },
+  { title: "Home-to-home selling", detail: "Sirf asli ghar ke products ko priority" },
+  { title: "City + area clear", detail: "Buyer ko seller location samajhne me asani" }
 ];
 const heroMetrics = [
   { value: "100%", label: "Real Users" },
@@ -42,14 +42,14 @@ const heroMetrics = [
   { value: "PK", label: "Local First" }
 ];
 const searchSignals = [
-  "Title + category intelligence",
-  "City / area aware discovery",
-  "Typos aur close matches handled"
+  "No fraud, no fake showroom flooding",
+  "Verified home sellers with real identity checks",
+  "Smart search with close-match and city awareness"
 ];
 const heroEditorialNotes = [
-  "Real household listings only",
-  "Category-aware discovery",
-  "Fast city and area filtering"
+  "No showroom spam",
+  "No repeat seller clutter",
+  "Verified household listings only"
 ];
 
 type HeroCard = {
@@ -540,14 +540,14 @@ export function HomeFeed() {
                   priority
                 />
                 <div className="hero-search-brand-copy">
-                  <span>Verified marketplace</span>
-                  <strong>Search, shortlist aur seedha asli seller tak pohanchain.</strong>
+                  <span>Home-to-home marketplace</span>
+                  <strong>Asli ghar ke seller, clean discovery aur zero duplicate clutter.</strong>
                 </div>
               </div>
-              <p className="hero-search-kicker">Premium search stack</p>
-              <h2 className="hero-search-title">Jo chahiye, us category ke strongest relevant results.</h2>
+              <p className="hero-search-kicker">Trusted household discovery</p>
+              <h2 className="hero-search-title">Fraud kam, fake ads kam, relevant asli listings zyada.</h2>
               <p className="hero-search-copy">
-                Product, category, subcategory aur city ko ek cleaner discovery flow me rakha gaya hai.
+                Product, category, subcategory aur city ko is tarah organise kiya gaya hai ke buyer seedha verified home seller tak pohanch sake.
               </p>
               <div className="hero-search-signal-list">
                 {searchSignals.map((item) => (
@@ -698,11 +698,20 @@ export function HomeFeed() {
           <h1 className="hero-heading">
             Tera <em>Ghar</em> Mera Ghar
           </h1>
+          <div className="hero-mobile-logo" aria-hidden="true">
+            <Image
+              src="/brand/tgmg-full.png"
+              alt="TGMG"
+              width={252}
+              height={141}
+              className="hero-mobile-logo-image"
+            />
+          </div>
 
           <p className="hero-urdu urdu-text">{urduTagline}</p>
           <p className="hero-desc">
-            Pakistan ka pehla real-person used marketplace. <strong>Shopkeepers aur showroom
-            owners ki duplicate ADDs block,</strong> sirf real household seller ko priority.
+            Pakistan ka real-person marketplace. <strong>Shopkeepers, duplicate ads aur fake seller
+            noise ko block karke</strong> sirf asli household sellers ko front par laya gaya hai.
           </p>
           <div className="hero-editorial-strip">
             {heroEditorialNotes.map((item) => (
