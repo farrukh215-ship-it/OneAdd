@@ -477,19 +477,7 @@ export class AuthService {
     dto: FirebaseVerifyDto,
     request: Request
   ): Promise<AuthPayload> {
-    const firebaseAuth = this.getFirebaseAuth();
-    if (!firebaseAuth) {
-      throw new BadRequestException(
-        "Phone verification service abhi available nahi hai. Thori dair baad dobara try karein."
-      );
-    }
-
-    let decodedToken: { phone_number?: string };
-    try {
-      decodedToken = await firebaseAuth.verifyIdToken(dto.idToken, true);
-    } catch {
-      throw new UnauthorizedException("Invalid Firebase idToken.");
-    }
+    const decodedToken = await this.verifyFirebaseIdToken(dto.idToken);
 
     const phone = this.normalizePakistanPhone(decodedToken.phone_number?.trim() ?? "");
     if (!phone) {
@@ -795,19 +783,7 @@ export class AuthService {
   }
 
   private async assertFirebasePhoneMatch(idToken: string, phone: string) {
-    const firebaseAuth = this.getFirebaseAuth();
-    if (!firebaseAuth) {
-      throw new BadRequestException(
-        "Phone verification service abhi available nahi hai. Thori dair baad dobara try karein."
-      );
-    }
-
-    let decodedToken: { phone_number?: string };
-    try {
-      decodedToken = await firebaseAuth.verifyIdToken(idToken, true);
-    } catch {
-      throw new UnauthorizedException("Invalid Firebase idToken.");
-    }
+    const decodedToken = await this.verifyFirebaseIdToken(idToken);
 
     const tokenPhone = decodedToken.phone_number?.trim();
     if (!tokenPhone || !this.arePhonesEquivalent(tokenPhone, phone)) {
@@ -940,15 +916,91 @@ export class AuthService {
     if (firebaseAdmin.apps.length === 0) {
       const serviceAccount = this.getFirebaseServiceAccount();
       if (!serviceAccount) {
+        if (!this.getFirebaseWebApiKey()) {
+          this.logger.error(
+            "Firebase Admin configuration missing. FIREBASE_SERVICE_ACCOUNT_PATH or FCM_* credentials are not available."
+          );
+        }
         return null;
       }
 
-      firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(serviceAccount)
-      });
+      try {
+        firebaseAdmin.initializeApp({
+          credential: firebaseAdmin.credential.cert(serviceAccount)
+        });
+      } catch (error) {
+        if (!this.getFirebaseWebApiKey()) {
+          this.logger.error(
+            "Failed to initialize Firebase Admin SDK for OTP verification.",
+            error instanceof Error ? error.stack : undefined
+          );
+        }
+        return null;
+      }
     }
 
     return firebaseAdmin.auth();
+  }
+
+  private async verifyFirebaseIdToken(idToken: string) {
+    const firebaseAuth = this.getFirebaseAuth();
+    if (firebaseAuth) {
+      try {
+        return await firebaseAuth.verifyIdToken(idToken, true);
+      } catch {
+        throw new UnauthorizedException("Invalid Firebase idToken.");
+      }
+    }
+
+    return this.verifyFirebaseIdTokenViaLookup(idToken);
+  }
+
+  private async verifyFirebaseIdTokenViaLookup(idToken: string) {
+    const apiKey = this.getFirebaseWebApiKey();
+    if (!apiKey) {
+      throw new BadRequestException(
+        "Phone verification service abhi available nahi hai. Firebase key missing hai."
+      );
+    }
+
+    const endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`;
+
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ idToken })
+      });
+    } catch {
+      throw new BadRequestException(
+        "Phone verification service abhi available nahi hai. Firebase network verify fail ho gaya."
+      );
+    }
+
+    let payload: any = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const code = payload?.error?.message;
+      if (typeof code === "string" && code.length > 0) {
+        this.logger.warn(`Firebase lookup verify failed: ${code}`);
+      }
+      throw new UnauthorizedException("Invalid Firebase idToken.");
+    }
+
+    const firstUser = Array.isArray(payload?.users) ? payload.users[0] : null;
+    const phoneNumber = typeof firstUser?.phoneNumber === "string" ? firstUser.phoneNumber : "";
+
+    return {
+      phone_number: phoneNumber || undefined
+    };
   }
 
   private getFirebaseServiceAccount():
@@ -999,6 +1051,55 @@ export class AuthService {
     }
 
     return { projectId, clientEmail, privateKey };
+  }
+
+  private getFirebaseWebApiKey() {
+    const direct = this.configService.get<string>("FIREBASE_WEB_API_KEY", "").trim();
+    if (direct) {
+      return direct;
+    }
+
+    const nextPublic = this.configService
+      .get<string>("NEXT_PUBLIC_FIREBASE_API_KEY", "")
+      .trim();
+    if (nextPublic) {
+      return nextPublic;
+    }
+
+    const rawPath = this.configService.get<string>("FIREBASE_SERVICE_ACCOUNT_PATH", "");
+    const candidates = [
+      rawPath,
+      isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), rawPath),
+      isAbsolute(rawPath) ? rawPath : resolve(process.cwd(), "..", "..", rawPath),
+      "/app/keys/google-services.json",
+      resolve(process.cwd(), "..", "..", "keys", "google-services.json"),
+      "/app/keys/firebase-admin.json",
+      resolve(process.cwd(), "..", "..", "keys", "firebase-admin.json")
+    ]
+      .filter((value): value is string => Boolean(value))
+      .filter((value, index, list) => list.indexOf(value) === index);
+
+    for (const candidate of candidates) {
+      if (!existsSync(candidate)) {
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(readFileSync(candidate, "utf-8")) as {
+          client?: Array<{
+            api_key?: Array<{ current_key?: string }>;
+          }>;
+        };
+        const key = parsed.client?.[0]?.api_key?.[0]?.current_key;
+        if (typeof key === "string" && key.trim().length > 0) {
+          return key.trim();
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return "";
   }
 
   private assertFirebaseSignupPayload(dto: FirebaseVerifyDto) {

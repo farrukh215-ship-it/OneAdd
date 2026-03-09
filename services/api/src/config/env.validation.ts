@@ -17,6 +17,7 @@ type EnvConfig = {
   ALLOW_NOOP_SMS_IN_PRODUCTION?: string;
   PUSH_PROVIDER?: string;
   FIREBASE_SERVICE_ACCOUNT_PATH?: string;
+  FIREBASE_WEB_API_KEY?: string;
   FCM_PROJECT_ID?: string;
   FCM_CLIENT_EMAIL?: string;
   FCM_PRIVATE_KEY?: string;
@@ -133,6 +134,7 @@ export function validateEnvironment(config: EnvConfig) {
     ALLOW_NOOP_SMS_IN_PRODUCTION: config.ALLOW_NOOP_SMS_IN_PRODUCTION ?? "false",
     PUSH_PROVIDER: config.PUSH_PROVIDER ?? "noop",
     FIREBASE_SERVICE_ACCOUNT_PATH: config.FIREBASE_SERVICE_ACCOUNT_PATH ?? "",
+    FIREBASE_WEB_API_KEY: config.FIREBASE_WEB_API_KEY ?? "",
     FCM_PROJECT_ID: config.FCM_PROJECT_ID ?? "",
     FCM_CLIENT_EMAIL: config.FCM_CLIENT_EMAIL ?? "",
     FCM_PRIVATE_KEY: config.FCM_PRIVATE_KEY ?? "",

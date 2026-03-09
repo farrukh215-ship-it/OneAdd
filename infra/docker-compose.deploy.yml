@@ -35,6 +35,7 @@ services:
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: ${CORS_ORIGIN:-https://teragharmeraghar.com,https://www.teragharmeraghar.com}
       FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH:-/app/keys/firebase-admin.json}
+      FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY:-}
     depends_on:
       - postgres
       - redis
