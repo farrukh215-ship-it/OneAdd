@@ -7889,6 +7889,168 @@ body.uiPremiumV1 .trust-bar {
   }
 }
 
+/* Phase-2 premium reset: global rhythm + layout clarity */
+body.uiPremiumV1 .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 180;
+  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,245,233,0.94));
+  border-bottom: 1px solid rgba(214, 176, 146, 0.45);
+  box-shadow: 0 8px 24px rgba(76, 49, 33, 0.08);
+}
+
+body.uiPremiumV1 .announce-bar {
+  background: linear-gradient(90deg, #2f8d67 0%, #3f6aa8 48%, #7a5cff 100%);
+  color: #fff;
+}
+
+body.uiPremiumV1 .homeScreen {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 20px 18px 34px;
+}
+
+body.uiPremiumV1 .categories-section,
+body.uiPremiumV1 .listings-section {
+  border-radius: 24px;
+  border: 1px solid rgba(214, 176, 146, 0.45);
+  box-shadow: 0 14px 30px rgba(88, 58, 39, 0.07);
+  padding: 22px;
+}
+
+body.uiPremiumV1 .section-eyebrow {
+  color: #b35f3b;
+  letter-spacing: 0.18em;
+}
+
+body.uiPremiumV1 .section-title {
+  font-size: clamp(28px, 2.8vw, 42px);
+  line-height: 1.02;
+  color: #2f221b;
+}
+
+body.uiPremiumV1 .listings-grid {
+  gap: 16px;
+}
+
+body.uiPremiumV1 .listing-card {
+  border-radius: 22px;
+  min-height: 208px;
+}
+
+body.uiPremiumV1 .listing-body {
+  align-content: start;
+}
+
+body.uiPremiumV1 .listing-title {
+  font-size: clamp(20px, 2.2vw, 30px);
+}
+
+body.uiPremiumV1 .listing-price {
+  font-size: clamp(22px, 2.1vw, 34px);
+}
+
+body.uiPremiumV1 .recentListingsGrid .listing-card {
+  min-height: 0;
+}
+
+body.uiPremiumV1 .marketplaceSectionStack {
+  display: grid;
+  gap: 16px;
+}
+
+body.uiPremiumV1 .marketplaceShelfGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+body.uiPremiumV1 .trust-bar {
+  margin-top: 18px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+}
+
+body.uiPremiumV1 .footer {
+  margin-top: 28px;
+  border-top: 1px solid rgba(214, 176, 146, 0.5);
+  background:
+    radial-gradient(900px 420px at 10% -10%, rgba(255,165,96,0.16), transparent 62%),
+    linear-gradient(180deg, rgba(255,248,240,0.97), rgba(252,241,230,0.95));
+}
+
+body.uiPremiumV1 .footer-top {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 20px;
+  gap: 20px;
+}
+
+body.uiPremiumV1 .footer-cta-panel {
+  border-radius: 18px;
+  border: 1px solid rgba(214, 176, 146, 0.45);
+  background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,244,232,0.74));
+}
+
+body.uiPremiumV1 .footer-bottom {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 14px 20px 28px;
+}
+
+@media (max-width: 1100px) {
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  body.uiPremiumV1 .homeScreen {
+    padding: 12px 12px 20px;
+  }
+
+  body.uiPremiumV1 .categories-section,
+  body.uiPremiumV1 .listings-section {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  body.uiPremiumV1 .footer-top {
+    padding: 22px 12px;
+  }
+
+  body.uiPremiumV1 .footer-bottom {
+    padding: 12px 12px 94px;
+  }
+}
+
+@media (max-width: 640px) {
+  body.uiPremiumV1 .listing-card {
+    min-height: 0;
+  }
+
+  body.uiPremiumV1 .listingTitleRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  body.uiPremiumV1 .listing-price {
+    text-align: left;
+  }
+
+  body.uiPremiumV1 .listingMetaSecondary,
+  body.uiPremiumV1 .listing-desc {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  body.uiPremiumV1 .mobile-nav {
+    border-top: 1px solid rgba(214, 176, 146, 0.55);
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,242,230,0.95));
+    box-shadow: 0 -10px 24px rgba(76, 49, 33, 0.12);
+  }
+}
+
 /* Final containment + minimalist polish (web + mobile) */
 body.uiPremiumV1 .listing-card,
 body.uiPremiumV1 .listing-card--recent,

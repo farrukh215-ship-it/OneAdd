@@ -547,7 +547,7 @@ export function HomeFeed() {
                 Hazaaron fake ads ke beech ek asli listing. Woh ek yahan hai.
               </h2>
               <p className="hero-search-copy">
-                Jo cheez dhoondh rahe ho, woh yahan seedha verified seller se milti hai.
+                Product, category, city aur area ke saath focused discovery flow.
               </p>
             </div>
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
