@@ -41,6 +41,7 @@ export function MainNav() {
   const { mounted, token } = useAuthToken();
   const isLoggedIn = mounted && Boolean(token);
   const [accountName, setAccountName] = useState("");
+  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const [scrollProgress, setScrollProgress] = useState(0);
   const mobileAccountName = accountName.split(" ")[0] || "You";
 
@@ -200,17 +201,40 @@ export function MainNav() {
       </nav>
 
       {pathname === "/" ? (
-        <div className="home-nav-cats-wrap" aria-label="Home categories">
-          <div className="home-nav-cats">
-            {homeCategoryTabs.map((item) => (
-              <Link
-                key={item.slug}
-                href={`/search?category=${encodeURIComponent(item.slug)}`}
-                className="home-nav-cat-chip"
-              >
-                {item.label}
-              </Link>
-            ))}
+        <div className="home-mobile-shell">
+          <div className="home-nav-cats-wrap" aria-label="Home categories">
+            <div className="home-nav-cats">
+              {homeCategoryTabs.map((item) => (
+                <Link
+                  key={item.slug}
+                  href={`/search?category=${encodeURIComponent(item.slug)}`}
+                  className="home-nav-cat-chip"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="home-nav-search-wrap" aria-label="Quick search">
+            <form
+              className="home-nav-search-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const query = mobileSearchQuery.trim();
+                router.push(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
+              }}
+            >
+              <input
+                className="home-nav-search-input"
+                placeholder="Search products"
+                value={mobileSearchQuery}
+                onChange={(event) => setMobileSearchQuery(event.target.value)}
+                aria-label="Search products"
+              />
+              <button className="home-nav-search-btn" type="submit">
+                Search
+              </button>
+            </form>
           </div>
         </div>
       ) : null}

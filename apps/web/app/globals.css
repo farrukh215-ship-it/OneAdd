@@ -8739,3 +8739,270 @@ body.uiPremiumV1 .listing-card--recent {
     font-size: 13px !important;
   }
 }
+
+/* Mobile world-class redesign: final authoritative block */
+body.uiPremiumV1 .home-mobile-shell {
+  width: min(1320px, calc(100% - 24px));
+  margin: 10px auto 0;
+  display: grid;
+  gap: 8px;
+}
+
+body.uiPremiumV1 .home-nav-search-wrap {
+  display: none;
+}
+
+body.uiPremiumV1 .home-nav-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(214, 176, 146, 0.42);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 246, 236, 0.9));
+}
+
+body.uiPremiumV1 .home-nav-search-input {
+  width: 100%;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(194, 140, 101, 0.34);
+  padding: 0 12px;
+  font-size: 13px;
+  color: #3e2a1f;
+  background: #fffdf9;
+}
+
+body.uiPremiumV1 .home-nav-search-input::placeholder {
+  color: #9e7e69;
+}
+
+body.uiPremiumV1 .home-nav-search-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #c8603a;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #c8603a 0%, #bb5a35 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 900px) {
+  body.uiPremiumV1 .home-mobile-shell {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+  }
+
+  body.uiPremiumV1 .home-nav-cats-wrap {
+    width: 100%;
+    margin: 0;
+  }
+
+  body.uiPremiumV1 .home-nav-search-wrap {
+    display: block;
+  }
+
+  body.uiPremiumV1 .hero {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  body.uiPremiumV1 .hero-left {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .hero-right {
+    order: 1;
+    min-height: auto !important;
+    padding: 16px 14px !important;
+  }
+
+  body.uiPremiumV1 .hero-focus-panel,
+  body.uiPremiumV1 .hero-mobile-logo,
+  body.uiPremiumV1 .hero-editorial-kicker {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .hero-badge {
+    margin-bottom: 8px !important;
+  }
+
+  body.uiPremiumV1 .hero-heading {
+    font-size: clamp(38px, 12vw, 56px) !important;
+    line-height: 0.92 !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.uiPremiumV1 .hero-urdu {
+    margin-bottom: 8px !important;
+  }
+
+  body.uiPremiumV1 .hero-desc {
+    margin-bottom: 12px !important;
+  }
+
+  body.uiPremiumV1 .hero-lower {
+    gap: 10px !important;
+  }
+
+  body.uiPremiumV1 .hero-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  body.uiPremiumV1 .hero-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  body.uiPremiumV1 .categories-section,
+  body.uiPremiumV1 .listings-section {
+    width: calc(100% - 16px) !important;
+    margin-top: 12px !important;
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  body.uiPremiumV1 .cats-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 2px 2px 8px !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.uiPremiumV1 .cat-card {
+    flex: 0 0 140px !important;
+    width: 140px !important;
+    min-height: 108px !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    scroll-snap-align: start;
+  }
+
+  body.uiPremiumV1 .cat-rail-index {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .cat-name {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  body.uiPremiumV1 .cat-count {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+
+  body.uiPremiumV1 .subcat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.uiPremiumV1 .listings-grid,
+  body.uiPremiumV1 .recentListingsGrid,
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  body.uiPremiumV1 .listing-card,
+  body.uiPremiumV1 .listing-card--recent {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  body.uiPremiumV1 .listing-img,
+  body.uiPremiumV1 .listing-card--recent .listing-img {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 12px !important;
+  }
+
+  body.uiPremiumV1 .listing-img-inner,
+  body.uiPremiumV1 .listingCardMedia {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 10px !important;
+    object-fit: cover !important;
+  }
+
+  body.uiPremiumV1 .listing-body {
+    display: grid !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.uiPremiumV1 .listingTitleRow {
+    grid-template-columns: 1fr !important;
+    gap: 3px !important;
+  }
+
+  body.uiPremiumV1 .listing-title,
+  body.uiPremiumV1 .listing-card--recent .listing-title {
+    font-size: 16px !important;
+    line-height: 1.14 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  body.uiPremiumV1 .listing-price,
+  body.uiPremiumV1 .listing-card--recent .listing-price {
+    font-size: 18px !important;
+    line-height: 1.05 !important;
+    text-align: left !important;
+  }
+
+  body.uiPremiumV1 .listing-price span,
+  body.uiPremiumV1 .listing-card--recent .listing-price span {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .listingMetaPrimary {
+    font-size: 10px !important;
+  }
+
+  body.uiPremiumV1 .listingMetaSecondary {
+    font-size: 12px !important;
+  }
+
+  body.uiPremiumV1 .listing-desc {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  body.uiPremiumV1 .listingSupportMeta {
+    display: none !important;
+  }
+}
+
+@media (max-width: 389px) {
+  body.uiPremiumV1 .listings-grid,
+  body.uiPremiumV1 .recentListingsGrid,
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
