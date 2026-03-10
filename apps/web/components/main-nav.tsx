@@ -15,6 +15,16 @@ const links = [
   { href: "/my-listings", label: "Mere Ads", icon: "\ud83d\udccb" }
 ];
 
+const homeCategoryTabs = [
+  { label: "Mobiles", slug: "mobiles" },
+  { label: "Computers", slug: "computers" },
+  { label: "Furniture", slug: "furniture" },
+  { label: "Home Appliances", slug: "home-appliances" },
+  { label: "Kids", slug: "kids-products" },
+  { label: "Old Books", slug: "old-books" },
+  { label: "Gaming", slug: "gaming" }
+];
+
 function isLinkActive(pathname: string, href: string) {
   if (href === "/") {
     return pathname === "/";
@@ -188,6 +198,22 @@ export function MainNav() {
           ))}
         </div>
       </nav>
+
+      {pathname === "/" ? (
+        <div className="home-nav-cats-wrap" aria-label="Home categories">
+          <div className="home-nav-cats">
+            {homeCategoryTabs.map((item) => (
+              <Link
+                key={item.slug}
+                href={`/search?category=${encodeURIComponent(item.slug)}`}
+                className="home-nav-cat-chip"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

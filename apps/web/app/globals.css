@@ -8051,6 +8051,192 @@ body.uiPremiumV1 .footer-bottom {
   }
 }
 
+/* App-style category strip under header */
+body.uiPremiumV1 .home-nav-cats-wrap {
+  width: min(1320px, calc(100% - 24px));
+  margin: 10px auto 0;
+}
+
+body.uiPremiumV1 .home-nav-cats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(214, 176, 146, 0.4);
+  background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,244,233,0.9));
+}
+
+body.uiPremiumV1 .home-nav-cat-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid rgba(214, 176, 146, 0.45);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+  color: #3a2920;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+
+body.uiPremiumV1 .home-nav-cat-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(200, 96, 58, 0.55);
+  color: #c8603a;
+}
+
+/* Remove visual duplicate block feeling */
+body.uiPremiumV1 .hero-focus-panel {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(216, 179, 150, 0.38);
+  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,244,231,0.72));
+}
+
+/* Mobile commerce layout */
+@media (max-width: 640px) {
+  body.uiPremiumV1 .home-nav-cats-wrap {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+  }
+
+  body.uiPremiumV1 .home-nav-cats {
+    padding: 6px;
+    gap: 6px;
+    border-radius: 12px;
+  }
+
+  body.uiPremiumV1 .home-nav-cat-chip {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+
+  body.uiPremiumV1 .hero-focus-panel {
+    margin-top: 10px;
+    padding: 12px;
+  }
+
+  body.uiPremiumV1 .hero-search-sidebar {
+    order: 1 !important;
+  }
+
+  body.uiPremiumV1 .hero-right {
+    order: 2 !important;
+  }
+
+  body.uiPremiumV1 .listings-grid,
+  body.uiPremiumV1 .recentListingsGrid,
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  body.uiPremiumV1 .listing-card,
+  body.uiPremiumV1 .listing-card--recent {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+    min-height: 0 !important;
+  }
+
+  body.uiPremiumV1 .listing-img,
+  body.uiPremiumV1 .listing-card--recent .listing-img {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border-radius: 12px !important;
+  }
+
+  body.uiPremiumV1 .listingCardMedia,
+  body.uiPremiumV1 .listing-img img {
+    object-fit: cover !important;
+    border-radius: 10px !important;
+  }
+
+  body.uiPremiumV1 .listing-body {
+    display: grid !important;
+    gap: 4px !important;
+    padding: 0 !important;
+  }
+
+  body.uiPremiumV1 .listing-cat {
+    font-size: 9px !important;
+    letter-spacing: 0.16em !important;
+    margin-bottom: 2px !important;
+  }
+
+  body.uiPremiumV1 .listing-title {
+    font-size: 17px !important;
+    line-height: 1.08 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  body.uiPremiumV1 .listing-price {
+    font-size: 18px !important;
+    text-align: left !important;
+    line-height: 1.05 !important;
+  }
+
+  body.uiPremiumV1 .listing-price span {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .listingMetaPrimary {
+    font-size: 9px !important;
+    line-height: 1.3 !important;
+  }
+
+  body.uiPremiumV1 .listingMetaSecondary {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  body.uiPremiumV1 .listing-desc {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 2 !important;
+    margin-bottom: 0 !important;
+  }
+
+  body.uiPremiumV1 .listingFooterCluster {
+    gap: 4px !important;
+  }
+
+  body.uiPremiumV1 .listing-footer {
+    padding-top: 6px !important;
+  }
+
+  body.uiPremiumV1 .listing-loc,
+  body.uiPremiumV1 .listingTimelineMeta,
+  body.uiPremiumV1 .listingSupportMeta {
+    font-size: 10px !important;
+  }
+
+  body.uiPremiumV1 .trust-bar {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 460px) {
+  body.uiPremiumV1 .listings-grid,
+  body.uiPremiumV1 .recentListingsGrid,
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Final containment + minimalist polish (web + mobile) */
 body.uiPremiumV1 .listing-card,
 body.uiPremiumV1 .listing-card--recent,

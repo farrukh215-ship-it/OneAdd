@@ -640,9 +640,8 @@ export function HomeFeed() {
             />
           </div>
 
-          <div className="hero-story-panel">
+          <div className="hero-focus-panel">
             <span className="hero-story-eyebrow">Asli household discovery</span>
-            <h2 className="hero-story-title">Hazaaron fake ads ke beech ek asli listing, woh yahan hai.</h2>
             <p className="hero-story-copy">
               Duplicate showroom clutter aur fake listing noise ko filter karke sirf relevant household items front par laye jaate hain.
             </p>
@@ -700,7 +699,7 @@ export function HomeFeed() {
         <header className="section-header">
           <div>
             <p className="section-eyebrow">Categories</p>
-            <h2 className="section-title">Apni Category Chuno</h2>
+            <h2 className="section-title">All Categories</h2>
           </div>
           <Link href="/search" className="section-link">
             Sab Dekho -&gt;
