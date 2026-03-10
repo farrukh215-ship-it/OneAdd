@@ -8237,6 +8237,204 @@ body.uiPremiumV1 .hero-focus-panel {
   }
 }
 
+/* Mobile quality pass v2: strict 2-column commerce layout */
+@media (max-width: 640px) {
+  body.uiPremiumV1 .section-header {
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  body.uiPremiumV1 .section-title {
+    font-size: 42px !important;
+    line-height: 0.92 !important;
+  }
+
+  body.uiPremiumV1 .section-link {
+    min-height: 34px !important;
+    padding: 0 12px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  body.uiPremiumV1 .cats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  body.uiPremiumV1 .cat-card {
+    min-width: 0 !important;
+    min-height: 104px !important;
+    height: auto !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    overflow: hidden !important;
+  }
+
+  body.uiPremiumV1 .cat-rail-index {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .cat-copy {
+    gap: 2px !important;
+    width: 100% !important;
+  }
+
+  body.uiPremiumV1 .cat-name {
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  body.uiPremiumV1 .cat-count {
+    font-size: 9px !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  body.uiPremiumV1 .subcat-panel {
+    padding: 10px !important;
+    border-radius: 12px !important;
+  }
+
+  body.uiPremiumV1 .subcat-header h3 {
+    font-size: 26px !important;
+  }
+
+  body.uiPremiumV1 .subcat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.uiPremiumV1 .filter-bar {
+    gap: 6px !important;
+    margin-bottom: 12px !important;
+  }
+
+  body.uiPremiumV1 .filter-chip {
+    min-height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+  }
+
+  body.uiPremiumV1 .listings-grid,
+  body.uiPremiumV1 .recentListingsGrid,
+  body.uiPremiumV1 .marketplaceShelfGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+  }
+
+  body.uiPremiumV1 .listing-card,
+  body.uiPremiumV1 .listing-card--recent {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+  }
+
+  body.uiPremiumV1 .listing-img,
+  body.uiPremiumV1 .listing-card--recent .listing-img {
+    width: 100% !important;
+    min-width: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+  }
+
+  body.uiPremiumV1 .listing-img-inner,
+  body.uiPremiumV1 .listingCardMedia {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  body.uiPremiumV1 .listing-body {
+    display: grid !important;
+    grid-template-rows: auto auto auto auto auto auto !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+  }
+
+  body.uiPremiumV1 .listingTitleRow {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 3px !important;
+  }
+
+  body.uiPremiumV1 .listing-title {
+    font-size: 16px !important;
+    line-height: 1.12 !important;
+    -webkit-line-clamp: 2 !important;
+    margin: 0 !important;
+  }
+
+  body.uiPremiumV1 .listing-price {
+    font-size: 18px !important;
+    line-height: 1.05 !important;
+    text-align: left !important;
+    margin: 0 !important;
+  }
+
+  body.uiPremiumV1 .listingMetaPrimary {
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+  }
+
+  body.uiPremiumV1 .listingMetaSecondary {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+
+  body.uiPremiumV1 .listing-desc {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    -webkit-line-clamp: 2 !important;
+    margin: 0 !important;
+  }
+
+  body.uiPremiumV1 .listingBadgeRow,
+  body.uiPremiumV1 .listingFooterCluster,
+  body.uiPremiumV1 .listingTimelineMeta {
+    margin: 0 !important;
+  }
+
+  body.uiPremiumV1 .listing-footer {
+    padding-top: 4px !important;
+    border-top-width: 1px !important;
+  }
+
+  body.uiPremiumV1 .listingSupportMeta {
+    display: none !important;
+  }
+
+  body.uiPremiumV1 .listing-loc,
+  body.uiPremiumV1 .listingTimelineMeta {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  body.uiPremiumV1 .listings-grid,
+  body.uiPremiumV1 .recentListingsGrid,
+  body.uiPremiumV1 .marketplaceShelfGrid,
+  body.uiPremiumV1 .cats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Final containment + minimalist polish (web + mobile) */
 body.uiPremiumV1 .listing-card,
 body.uiPremiumV1 .listing-card--recent,
