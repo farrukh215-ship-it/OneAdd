@@ -7739,3 +7739,105 @@ body.uiPremiumV1 .listing-card--recent .listingTimelineMeta {
     padding: 12px;
   }
 }
+
+/* Final containment + minimalist polish (web + mobile) */
+body.uiPremiumV1 .listing-card,
+body.uiPremiumV1 .listing-card--recent,
+body.uiPremiumV1 .hero-card,
+body.uiPremiumV1 .hero-card-featured,
+body.uiPremiumV1 .hero-card-compact,
+body.uiPremiumV1 .listingMainMedia,
+body.uiPremiumV1 .listingThumb,
+body.uiPremiumV1 .listing-img,
+body.uiPremiumV1 .listing-img-inner,
+body.uiPremiumV1 .hcard-img {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+body.uiPremiumV1 .listingCardMedia,
+body.uiPremiumV1 .heroCardMedia,
+body.uiPremiumV1 .hcard-img-media,
+body.uiPremiumV1 .listingMainImage,
+body.uiPremiumV1 .listingThumb img,
+body.uiPremiumV1 .listing-img img,
+body.uiPremiumV1 .hero-card img,
+body.uiPremiumV1 .listingMainMedia img,
+body.uiPremiumV1 .listingMainMedia video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+body.uiPremiumV1 .listingMainMedia {
+  aspect-ratio: 1 / 1;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #f8f1e8 0%, #f2e4d5 100%);
+}
+
+body.uiPremiumV1 .listingThumb {
+  background: linear-gradient(180deg, #f9f3eb 0%, #f1e3d3 100%);
+}
+
+body.uiPremiumV1 .listing-title,
+body.uiPremiumV1 .listing-card--recent .listing-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.1;
+}
+
+body.uiPremiumV1 .listing-desc,
+body.uiPremiumV1 .listing-card--recent .listing-desc {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+body.uiPremiumV1 .listingMetaPrimary,
+body.uiPremiumV1 .listingMetaSecondary,
+body.uiPremiumV1 .listingTimelineMeta,
+body.uiPremiumV1 .listingSupportMeta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.uiPremiumV1 .listing-card,
+body.uiPremiumV1 .listing-card--recent {
+  border-color: rgba(204, 173, 144, 0.42);
+  box-shadow: 0 12px 26px rgba(78, 52, 36, 0.08);
+}
+
+@media (max-width: 780px) {
+  body.uiPremiumV1 .listing-card,
+  body.uiPremiumV1 .listing-card--recent {
+    grid-template-columns: 108px minmax(0, 1fr) !important;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  body.uiPremiumV1 .listing-img,
+  body.uiPremiumV1 .listing-card--recent .listing-img {
+    width: 108px;
+    min-width: 108px;
+    height: 108px;
+    min-height: 108px;
+    border-radius: 16px;
+  }
+
+  body.uiPremiumV1 .listing-title,
+  body.uiPremiumV1 .listing-card--recent .listing-title {
+    font-size: clamp(18px, 5vw, 22px);
+  }
+
+  body.uiPremiumV1 .listing-price,
+  body.uiPremiumV1 .listing-card--recent .listing-price {
+    font-size: clamp(16px, 4.5vw, 20px);
+  }
+}
