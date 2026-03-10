@@ -7740,6 +7740,155 @@ body.uiPremiumV1 .listing-card--recent .listingTimelineMeta {
   }
 }
 
+/* Rebuild pass: joyful premium layout */
+body.uiPremiumV1 {
+  background:
+    radial-gradient(1200px 520px at 12% -10%, rgba(255, 169, 93, 0.16), transparent 58%),
+    radial-gradient(900px 480px at 96% -8%, rgba(122, 92, 255, 0.12), transparent 62%),
+    linear-gradient(180deg, #fff8f0 0%, #fff5ea 56%, #fff7ef 100%);
+}
+
+body.uiPremiumV1 .hero {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.05fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+body.uiPremiumV1 .hero-search-sidebar,
+body.uiPremiumV1 .hero-right {
+  border-radius: 28px;
+  border: 1px solid rgba(214, 176, 146, 0.5);
+  box-shadow: 0 20px 42px rgba(80, 51, 33, 0.08);
+}
+
+body.uiPremiumV1 .hero-search-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 232, 0.94)),
+    rgba(255, 255, 255, 0.96);
+  padding: 18px;
+}
+
+body.uiPremiumV1 .hero-search-head {
+  padding: 4px 2px 14px;
+  border-bottom: 1px solid rgba(214, 176, 146, 0.35);
+  margin-bottom: 14px;
+}
+
+body.uiPremiumV1 .hero-search-brand {
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 14px;
+}
+
+body.uiPremiumV1 .hero-search-title {
+  margin-top: 8px;
+  font-size: clamp(24px, 2.4vw, 36px);
+  line-height: 1.02;
+}
+
+body.uiPremiumV1 .hero-search-copy {
+  font-size: 15px;
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+
+body.uiPremiumV1 .hero-right {
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(254, 246, 237, 0.95)),
+    rgba(255, 255, 255, 0.98);
+}
+
+body.uiPremiumV1 .hero-heading {
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+body.uiPremiumV1 .hero-story-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(216, 179, 150, 0.4);
+  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,244,231,0.74));
+}
+
+body.uiPremiumV1 .hero-story-title {
+  font-size: clamp(25px, 2.4vw, 39px);
+}
+
+body.uiPremiumV1 .hero-story-copy {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+body.uiPremiumV1 .hero-actions {
+  margin-top: 14px;
+}
+
+body.uiPremiumV1 .section-title {
+  letter-spacing: -0.01em;
+}
+
+body.uiPremiumV1 .cats-grid {
+  gap: 14px;
+}
+
+body.uiPremiumV1 .cat-card {
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(253,244,235,0.94));
+  border: 1px solid rgba(217, 183, 156, 0.48);
+}
+
+body.uiPremiumV1 .cat-card.active {
+  border-color: rgba(200, 96, 58, 0.56);
+  box-shadow: 0 12px 26px rgba(200, 96, 58, 0.14);
+}
+
+body.uiPremiumV1 .subcat-panel,
+body.uiPremiumV1 .marketplaceShelf,
+body.uiPremiumV1 .listings-section,
+body.uiPremiumV1 .categories-section {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(254,246,238,0.92)),
+    rgba(255,255,255,0.95);
+}
+
+body.uiPremiumV1 .trust-bar {
+  border-radius: 18px;
+  border: 1px solid rgba(214, 176, 146, 0.5);
+  box-shadow: 0 10px 26px rgba(71, 45, 31, 0.08);
+}
+
+@media (max-width: 920px) {
+  body.uiPremiumV1 .hero {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  body.uiPremiumV1 .hero-right {
+    order: 1;
+    padding: 18px;
+  }
+
+  body.uiPremiumV1 .hero-left {
+    order: 2;
+  }
+
+  body.uiPremiumV1 .hero-search-sidebar {
+    padding: 14px;
+  }
+
+  body.uiPremiumV1 .hero-search-brand {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  body.uiPremiumV1 .hero-story-panel {
+    margin-top: 10px;
+    padding: 14px;
+  }
+}
+
 /* Final containment + minimalist polish (web + mobile) */
 body.uiPremiumV1 .listing-card,
 body.uiPremiumV1 .listing-card--recent,

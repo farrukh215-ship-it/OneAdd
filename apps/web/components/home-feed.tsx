@@ -34,86 +34,6 @@ const heroMetrics = [
   { value: "1 Add", label: "Per Person" },
   { value: "PK", label: "Local First" }
 ];
-const searchSignals = [
-  "Laakhon ads me se asli dhoondna band karo",
-  "Yahan sirf woh hain jo sach mein bechna chahte hain",
-  "Woh zamana gaya jab tasweer kuch aur hoti thi, cheez kuch aur nikalti thi"
-];
-const heroStoryPanels = [
-  {
-    eyebrow: "Asli household discovery",
-    title: "Hazaaron fake ads ke beech ek asli listing. Woh ek yahan hai.",
-    body:
-      "Yahan duplicate showroom clutter, repeat seller noise aur random fake push ko filter karke sirf relevant household listings front par rakhi jati hain."
-  },
-  {
-    eyebrow: "Verified seller clarity",
-    title: "Jo cheez dhoondh rahe ho, koi na koi zaroor bech raha hai. Bas asli jagah chahiye thi.",
-    body:
-      "Phone, furniture, cycle ya car. Discovery flow is tarah tuned hai ke buyer seedha verified home seller tak pohanch sake."
-  },
-  {
-    eyebrow: "No showroom flooding",
-    title: "Laakhon ads mein se asli dhoondna band karo.",
-    body:
-      "Is marketplace me repeat shopkeeper clutter aur fake spam ko compress kiya jata hai, taake quality results upar aur jaldi milen."
-  },
-  {
-    eyebrow: "Trust-first browsing",
-    title: "Yahan sirf woh hain jo sach mein bechna chahte hain.",
-    body:
-      "CNIC-backed onboarding, cleaner seller signals aur city-aware listings buyer ko behtar decision context deti hain."
-  },
-  {
-    eyebrow: "Home-to-home marketplace",
-    title: "Woh zamana gaya jab tasweer kuch aur hoti thi, cheez kuch aur nikalti thi.",
-    body:
-      "Media quality, seller trust cues aur listing structure ko is liye tighten kiya gaya hai ke browsing professional lage aur risk kam ho."
-  }
-];
-
-type HeroCard = {
-  listingId?: string;
-  imageUrl?: string;
-  icon: string;
-  title: string;
-  desc: string;
-  city: string;
-  price: string;
-  createdAt?: string;
-  categoryPath?: string;
-};
-
-const heroFallback: HeroCard[] = [
-  {
-    icon: "\ud83d\udcf1",
-    title: "iPhone 13 - 128GB PTA",
-    desc: "Scratch-less, box available",
-    city: "Karachi",
-    price: "PKR 132,000"
-  },
-  {
-    icon: "\ud83d\udecb\ufe0f",
-    title: "7 Seater Sofa Set",
-    desc: "Good condition, urgent sale",
-    city: "Lahore",
-    price: "PKR 48,000"
-  },
-  {
-    icon: "\ud83d\udcfa",
-    title: "Sony 55 inch 4K TV",
-    desc: "Perfect panel, no repair",
-    city: "Islamabad",
-    price: "PKR 135,000"
-  },
-  {
-    icon: "\ud83d\ude97",
-    title: "Suzuki Cultus VXR",
-    desc: "Neat family car, Lahore registered",
-    city: "Lahore",
-    price: "PKR 2,100,000"
-  }
-];
 
 function getPrimaryImage(listing: Listing) {
   const url = listing.media.find((item) => item.type === "IMAGE")?.url ?? "";
@@ -129,29 +49,6 @@ function dedupeById(listings: Listing[]) {
     unique.push(item);
   }
   return unique;
-}
-
-function heroCardsFromListings(listings: Listing[]) {
-  const fromListings: HeroCard[] = listings.slice(0, 4).map((item) => ({
-    listingId: item.id,
-    imageUrl: getPrimaryImage(item),
-    icon: "\ud83c\udfe1",
-    title: item.title,
-    desc: item.description,
-    city: displayLocation({
-      city: item.city,
-      exactLocation: item.exactLocation,
-      description: item.description
-    }),
-    price: `${item.currency} ${item.price}`,
-    createdAt: item.createdAt,
-    categoryPath: displayCategoryPath(item.mainCategoryName, item.subCategoryName)
-  }));
-
-  if (fromListings.length < 4) {
-    return [...fromListings, ...heroFallback.slice(fromListings.length)];
-  }
-  return fromListings;
 }
 
 function compactCopy(text: string, maxLength = 76) {
@@ -422,8 +319,6 @@ export function HomeFeed() {
   const [searchCategorySlug, setSearchCategorySlug] = useState("");
   const [searchSubcategorySlug, setSearchSubcategorySlug] = useState("");
   const [searchCity, setSearchCity] = useState("");
-  const [featuredHeroIndex, setFeaturedHeroIndex] = useState(0);
-  const [heroStoryIndex, setHeroStoryIndex] = useState(0);
   const selectedSearchCategory = useMemo(
     () => categories.find((item) => item.slug === searchCategorySlug) ?? null,
     [categories, searchCategorySlug]
@@ -561,24 +456,6 @@ export function HomeFeed() {
     () => curateRecentListings(dedupeById(visibleRecentItems)).slice(0, 4),
     [visibleRecentItems]
   );
-  const heroSourceListings = useMemo(
-    () => dedupeById([...visibleItems, ...dedupedRecentItems]),
-    [dedupedRecentItems, visibleItems]
-  );
-  const heroCards = useMemo(() => heroCardsFromListings(heroSourceListings.slice(0, 8)), [heroSourceListings]);
-  const displayedHeroCards = useMemo(() => {
-    if (heroCards.length <= 4) {
-      return heroCards;
-    }
-
-    return Array.from({ length: 4 }, (_, offset) => {
-      return heroCards[(featuredHeroIndex + offset) % heroCards.length];
-    });
-  }, [featuredHeroIndex, heroCards]);
-  const heroListingIds = useMemo(
-    () => new Set(displayedHeroCards.map((item) => item.listingId).filter(Boolean)),
-    [displayedHeroCards]
-  );
   const recentListingIds = useMemo(
     () => new Set(dedupedRecentItems.map((item) => item.id)),
     [dedupedRecentItems]
@@ -586,9 +463,9 @@ export function HomeFeed() {
   const latestItems = useMemo(
     () =>
       visibleItems
-        .filter((item) => !heroListingIds.has(item.id) && !recentListingIds.has(item.id))
+        .filter((item) => !recentListingIds.has(item.id))
         .slice(0, 2),
-    [heroListingIds, recentListingIds, visibleItems]
+    [recentListingIds, visibleItems]
   );
   const feedItems = useMemo(() => {
     if (latestItems.length > 0) {
@@ -606,28 +483,6 @@ export function HomeFeed() {
     () => buildMarketplaceSections(categories, visibleItems),
     [categories, visibleItems]
   );
-
-  useEffect(() => {
-    if (heroCards.length <= 1) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      setFeaturedHeroIndex((prev) => (prev + 1) % heroCards.length);
-    }, 5000);
-
-    return () => window.clearInterval(timer);
-  }, [heroCards]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setHeroStoryIndex((prev) => (prev + 1) % heroStoryPanels.length);
-    }, 10000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const activeHeroStory = heroStoryPanels[heroStoryIndex] ?? heroStoryPanels[0];
 
   const listingSectionBody = useMemo(() => {
     if (loading) {
@@ -692,15 +547,8 @@ export function HomeFeed() {
                 Hazaaron fake ads ke beech ek asli listing. Woh ek yahan hai.
               </h2>
               <p className="hero-search-copy">
-                Jo cheez dhoondh rahe ho, koi na koi zaroor bech raha hai. Bas asli jagah chahiye thi.
+                Jo cheez dhoondh rahe ho, woh yahan seedha verified seller se milti hai.
               </p>
-              <div className="hero-search-signal-list">
-                {searchSignals.map((item) => (
-                  <span className="hero-search-signal" key={item}>
-                    {item}
-                  </span>
-                ))}
-              </div>
             </div>
             <form className="search-box search-box-advanced hero-search-box" onSubmit={onSidebarSearchSubmit}>
               <label className="search-field search-field-keyword">
@@ -792,18 +640,12 @@ export function HomeFeed() {
             />
           </div>
 
-          <div className="hero-story-panel" key={activeHeroStory.title}>
-            <span className="hero-story-eyebrow">{activeHeroStory.eyebrow}</span>
-            <h2 className="hero-story-title">{activeHeroStory.title}</h2>
-            <p className="hero-story-copy">{activeHeroStory.body}</p>
-            <div className="hero-story-progress" aria-hidden="true">
-              {heroStoryPanels.map((item, index) => (
-                <span
-                  key={item.title}
-                  className={index === heroStoryIndex ? "is-active" : ""}
-                />
-              ))}
-            </div>
+          <div className="hero-story-panel">
+            <span className="hero-story-eyebrow">Asli household discovery</span>
+            <h2 className="hero-story-title">Hazaaron fake ads ke beech ek asli listing, woh yahan hai.</h2>
+            <p className="hero-story-copy">
+              Duplicate showroom clutter aur fake listing noise ko filter karke sirf relevant household items front par laye jaate hain.
+            </p>
           </div>
 
           <div className="hero-lower">
