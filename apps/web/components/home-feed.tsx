@@ -544,7 +544,7 @@ export function HomeFeed() {
               </div>
               <p className="hero-search-kicker">Asli household discovery</p>
               <h2 className="hero-search-title">
-                Hazaaron fake ads ke beech ek asli listing. Woh ek yahan hai.
+                Smart discovery, cleaner results, direct verified sellers.
               </h2>
               <p className="hero-search-copy">
                 Product, category, city aur area ke saath focused discovery flow.
