@@ -524,7 +524,36 @@ export function HomeFeed() {
 
   return (
     <>
-      <section className="hero">
+      <section className="mobile-home-hero" aria-label="Mobile hero">
+        <div className="mobile-home-hero-badge">
+          <span className="hero-badge-dot" />
+          <span>Live Marketplace - Pakistan</span>
+        </div>
+        <h1 className="mobile-home-hero-title">
+          Tera <span>Ghar</span> Mera Ghar
+        </h1>
+        <p className="mobile-home-hero-copy">
+          Ghar ke asli sellers se direct khareedari. Duplicate showroom clutter aur fake listing noise yahan filter hota hai.
+        </p>
+        <div className="mobile-home-hero-actions">
+          <Link href="/sell" className="btn-hero-primary">
+            {"\ud83c\udfe0"} Apna Saaman Becho
+          </Link>
+          <Link href="/search" className="btn-hero-secondary">
+            {"\ud83d\udd0d"} Dhundo
+          </Link>
+        </div>
+        <div className="mobile-home-hero-stats">
+          {heroMetrics.map((item) => (
+            <div className="stat-item" key={`mobile-${item.label}`}>
+              <div className="stat-num">{item.value}</div>
+              <div className="stat-label">{item.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="hero desktop-home-hero">
         <div className="hero-left">
           <aside className="hero-search-sidebar">
             <div className="hero-search-head">
