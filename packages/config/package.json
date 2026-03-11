@@ -1,0 +1,10 @@
+{
+  "name": "@tgmg/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "tailwind.config.base.ts",
+  "types": "tailwind.config.base.ts",
+  "dependencies": {
+    "tailwindcss": "latest"
+  }
+}

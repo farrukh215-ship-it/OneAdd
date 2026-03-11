@@ -1,0 +1,21 @@
+{
+  "name": "@tgmg/admin",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@tgmg/config": "workspace:*",
+    "@tgmg/types": "workspace:*",
+    "next": "16",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}

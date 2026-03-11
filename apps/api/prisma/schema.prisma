@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  phone     String    @unique
+  name      String?
+  city      String?
+  area      String?
+  cnicHash  String?   @unique
+  verified  Boolean   @default(false)
+  banned    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  listings  Listing[]
+  sessions  Session[]
+  savedAds  SavedAd[]
+  contacts  ContactLog[]
+}
+
+model Listing {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  title       String
+  description String
+  price       Int
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
+  images      String[]
+  condition   Condition     @default(USED)
+  city        String
+  area        String?
+  status      ListingStatus @default(ACTIVE)
+  views       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  savedBy     SavedAd[]
+  contacts    ContactLog[]
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  icon     String
+  order    Int       @default(0)
+  listings Listing[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model SavedAd {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+}
+
+model ContactLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum Condition {
+  NEW
+  USED
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  DELETED
+}
