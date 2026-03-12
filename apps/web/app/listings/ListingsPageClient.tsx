@@ -15,6 +15,8 @@ export function ListingsPageClient({
     category?: string;
     city?: string;
     store?: string;
+    lat?: number;
+    lng?: number;
     minPrice?: number;
     maxPrice?: number;
     condition?: 'NEW' | 'USED';
@@ -134,6 +136,8 @@ export function ListingsPageClient({
           listings={data?.data ?? []}
           loading={isLoading}
           referenceCity={filters.city}
+          referenceLat={filters.lat}
+          referenceLng={filters.lng}
         />
         <div className="mt-4 flex items-center justify-center gap-2">
           <button type="button" className="btn-white">Prev</button>

@@ -1,4 +1,5 @@
 import type { Listing } from '@tgmg/types';
+import { CategorySectionCarousel } from '../components/home/CategorySectionCarousel';
 import { CategoryTabs } from '../components/home/CategoryTabs';
 import { HeroBanner } from '../components/home/HeroBanner';
 import { QuickActions } from '../components/home/QuickActions';
@@ -7,58 +8,40 @@ import { StatsRow } from '../components/home/StatsRow';
 import { StripBanner } from '../components/home/StripBanner';
 import { Footer } from '../components/layout/Footer';
 import { ListingGrid } from '../components/listings/ListingGrid';
-import { WideCard } from '../components/listings/WideCard';
 import { getCategories, getFeaturedListings, getListings } from '../lib/server-api';
 
-function makeFallbackCars(): Listing[] {
+function fallbackListingsByCategory(city: string): Listing[] {
   const now = new Date().toISOString();
   return [
     {
-      id: 'car-1',
-      userId: 'u-1',
-      title: 'Honda Civic 2016 - 1.8 VTi',
-      description: 'Single owner, clean car.',
+      id: 'fallback-1',
+      userId: 'u1',
+      title: 'Honda Civic 2016',
+      description: 'Clean car.',
       price: 2200000,
       category: { id: 'c-cars', name: 'Cars', slug: 'cars', icon: '🚗' },
       categoryId: 'c-cars',
       images: [],
       condition: 'USED',
-      city: 'Lahore',
-      area: 'DHA Phase 6',
+      city,
+      area: 'DHA',
       status: 'ACTIVE',
       views: 0,
       createdAt: now,
       updatedAt: now,
     },
     {
-      id: 'car-2',
-      userId: 'u-2',
-      title: 'Suzuki Alto VXL 2020',
-      description: 'Economy car in good condition.',
-      price: 1300000,
-      category: { id: 'c-cars', name: 'Cars', slug: 'cars', icon: '🚗' },
-      categoryId: 'c-cars',
+      id: 'fallback-2',
+      userId: 'u2',
+      title: 'iPhone 13 PTA',
+      description: 'Good condition.',
+      price: 115000,
+      category: { id: 'c-mobiles', name: 'Mobile Phones', slug: 'mobiles', icon: '📱' },
+      categoryId: 'c-mobiles',
       images: [],
       condition: 'USED',
-      city: 'Lahore',
-      area: 'Bahria Town',
-      status: 'ACTIVE',
-      views: 0,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 'car-3',
-      userId: 'u-3',
-      title: 'Toyota Fortuner 2019',
-      description: 'Petrol variant, maintained.',
-      price: 3500000,
-      category: { id: 'c-cars', name: 'Cars', slug: 'cars', icon: '🚗' },
-      categoryId: 'c-cars',
-      images: [],
-      condition: 'USED',
-      city: 'Lahore',
-      area: 'Model Town',
+      city,
+      area: 'Johar Town',
       status: 'ACTIVE',
       views: 0,
       createdAt: now,
@@ -73,18 +56,31 @@ export default async function HomePage({
   searchParams: Promise<{ category?: string; city?: string }>;
 }) {
   const params = await searchParams;
-  const activeCategory = params.category;
   const city = params.city || 'Lahore';
+  const activeCategory = params.category;
 
-  const [categories, featured, carsFromApi] = await Promise.all([
-    getCategories(),
-    activeCategory
-      ? getListings({ category: activeCategory, city, limit: 8 }).then((result) => result.data)
-      : getFeaturedListings(),
-    getListings({ category: 'cars', city, limit: 3 }).then((result) => result.data),
-  ]);
+  const categories = await getCategories();
 
-  const cars = carsFromApi.length ? carsFromApi : makeFallbackCars();
+  const featured = activeCategory
+    ? await getListings({ category: activeCategory, city, limit: 8 }).then((result) => result.data)
+    : await getFeaturedListings();
+
+  const categorySections = await Promise.all(
+    categories.map(async (category) => ({
+      category,
+      listings: await getListings({ category: category.slug, city, limit: 10 }).then((result) => result.data),
+    })),
+  );
+
+  const nonEmptySections = categorySections.filter((section) => section.listings.length > 0);
+  const safeSections = nonEmptySections.length
+    ? nonEmptySections
+    : [
+        {
+          category: { id: 'c-fallback', name: 'Cars', slug: 'cars', icon: '🚗' },
+          listings: fallbackListingsByCategory(city),
+        },
+      ];
 
   return (
     <>
@@ -93,6 +89,7 @@ export default async function HomePage({
         activeSlug={activeCategory}
         city={city}
       />
+
       <section className="page-wrap">
         <HeroBanner />
         <QuickActions city={city} />
@@ -110,12 +107,19 @@ export default async function HomePage({
 
       <section className="page-wrap">
         <StripBanner />
-        <SectionHeader title="🚗 Gaadiyaan" link="/listings?category=cars" />
-        <div className="space-y-3 px-2 md:px-5">
-          {cars.map((listing) => (
-            <WideCard key={listing.id} listing={listing} />
-          ))}
-        </div>
+      </section>
+
+      {safeSections.map((section) => (
+        <CategorySectionCarousel
+          key={section.category.id}
+          title={`${section.category.icon} ${section.category.name}`}
+          slug={section.category.slug}
+          listings={section.listings}
+          city={city}
+        />
+      ))}
+
+      <section className="page-wrap">
         <Footer />
       </section>
     </>

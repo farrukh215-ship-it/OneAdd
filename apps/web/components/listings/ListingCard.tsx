@@ -6,13 +6,23 @@ import { distanceFromCity } from '../../lib/distance';
 export function ListingCard({
   listing,
   referenceCity,
+  referenceLat,
+  referenceLng,
 }: {
   listing: Listing;
   referenceCity?: string;
+  referenceLat?: number;
+  referenceLng?: number;
 }) {
   const image = listing.images[0];
   const location = [listing.city, listing.area].filter(Boolean).join(', ');
-  const distance = distanceFromCity(referenceCity, listing.city);
+  const distance = distanceFromCity(
+    referenceCity,
+    listing.city,
+    referenceLat !== undefined && referenceLng !== undefined
+      ? { lat: referenceLat, lng: referenceLng }
+      : undefined,
+  );
 
   return (
     <Link
@@ -32,13 +42,9 @@ export function ListingCard({
         <div className="absolute bottom-2 left-2">
           <span className="badge-green">✓ Asli Malik</span>
         </div>
-        <button
-          type="button"
-          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-sm shadow-card"
-          aria-label="Save ad"
-        >
+        <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-sm shadow-card">
           ♡
-        </button>
+        </span>
       </div>
       <div className="p-[10px]">
         <div className="text-base font-extrabold text-ink sm:text-lg">

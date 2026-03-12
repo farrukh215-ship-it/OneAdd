@@ -11,10 +11,7 @@ const CITY_COORDS: Array<{ city: string; lat: number; lng: number }> = [
   { city: 'Faisalabad', lat: 31.4504, lng: 73.135 },
 ];
 
-function haversineDistanceKm(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-) {
+function haversineDistanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const toRad = (value: number) => (value * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
@@ -50,53 +47,37 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const detectedCity = nearestCity(
-          position.coords.latitude,
-          position.coords.longitude,
-        );
+        const detectedCity = nearestCity(position.coords.latitude, position.coords.longitude);
         window.localStorage.setItem('tgmg_city', detectedCity);
         router.push(
           `/listings?city=${encodeURIComponent(detectedCity)}&lat=${position.coords.latitude}&lng=${position.coords.longitude}`,
         );
       },
-      () => {
-        router.push(`/listings?city=${encodeURIComponent(city)}`);
-      },
+      () => router.push(`/listings?city=${encodeURIComponent(city)}`),
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
 
   return (
-    <>
-      <section className="hide-scrollbar flex gap-2 overflow-x-auto px-2 py-3 md:px-5">
-        <Link href="/post" className="chip shrink-0 !border-red !bg-red !text-white">
-          + Ad Post Karo
-        </Link>
-        <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-          🔥 Taaza Listings
-        </Link>
-        <button type="button" onClick={openNearMe} className="chip shrink-0">
-          📍 Mere Paas
-        </button>
-        <Link href={`/listings?sort=price_desc&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-          ⭐ Top Deals
-        </Link>
-        <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-          🆕 Naye Items
-        </Link>
-      </section>
-
-      <section className="hide-scrollbar flex gap-2 overflow-x-auto px-2 pb-2 md:px-5">
-        <Link href={`/dukaan?city=${encodeURIComponent(city)}`} className="chip shrink-0 !bg-[#FFF3F0] !text-red">
-          Dukaan
-        </Link>
-        <Link href="/listings?store=online" className="chip shrink-0">
-          Online Dukaan
-        </Link>
-        <Link href={`/listings?store=road&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-          Road Dukaan ({city})
-        </Link>
-      </section>
-    </>
+    <section className="hide-scrollbar flex gap-2 overflow-x-auto px-2 py-3 md:px-5">
+      <Link href="/post" className="chip shrink-0">
+        + Ad Post Karo
+      </Link>
+      <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
+        🔥 Taaza Listings
+      </Link>
+      <button type="button" onClick={openNearMe} className="chip shrink-0">
+        📍 Mere Paas
+      </button>
+      <Link href={`/listings?sort=price_desc&city=${encodeURIComponent(city)}`} className="chip shrink-0">
+        ⭐ Top Deals
+      </Link>
+      <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
+        🆕 Naye Items
+      </Link>
+      <Link href={`/dukaan?city=${encodeURIComponent(city)}`} className="chip shrink-0">
+        🏬 Dukaan
+      </Link>
+    </section>
   );
 }

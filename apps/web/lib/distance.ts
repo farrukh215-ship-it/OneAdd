@@ -9,25 +9,34 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   quetta: { lat: 30.1798, lng: 66.975 },
 };
 
+type Coordinate = { lat: number; lng: number };
+
 function normalizeCity(city: string | undefined) {
   return (city || '').trim().toLowerCase();
 }
 
-function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+function haversineKm(a: Coordinate, b: Coordinate) {
   const toRad = (value: number) => (value * Math.PI) / 180;
-  const R = 6371;
+  const radius = 6371;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
   const s1 = Math.sin(dLat / 2) ** 2;
   const s2 = Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(s1 + s2), Math.sqrt(1 - s1 - s2));
-  return Math.round(R * c);
+  return Math.round(radius * c);
 }
 
-export function distanceFromCity(referenceCity: string | undefined, listingCity: string | undefined) {
-  const from = CITY_COORDS[normalizeCity(referenceCity)];
+export function distanceFromCity(
+  referenceCity: string | undefined,
+  listingCity: string | undefined,
+  referenceCoords?: Coordinate,
+) {
   const to = CITY_COORDS[normalizeCity(listingCity)];
-  if (!from || !to) return null;
+  if (!to) return null;
+
+  if (referenceCoords) return haversineKm(referenceCoords, to);
+
+  const from = CITY_COORDS[normalizeCity(referenceCity)];
+  if (!from) return null;
   return haversineKm(from, to);
 }
-

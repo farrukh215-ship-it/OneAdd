@@ -26,10 +26,9 @@ export function CategoryTabs({
           if (city) params.set('city', city);
           else params.delete('city');
 
-          if (isAll) params.delete('category');
-          else params.set('category', category.slug);
-
-          const href = params.toString() ? `/?${params.toString()}#today` : '/#today';
+          params.delete('category');
+          const anchor = isAll ? 'today' : `category-${category.slug}`;
+          const href = params.toString() ? `/?${params.toString()}#${anchor}` : `/#${anchor}`;
 
           return (
             <Link

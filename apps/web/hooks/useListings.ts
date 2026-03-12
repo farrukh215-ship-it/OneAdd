@@ -9,6 +9,8 @@ export type ListingsFilters = {
   category?: string;
   city?: string;
   store?: string;
+  lat?: number;
+  lng?: number;
   minPrice?: number;
   maxPrice?: number;
   condition?: 'NEW' | 'USED';
