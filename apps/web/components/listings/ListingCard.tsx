@@ -44,3 +44,4 @@ export function ListingCard({ listing }: { listing: Listing }) {
     </Link>
   );
 }
+

@@ -31,3 +31,4 @@ export function WideCard({ listing }: { listing: Listing }) {
     </Link>
   );
 }
+
