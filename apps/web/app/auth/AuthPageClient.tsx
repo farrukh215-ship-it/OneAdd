@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmationResult, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
@@ -11,6 +11,31 @@ declare global {
   interface Window {
     tgmgRecaptchaVerifier?: RecaptchaVerifier;
   }
+}
+
+const OTP_RESEND_SECONDS = 90;
+
+function formatTimer(seconds: number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function extractApiMessage(error: any, fallback: string) {
+  const code = error?.code as string | undefined;
+  if (code === 'auth/invalid-phone-number') return 'Phone number format sahi nahi hai';
+  if (code === 'auth/too-many-requests') return 'Bohat zyada attempts hue hain, thori dair baad koshish karein';
+  if (code === 'auth/invalid-verification-code') return 'OTP ghalat hai';
+  if (code === 'auth/code-expired') return 'OTP expire ho gaya, dobara bhejein';
+  if (code === 'auth/captcha-check-failed') return 'Verification check complete nahi hua, dobara try karein';
+  if (code === 'auth/operation-not-allowed') return 'Phone sign-in Firebase me enable karein';
+  if (code === 'auth/unauthorized-domain') return 'Domain authorized nahi hai, admin se rabta karein';
+
+  const message = error?.response?.data?.message;
+  if (Array.isArray(message) && message.length > 0) return String(message[0]);
+  if (typeof message === 'string' && message.trim()) return message;
+
+  return fallback;
 }
 
 export function AuthPageClient() {
@@ -29,22 +54,21 @@ export function AuthPageClient() {
   const [otpSent, setOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+
+  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
   const fullPhone = useMemo(() => `+92${phone.replace(/\D/g, '').slice(0, 10)}`, [phone]);
   const otp = digits.join('');
 
-  const friendlyMessage = (error: any, fallback: string) => {
-    const code = error?.code as string | undefined;
-    if (code === 'auth/invalid-phone-number') return 'Phone number format sahi nahi hai';
-    if (code === 'auth/too-many-requests') return 'Bohat zyada attempts hue hain, thori dair baad koshish karein';
-    if (code === 'auth/invalid-verification-code') return 'OTP ghalat hai';
-    if (code === 'auth/code-expired') return 'OTP expire ho gaya, dobara bhejein';
-    if (code === 'auth/captcha-check-failed') return 'Verification check complete nahi hua, dobara try karein';
-    if (code === 'auth/operation-not-allowed') return 'Phone sign-in Firebase me enable karein';
-    if (code === 'auth/unauthorized-domain') return 'Domain authorized nahi hai, admin se rabta karein';
-    return error?.response?.data?.message || fallback;
-  };
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendIn((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendIn]);
 
   const getOrCreateRecaptcha = () => {
     const auth = getFirebaseAuth();
@@ -61,6 +85,10 @@ export function AuthPageClient() {
   const sendOtp = async () => {
     if (phone.length !== 10) {
       setMessage('Sahi phone number dalo: 3001234567');
+      return;
+    }
+    if (resendIn > 0) {
+      setMessage(`OTP dobara bhejne ke liye ${formatTimer(resendIn)} wait karein`);
       return;
     }
 
@@ -82,9 +110,12 @@ export function AuthPageClient() {
       const confirmation = await signInWithPhoneNumber(auth, fullPhone, verifier);
       setConfirmationResult(confirmation);
       setOtpSent(true);
+      setDigits(['', '', '', '', '', '']);
+      setResendIn(OTP_RESEND_SECONDS);
       setMessage('OTP bhej di gayi hai');
+      window.setTimeout(() => inputsRef.current[0]?.focus(), 50);
     } catch (error: any) {
-      setMessage(friendlyMessage(error, 'OTP bhejne mein masla aaya'));
+      setMessage(extractApiMessage(error, 'OTP bhejne mein masla aaya'));
     } finally {
       setLoading(false);
     }
@@ -133,7 +164,7 @@ export function AuthPageClient() {
       setToken(response.data.accessToken);
       router.replace(next);
     } catch (error: any) {
-      setMessage(friendlyMessage(error, 'Account create nahi hua'));
+      setMessage(extractApiMessage(error, 'Account create nahi hua'));
     } finally {
       setLoading(false);
     }
@@ -155,7 +186,7 @@ export function AuthPageClient() {
       setToken(response.data.accessToken);
       router.replace(next);
     } catch (error: any) {
-      setMessage(error?.response?.data?.message || 'Sign in nahi hua');
+      setMessage(extractApiMessage(error, 'Sign in nahi hua'));
     } finally {
       setLoading(false);
     }
@@ -225,21 +256,50 @@ export function AuthPageClient() {
               <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="field-input" type="password" placeholder="Password dobara likho" />
             </div>
 
-            <button type="button" onClick={sendOtp} className="btn-white mt-4 w-full" disabled={loading}>
-              OTP Bhejo
+            <button type="button" onClick={sendOtp} className="btn-white mt-4 w-full" disabled={loading || resendIn > 0}>
+              {otpSent && resendIn > 0 ? `OTP dobara bhejo (${formatTimer(resendIn)})` : 'OTP Bhejo'}
             </button>
 
             {otpSent ? (
               <div className="mt-4 text-left">
-                <label className="mb-2 block text-sm font-semibold text-ink2">OTP</label>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-ink2">OTP</label>
+                  <span className="text-xs font-semibold text-ink2">
+                    Remaining: {formatTimer(resendIn)}
+                  </span>
+                </div>
                 <div className="flex justify-between gap-2">
                   {digits.map((digit, index) => (
                     <input
                       key={index}
+                      ref={(element) => {
+                        inputsRef.current[index] = element;
+                      }}
                       value={digit}
                       onChange={(event) => {
                         const value = event.target.value.replace(/\D/g, '').slice(-1);
-                        setDigits((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
+                        setDigits((current) => {
+                          const next = [...current];
+                          next[index] = value;
+                          return next;
+                        });
+                        if (value && index < 5) {
+                          inputsRef.current[index + 1]?.focus();
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Backspace' && !digits[index] && index > 0) {
+                          inputsRef.current[index - 1]?.focus();
+                        }
+                      }}
+                      onPaste={(event) => {
+                        const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                        if (!pasted) return;
+                        event.preventDefault();
+                        const next = Array.from({ length: 6 }, (_, i) => pasted[i] || '');
+                        setDigits(next);
+                        const focusIndex = Math.min(pasted.length, 5);
+                        inputsRef.current[focusIndex]?.focus();
                       }}
                       className="h-12 w-12 rounded-xl border border-border text-center text-lg font-bold outline-none"
                       inputMode="numeric"
@@ -247,6 +307,14 @@ export function AuthPageClient() {
                     />
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={sendOtp}
+                  className="mt-3 text-sm font-semibold text-red disabled:text-ink3"
+                  disabled={loading || resendIn > 0}
+                >
+                  {resendIn > 0 ? `Resend in ${formatTimer(resendIn)}` : 'Resend OTP'}
+                </button>
               </div>
             ) : null}
 
