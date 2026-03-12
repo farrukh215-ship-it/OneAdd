@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { api } from '../lib/api';
 
 type CurrentUser = {
@@ -13,6 +14,11 @@ type CurrentUser = {
   createdAt: string;
 };
 
+const TOKEN_KEY = 'tgmg_token';
+const TOKEN_SET_AT_KEY = 'tgmg_token_set_at';
+const LAST_ACTIVE_KEY = 'tgmg_last_active_at';
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 export function useAuth() {
   const queryClient = useQueryClient();
 
@@ -20,9 +26,24 @@ export function useAuth() {
     queryKey: ['current-user'],
     queryFn: async () => {
       const token =
-        typeof window !== 'undefined' ? window.localStorage.getItem('tgmg_token') : null;
+        typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;
 
       if (!token) return null;
+
+      if (typeof window !== 'undefined') {
+        const now = Date.now();
+        const lastActiveRaw = window.localStorage.getItem(LAST_ACTIVE_KEY);
+        const lastActive = lastActiveRaw ? Number(lastActiveRaw) : 0;
+
+        if (!lastActive || now - lastActive > THREE_DAYS_MS) {
+          window.localStorage.removeItem(TOKEN_KEY);
+          window.localStorage.removeItem(TOKEN_SET_AT_KEY);
+          window.localStorage.removeItem(LAST_ACTIVE_KEY);
+          return null;
+        }
+
+        window.localStorage.setItem(LAST_ACTIVE_KEY, String(now));
+      }
 
       try {
         const response = await api.get<CurrentUser>('/auth/me');
@@ -33,13 +54,29 @@ export function useAuth() {
     },
   });
 
+  useEffect(() => {
+    const updateActivity = () =>
+      window.localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+    window.addEventListener('click', updateActivity, { passive: true });
+    window.addEventListener('keydown', updateActivity, { passive: true });
+    return () => {
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+    };
+  }, []);
+
   const setToken = (token: string) => {
-    window.localStorage.setItem('tgmg_token', token);
+    const now = Date.now();
+    window.localStorage.setItem(TOKEN_KEY, token);
+    window.localStorage.setItem(TOKEN_SET_AT_KEY, String(now));
+    window.localStorage.setItem(LAST_ACTIVE_KEY, String(now));
     void queryClient.invalidateQueries({ queryKey: ['current-user'] });
   };
 
   const logout = () => {
-    window.localStorage.removeItem('tgmg_token');
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(TOKEN_SET_AT_KEY);
+    window.localStorage.removeItem(LAST_ACTIVE_KEY);
     void queryClient.invalidateQueries({ queryKey: ['current-user'] });
   };
 

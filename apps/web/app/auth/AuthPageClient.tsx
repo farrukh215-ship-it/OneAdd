@@ -56,6 +56,7 @@ export function AuthPageClient() {
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -162,7 +163,11 @@ export function AuthPageClient() {
         confirmPassword,
       });
       setToken(response.data.accessToken);
-      router.replace(next);
+      setShowSuccess(true);
+      window.setTimeout(() => {
+        setShowSuccess(false);
+        router.replace(next);
+      }, 1500);
     } catch (error: any) {
       setMessage(extractApiMessage(error, 'Account create nahi hua'));
     } finally {
@@ -343,6 +348,16 @@ export function AuthPageClient() {
 
         {message ? <div className="mt-4 text-sm text-ink2">{message}</div> : null}
       </div>
+      {showSuccess ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4">
+          <div className="surface w-full max-w-sm p-6 text-center">
+            <div className="text-2xl font-extrabold text-green">✅ Mubarak!</div>
+            <div className="mt-2 text-sm text-ink2">
+              Congratulations, account create ho gaya.
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

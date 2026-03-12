@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 
 const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
@@ -12,6 +13,7 @@ export function Navbar() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [city, setCity] = useState(searchParams.get('city') ?? 'Lahore');
+  const { currentUser, logout } = useAuth();
 
   useEffect(() => {
     const saved = window.localStorage.getItem('tgmg_city');
@@ -84,12 +86,38 @@ export function Navbar() {
         >
           + Ad Post Karo
         </Link>
-        <Link
-          href="/auth"
-          className="hidden rounded-xl border border-red px-4 py-2 text-sm font-bold text-red lg:inline-flex"
-        >
-          Sign Up
-        </Link>
+        {currentUser ? (
+          <div className="hidden items-center gap-2 lg:flex">
+            <Link
+              href="/profile"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-bold text-ink"
+            >
+              {currentUser.name?.trim() || 'Profile'}
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-xl border border-red px-4 py-2 text-sm font-bold text-red"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div className="hidden items-center gap-2 lg:flex">
+            <Link
+              href="/auth"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-bold text-ink"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/auth"
+              className="rounded-xl border border-red px-4 py-2 text-sm font-bold text-red"
+            >
+              Sign Up
+            </Link>
+          </div>
+        )}
       </div>
     </header>
   );
