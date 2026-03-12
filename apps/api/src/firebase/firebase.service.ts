@@ -3,15 +3,14 @@ import * as admin from 'firebase-admin';
 
 @Injectable()
 export class FirebaseService {
-  private readonly app: admin.app.App;
+  private readonly app: admin.app.App | null;
 
   constructor() {
     const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
     if (!encoded) {
-      throw new InternalServerErrorException(
-        'FIREBASE_SERVICE_ACCOUNT_JSON missing',
-      );
+      this.app = null;
+      return;
     }
 
     const serviceAccount = JSON.parse(
@@ -26,6 +25,9 @@ export class FirebaseService {
   }
 
   verifyIdToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
+    if (!this.app) {
+      throw new InternalServerErrorException('Firebase not configured');
+    }
     return this.app.auth().verifyIdToken(idToken);
   }
 }

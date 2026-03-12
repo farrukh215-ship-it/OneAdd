@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 export class UserDto {
   id!: string;
   phone!: string;
+  email!: string | null;
   name!: string | null;
   city!: string | null;
   area!: string | null;
@@ -13,6 +14,7 @@ export class UserDto {
     return {
       id: user.id,
       phone: user.phone,
+      email: user.email,
       name: user.name,
       city: user.city,
       area: user.area,

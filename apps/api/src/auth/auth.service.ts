@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -7,15 +8,18 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
+import { randomInt, scryptSync, timingSafeEqual } from 'crypto';
 import Redis from 'ioredis';
 import { FirebaseService } from '../firebase/firebase.service';
 import { OtpProviderService } from '../otp/otp.provider.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserDto } from './dto/user.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
 export class AuthService {
   private readonly redis: Redis;
+  private readonly passwordSalt: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -27,6 +31,7 @@ export class AuthService {
       process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
       { maxRetriesPerRequest: 1 },
     );
+    this.passwordSalt = process.env.PASSWORD_SALT ?? 'tgmg-default-salt-change-me';
   }
 
   async sendOtp(phone: string) {
@@ -44,40 +49,95 @@ export class AuthService {
       );
     }
 
+    const otpCode = String(randomInt(100000, 999999));
+    await this.redis.set(`signup_otp:${phone}`, otpCode, 'EX', 300);
+
+    const existingUser = await this.prisma.user.findUnique({ where: { phone } });
+    if (existingUser) {
+      throw new ConflictException('Is number par account pehle se bana hua hai');
+    }
+
     await this.otpProviderService.sendOtp(phone);
 
     return {
       success: true,
       message: 'OTP bheji gayi hai',
+      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
     };
   }
 
-  async verifyOtp(phone: string, firebaseIdToken: string) {
-    const decoded = await this.firebaseService.verifyIdToken(firebaseIdToken);
-    const decodedPhone = decoded.phone_number;
-
-    if (!decodedPhone || decodedPhone !== phone) {
-      throw new UnauthorizedException('Phone verify nahi hua');
+  async verifyOtp(payload: VerifyOtpDto) {
+    if (payload.password !== payload.confirmPassword) {
+      throw new HttpException('Password match nahi kar raha', HttpStatus.BAD_REQUEST);
     }
 
-    let user = await this.prisma.user.findUnique({
-      where: { phone: decodedPhone },
+    if (!payload.firebaseIdToken && !payload.otpCode) {
+      throw new HttpException('OTP ya firebase token required hai', HttpStatus.BAD_REQUEST);
+    }
+
+    if (payload.firebaseIdToken) {
+      const decoded = await this.firebaseService.verifyIdToken(payload.firebaseIdToken);
+      const decodedPhone = decoded.phone_number;
+      if (!decodedPhone || decodedPhone !== payload.phone) {
+        throw new UnauthorizedException('Phone verify nahi hua');
+      }
+    } else {
+      const code = await this.redis.get(`signup_otp:${payload.phone}`);
+      if (!code || code !== payload.otpCode) {
+        throw new UnauthorizedException('OTP ghalat hai ya expire ho gaya');
+      }
+    }
+
+    const existingByPhone = await this.prisma.user.findUnique({
+      where: { phone: payload.phone },
+    });
+    if (existingByPhone) {
+      throw new ConflictException('Is number par account pehle se bana hua hai');
+    }
+
+    const email = payload.email.trim().toLowerCase();
+    const existingByEmail = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (existingByEmail) {
+      throw new ConflictException('Is email par account pehle se maujood hai');
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        phone: payload.phone,
+        email,
+        name: payload.name.trim(),
+        passwordHash: this.hashPassword(payload.password),
+        verified: true,
+      },
     });
 
-    const isNewUser = !user;
+    await this.redis.del(`signup_otp:${payload.phone}`);
 
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          phone: decodedPhone,
-          verified: true,
-        },
-      });
-    } else if (!user.verified) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { verified: true },
-      });
+    const accessToken = await this.jwtService.signAsync(
+      { sub: user.id, phone: user.phone },
+      { expiresIn: '30d' },
+    );
+
+    return {
+      accessToken,
+      user: UserDto.fromUser(user),
+      isNewUser: true,
+    };
+  }
+
+  async signIn(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Email ya password ghalat hai');
+    }
+
+    if (!this.verifyPassword(password, user.passwordHash)) {
+      throw new UnauthorizedException('Email ya password ghalat hai');
     }
 
     if (user.banned) {
@@ -92,11 +152,22 @@ export class AuthService {
     return {
       accessToken,
       user: UserDto.fromUser(user),
-      isNewUser,
+      isNewUser: false,
     };
   }
 
   me(user: User) {
     return UserDto.fromUser(user);
+  }
+
+  private hashPassword(password: string) {
+    return scryptSync(password, this.passwordSalt, 64).toString('hex');
+  }
+
+  private verifyPassword(password: string, storedHash: string) {
+    const candidate = scryptSync(password, this.passwordSalt, 64);
+    const stored = Buffer.from(storedHash, 'hex');
+    if (candidate.length !== stored.length) return false;
+    return timingSafeEqual(candidate, stored);
   }
 }

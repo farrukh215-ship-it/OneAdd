@@ -12,8 +12,8 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ListingsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findActiveByUserAndCategory(userId: string, categoryId: string) {
-    return this.prisma.listing.findFirst({
+  countActiveByUserAndCategory(userId: string, categoryId: string) {
+    return this.prisma.listing.count({
       where: { userId, categoryId, status: 'ACTIVE' },
     });
   }

@@ -24,14 +24,14 @@ export class ListingsService {
   }
 
   async create(userId: string, dto: CreateListingDto) {
-    const existing = await this.listingsRepository.findActiveByUserAndCategory(
+    const activeCount = await this.listingsRepository.countActiveByUserAndCategory(
       userId,
       dto.categoryId,
     );
 
-    if (existing) {
+    if (activeCount >= 3) {
       throw new ConflictException(
-        'Aap is category mein pehle se ek ad post kar chuke hain. Ek banda, ek ad.',
+        'Aap is category mein maximum 3 active ads post kar sakte hain.',
       );
     }
 

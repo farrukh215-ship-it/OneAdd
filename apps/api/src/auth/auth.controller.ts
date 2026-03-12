@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { SendOtpDto } from './dto/send-otp.dto';
+import { SignInDto } from './dto/sign-in.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -17,7 +18,12 @@ export class AuthController {
 
   @Post('verify-otp')
   verifyOtp(@Body() body: VerifyOtpDto) {
-    return this.authService.verifyOtp(body.phone, body.firebaseIdToken);
+    return this.authService.verifyOtp(body);
+  }
+
+  @Post('sign-in')
+  signIn(@Body() body: SignInDto) {
+    return this.authService.signIn(body.email, body.password);
   }
 
   @UseGuards(JwtAuthGuard)

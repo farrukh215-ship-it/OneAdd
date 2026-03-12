@@ -1,4 +1,4 @@
-import { IsString, Matches } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class VerifyOtpDto {
   @IsString()
@@ -7,6 +7,26 @@ export class VerifyOtpDto {
   })
   phone!: string;
 
+  @IsOptional()
   @IsString()
-  firebaseIdToken!: string;
+  firebaseIdToken?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9]{6}$/)
+  otpCode?: string;
+
+  @IsString()
+  name!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @IsString()
+  @MinLength(8)
+  confirmPassword!: string;
 }
