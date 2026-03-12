@@ -15,6 +15,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { CreateListingMessageDto } from './dto/create-listing-message.dto';
+import { CreateOfferDto } from './dto/create-offer.dto';
 import { ListingsService } from './listings.service';
 
 @Controller('listings')
@@ -63,6 +65,31 @@ export class ListingsController {
   @Get(':id/contact')
   contact(@Param('id') id: string, @CurrentUser() user: User) {
     return this.listingsService.contact(id, user);
+  }
+
+  @Get(':id/chat')
+  publicChat(@Param('id') id: string) {
+    return this.listingsService.getPublicThread(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/chat/messages')
+  postPublicMessage(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() dto: CreateListingMessageDto,
+  ) {
+    return this.listingsService.postMessage(id, user, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/offers')
+  postOffer(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() dto: CreateOfferDto,
+  ) {
+    return this.listingsService.placeOffer(id, user, dto);
   }
 
   @UseGuards(JwtAuthGuard)

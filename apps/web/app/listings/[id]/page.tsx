@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ListingGrid } from '../../../components/listings/ListingGrid';
+import { distanceFromCity } from '../../../lib/distance';
 import { getListing, getListings } from '../../../lib/server-api';
+import { ListingPublicChat } from './ListingPublicChat';
 
 export default async function ListingDetailPage({
   params,
@@ -18,6 +20,15 @@ export default async function ListingDetailPage({
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const distanceKm = distanceFromCity(
+    undefined,
+    listing.city,
+    undefined,
+    typeof listing.lat === 'number' && typeof listing.lng === 'number'
+      ? { lat: listing.lat, lng: listing.lng }
+      : undefined,
+  );
+  const locationText = [listing.city, listing.area].filter(Boolean).join(', ');
 
   return (
     <div className="page-wrap px-2 py-4 md:px-5">
@@ -32,7 +43,7 @@ export default async function ListingDetailPage({
               )}
             </div>
             <div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto">
-              {listing.images.slice(0, 5).map((image, index) => (
+              {listing.images.slice(0, 6).map((image, index) => (
                 <div key={index} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-border">
                   <Image src={image} alt={`${listing.title} ${index + 1}`} fill unoptimized className="object-cover" />
                 </div>
@@ -44,11 +55,16 @@ export default async function ListingDetailPage({
               PKR {listing.price.toLocaleString()}
             </div>
             <h1 className="mt-1 text-xl font-bold text-ink">{listing.title}</h1>
+            <div className="mt-2 text-sm text-ink2">
+              📍 {locationText || listing.city}
+              {distanceKm !== null ? ` • ${distanceKm} km` : ''}
+            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="badge-soft-green">✓ Asli Malik</span>
               <span className="badge-soft-gray">
                 {listing.condition === 'NEW' ? 'Naya' : 'Purana'}
               </span>
+              {listing.storeType ? <span className="badge-soft-gray">{listing.storeType} Dukaan</span> : null}
             </div>
           </div>
           <div className="surface mt-4 p-4">
@@ -81,7 +97,7 @@ export default async function ListingDetailPage({
           <div className="surface p-4">
             <div className="grid gap-3">
               <Link href={`/auth?next=/listings/${listing.id}`} className="btn-red">
-                📞 Number Dekho
+                Phone Number Dekho
               </Link>
               <a
                 href={`https://wa.me/${listing.user?.id ?? ''}`}
@@ -89,7 +105,7 @@ export default async function ListingDetailPage({
                 rel="noreferrer"
                 className="btn-white"
               >
-                💬 WhatsApp pe Message
+                WhatsApp pe Message
               </a>
             </div>
           </div>
@@ -106,10 +122,12 @@ export default async function ListingDetailPage({
         <ListingGrid listings={related.data.filter((item) => item.id !== listing.id).slice(0, 4)} />
       </div>
 
+      <ListingPublicChat listingId={listing.id} askingPrice={listing.price} />
+
       <div className="mobile-safe-bottom fixed inset-x-0 bottom-14 z-40 border-t border-border bg-white p-3 md:hidden">
         <div className="grid grid-cols-2 gap-2">
           <Link href={`/auth?next=/listings/${listing.id}`} className="btn-red">
-            📞 Number Dekho
+            Phone Number
           </Link>
           <a
             href={`https://wa.me/${listing.user?.id ?? ''}`}
@@ -117,10 +135,11 @@ export default async function ListingDetailPage({
             rel="noreferrer"
             className="btn-white"
           >
-            💬 WhatsApp
+            WhatsApp
           </a>
         </div>
       </div>
     </div>
   );
 }
+

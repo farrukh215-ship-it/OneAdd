@@ -7,34 +7,50 @@ export function Footer() {
         <div>
           <div className="text-2xl font-extrabold text-red">TGMG.</div>
           <p className="mt-2 text-sm text-ink2">
-            Pakistan ka simple marketplace. Asli malik, saaf browsing, fast deals.
+            Pakistan ka premium marketplace. Asli malik, saaf browsing, fast deals.
           </p>
+          <div className="mt-3 text-sm text-ink2">
+            <div>Office: Arfa Kareem Technology Park, Lahore</div>
+            <a className="text-red underline" href="mailto:info@teragharmeraghar.com">
+              info@teragharmeraghar.com
+            </a>
+          </div>
         </div>
         <div>
           <div className="font-bold text-ink">Browse</div>
           <div className="mt-3 space-y-2 text-sm text-ink2">
             <Link href="/listings">Saari Listings</Link>
-            <div>Mobiles</div>
-            <div>Gaadiyaan</div>
+            <Link href="/listings?category=mobiles">Mobiles</Link>
+            <Link href="/listings?category=cars">Gaadiyaan</Link>
+            <Link href="/dukaan">Dukaan</Link>
           </div>
         </div>
         <div>
           <div className="font-bold text-ink">Account</div>
           <div className="mt-3 space-y-2 text-sm text-ink2">
-            <Link href="/auth">Login</Link>
+            <Link href="/auth">Login / Sign Up</Link>
             <Link href="/profile">Profile</Link>
             <Link href="/post">Ad Post Karo</Link>
+            <Link href="/listings?saved=true">Saved Ads</Link>
           </div>
         </div>
         <div>
-          <div className="font-bold text-ink">TGMG Rule</div>
+          <div className="font-bold text-ink">Connect</div>
           <div className="mt-3 space-y-2 text-sm text-ink2">
-            <div>Ek banda, ek ad</div>
-            <div>No dealer clutter</div>
-            <div>Sirf asli malik</div>
+            <a href="https://www.teragharmeraghar.com" target="_blank" rel="noreferrer">
+              www.teragharmeraghar.com
+            </a>
+            <a href="https://www.facebook.com/teragharmeraghar" target="_blank" rel="noreferrer">
+              Facebook
+            </a>
+            <a href="https://www.instagram.com/teragharmeraghar" target="_blank" rel="noreferrer">
+              Instagram
+            </a>
+            <a href="tel:+923001234567">+92 300 1234567</a>
           </div>
         </div>
       </div>
     </footer>
   );
 }
+

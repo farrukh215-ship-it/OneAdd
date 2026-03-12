@@ -2,9 +2,11 @@ import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import type { SearchSuggestion } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
+import { api } from '../../lib/api';
 
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
@@ -14,6 +16,11 @@ export default function BrowseScreen() {
     category?: string;
     city?: string;
     sort?: string;
+    q?: string;
+    store?: string;
+    lat?: string;
+    lng?: string;
+    radiusKm?: string;
     condition?: 'NEW' | 'USED';
   }>();
   const { data: categories = [] } = useCategories();
@@ -21,13 +28,25 @@ export default function BrowseScreen() {
   const [city, setCity] = useState<string | undefined>(params.city);
   const [sort, setSort] = useState(params.sort ?? 'newest');
   const [condition, setCondition] = useState<'NEW' | 'USED' | undefined>(params.condition);
+  const [q, setQ] = useState(params.q ?? '');
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [store, setStore] = useState<string | undefined>(params.store);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ['65%'], []);
+  const lat = params.lat ? Number(params.lat) : undefined;
+  const lng = params.lng ? Number(params.lng) : undefined;
+  const radiusKm = params.radiusKm ? Number(params.radiusKm) : undefined;
+
   const { data } = useListings({
+    q: q.trim() || undefined,
     category,
     city,
+    store,
+    lat,
+    lng,
+    radiusKm,
     sort,
     condition,
     minPrice: minPrice ? Number(minPrice) : undefined,
@@ -40,7 +59,26 @@ export default function BrowseScreen() {
     setCity(params.city);
     setSort(params.sort ?? 'newest');
     setCondition(params.condition);
-  }, [params.category, params.city, params.condition, params.sort]);
+    setQ(params.q ?? '');
+    setStore(params.store);
+  }, [params.category, params.city, params.condition, params.sort, params.q, params.store]);
+
+  useEffect(() => {
+    const value = q.trim();
+    if (value.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api.get<SearchSuggestion[]>('/search/suggestions', { params: { q: value } });
+        setSuggestions(response.data);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 240);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   return (
     <View className="flex-1 bg-bg">
@@ -51,6 +89,24 @@ export default function BrowseScreen() {
             <Text className="text-xs font-semibold text-white">Filters</Text>
           </Pressable>
         </View>
+
+        <TextInput
+          value={q}
+          onChangeText={setQ}
+          onSubmitEditing={() => {}}
+          className="mt-3 rounded-xl border border-border bg-[#F5F6F7] px-4 py-3 text-ink"
+          placeholder="Search with prediction..."
+        />
+        {suggestions.length ? (
+          <View className="mt-2 rounded-xl border border-border bg-white">
+            {suggestions.slice(0, 5).map((item, index) => (
+              <Pressable key={`${item.label}-${index}`} onPress={() => setQ(item.label)} className="px-3 py-2">
+                <Text className="text-sm text-ink2">{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         <View className="mt-3 flex-row gap-2">
           {[
             { value: 'newest', label: 'Newest' },
@@ -68,6 +124,13 @@ export default function BrowseScreen() {
             </Pressable>
           ))}
         </View>
+        {typeof lat === 'number' && typeof lng === 'number' ? (
+          <View className="mt-2 rounded-xl bg-red/10 px-3 py-2">
+            <Text className="text-xs font-semibold text-red">
+              Mere paas mode: {radiusKm ?? 10} km ke andar listings pehle.
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <FlatList
@@ -77,7 +140,7 @@ export default function BrowseScreen() {
         contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 12, paddingBottom: 100 }}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
         renderItem={({ item }) => (
-          <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} />
+          <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={city || 'Lahore'} />
         )}
       />
 
@@ -127,6 +190,18 @@ export default function BrowseScreen() {
             />
           </View>
 
+          <View>
+            <Text className="mb-2 text-sm font-semibold text-ink2">Dukaan Type</Text>
+            <View className="flex-row gap-2">
+              <Pressable onPress={() => setStore('online')} className={`rounded-full px-3 py-2 ${store === 'online' ? 'bg-red' : 'border border-border bg-white'}`}>
+                <Text className={`text-xs font-semibold ${store === 'online' ? 'text-white' : 'text-ink2'}`}>Online</Text>
+              </Pressable>
+              <Pressable onPress={() => setStore('road')} className={`rounded-full px-3 py-2 ${store === 'road' ? 'bg-red' : 'border border-border bg-white'}`}>
+                <Text className={`text-xs font-semibold ${store === 'road' ? 'text-white' : 'text-ink2'}`}>Road</Text>
+              </Pressable>
+            </View>
+          </View>
+
           <View className="flex-row gap-3">
             <TextInput
               value={minPrice}
@@ -162,12 +237,9 @@ export default function BrowseScreen() {
               </Pressable>
             ))}
           </View>
-
-          <View className="rounded-xl bg-green/10 p-3">
-            <Text className="text-sm font-semibold text-green">Sirf Asli Malik on hai</Text>
-          </View>
         </BottomSheetView>
       </BottomSheet>
     </View>
   );
 }
+

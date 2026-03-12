@@ -4,8 +4,14 @@ import { api, listingKeys } from '../lib/api';
 import { fallbackListings } from '../lib/fallback-data';
 
 export type ListingsFilters = {
+  q?: string;
   category?: string;
   city?: string;
+  store?: string;
+  storeType?: 'ONLINE' | 'ROAD';
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
   minPrice?: number;
   maxPrice?: number;
   condition?: 'NEW' | 'USED';

@@ -24,6 +24,8 @@ model User {
   sessions  Session[]
   savedAds  SavedAd[]
   contacts  ContactLog[]
+  messages  ListingMessage[]
+  offers    Offer[]
 }
 
 model Listing {
@@ -36,15 +38,25 @@ model Listing {
   categoryId  String
   category    Category      @relation(fields: [categoryId], references: [id])
   images      String[]
+  videos      String[]      @default([])
   condition   Condition     @default(USED)
+  storeType   StoreType     @default(ROAD)
   city        String
   area        String?
+  lat         Float?
+  lng         Float?
   status      ListingStatus @default(ACTIVE)
   views       Int           @default(0)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   savedBy     SavedAd[]
   contacts    ContactLog[]
+  thread      ListingThread?
+  offers      Offer[]
+
+  @@index([city])
+  @@index([storeType])
+  @@index([lat, lng])
 }
 
 model Category {
@@ -85,6 +97,40 @@ model ContactLog {
   createdAt DateTime @default(now())
 }
 
+model ListingThread {
+  id        String          @id @default(cuid())
+  listingId String          @unique
+  listing   Listing         @relation(fields: [listingId], references: [id])
+  messages  ListingMessage[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model ListingMessage {
+  id          String        @id @default(cuid())
+  threadId     String
+  thread       ListingThread @relation(fields: [threadId], references: [id])
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  message      String
+  offerAmount  Int?
+  createdAt    DateTime      @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+model Offer {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int
+  createdAt DateTime @default(now())
+
+  @@index([listingId, amount])
+}
+
 enum Condition {
   NEW
   USED
@@ -94,4 +140,9 @@ enum ListingStatus {
   ACTIVE
   SOLD
   DELETED
+}
+
+enum StoreType {
+  ONLINE
+  ROAD
 }

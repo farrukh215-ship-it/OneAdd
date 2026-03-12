@@ -1,9 +1,14 @@
 import {
   Category,
+  Condition,
   ContactLog,
   Listing,
+  ListingMessage,
+  ListingThread,
+  Offer,
   Prisma,
   SavedAd,
+  StoreType,
 } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -66,5 +71,160 @@ export class ListingsRepository {
 
   findCategoryBySlug(slug: string): Promise<Category | null> {
     return this.prisma.category.findUnique({ where: { slug } });
+  }
+
+  findOrCreateThread(listingId: string): Promise<ListingThread> {
+    return this.prisma.listingThread.upsert({
+      where: { listingId },
+      update: {},
+      create: { listingId },
+    });
+  }
+
+  getThreadWithMessages(listingId: string) {
+    return this.prisma.listingThread.findUnique({
+      where: { listingId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: { select: { id: true, name: true, city: true, verified: true } },
+          },
+        },
+      },
+    });
+  }
+
+  createThreadMessage(data: Prisma.ListingMessageUncheckedCreateInput): Promise<ListingMessage> {
+    return this.prisma.listingMessage.create({
+      data,
+      include: {
+        user: { select: { id: true, name: true, city: true, verified: true } },
+      },
+    });
+  }
+
+  createOffer(data: Prisma.OfferUncheckedCreateInput): Promise<Offer> {
+    return this.prisma.offer.create({
+      data,
+      include: {
+        user: { select: { id: true, name: true, city: true, verified: true } },
+      },
+    });
+  }
+
+  findOffersForListing(listingId: string): Promise<(Offer & { user: { id: string; name: string | null; city: string | null; verified: boolean } })[]> {
+    return this.prisma.offer.findMany({
+      where: { listingId },
+      orderBy: [{ amount: 'asc' }, { createdAt: 'asc' }],
+      include: {
+        user: { select: { id: true, name: true, city: true, verified: true } },
+      },
+    });
+  }
+
+  async findSuggestions(query: string, limit = 8): Promise<Array<{ label: string; categorySlug: string | null; city: string | null }>> {
+    const q = query.trim();
+    if (!q) return [];
+
+    const rows = await this.prisma.$queryRaw<Array<{ label: string; category_slug: string | null; city: string | null }>>`
+      SELECT DISTINCT
+        l.title AS label,
+        c.slug AS category_slug,
+        l.city AS city
+      FROM "Listing" l
+      LEFT JOIN "Category" c ON c.id = l."categoryId"
+      WHERE l.status = 'ACTIVE'
+        AND (
+          similarity(lower(l.title), lower(${q})) > 0.15
+          OR lower(l.title) ILIKE ${`%${q.toLowerCase()}%`}
+          OR to_tsvector('simple', coalesce(l.title, '') || ' ' || coalesce(l.description, ''))
+             @@ plainto_tsquery('simple', ${q})
+        )
+      ORDER BY
+        similarity(lower(l.title), lower(${q})) DESC,
+        l."createdAt" DESC
+      LIMIT ${limit};
+    `;
+
+    return rows.map((row) => ({
+      label: row.label,
+      categorySlug: row.category_slug,
+      city: row.city,
+    }));
+  }
+
+  async searchListingIds(params: {
+    q: string;
+    category?: string;
+    city?: string;
+    condition?: Condition;
+    storeType?: StoreType;
+    minPrice?: number;
+    maxPrice?: number;
+    limit: number;
+    offset: number;
+  }): Promise<string[]> {
+    const values: Array<string | number> = [params.q];
+    const whereClauses: string[] = ["l.status = 'ACTIVE'"];
+
+    if (params.category) {
+      values.push(params.category);
+      whereClauses.push(`c.slug = $${values.length}`);
+    }
+
+    if (params.city) {
+      values.push(params.city);
+      whereClauses.push(`l.city = $${values.length}`);
+    }
+
+    if (params.condition) {
+      values.push(params.condition);
+      whereClauses.push(`l.condition = $${values.length}::"Condition"`);
+    }
+
+    if (params.storeType) {
+      values.push(params.storeType);
+      whereClauses.push(`l."storeType" = $${values.length}::"StoreType"`);
+    }
+
+    if (typeof params.minPrice === 'number') {
+      values.push(params.minPrice);
+      whereClauses.push(`l.price >= $${values.length}`);
+    }
+
+    if (typeof params.maxPrice === 'number') {
+      values.push(params.maxPrice);
+      whereClauses.push(`l.price <= $${values.length}`);
+    }
+
+    values.push(params.limit);
+    const limitPlaceholder = `$${values.length}`;
+    values.push(params.offset);
+    const offsetPlaceholder = `$${values.length}`;
+
+    const query = `
+      SELECT l.id
+      FROM "Listing" l
+      LEFT JOIN "Category" c ON c.id = l."categoryId"
+      WHERE ${whereClauses.join(' AND ')}
+        AND (
+          similarity(lower(l.title), lower($1)) > 0.1
+          OR lower(l.title) ILIKE '%' || lower($1) || '%'
+          OR lower(l.description) ILIKE '%' || lower($1) || '%'
+          OR to_tsvector('simple', coalesce(l.title, '') || ' ' || coalesce(l.description, ''))
+             @@ plainto_tsquery('simple', $1)
+        )
+      ORDER BY
+        (
+          similarity(lower(l.title), lower($1)) * 1.5
+          + similarity(lower(coalesce(l.description, '')), lower($1))
+        ) DESC,
+        l."createdAt" DESC
+      LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}
+    `;
+
+    const rows = await this.prisma.$queryRawUnsafe<Array<{ id: string }>>(query, ...values);
+    return rows.map((row) => row.id);
   }
 }

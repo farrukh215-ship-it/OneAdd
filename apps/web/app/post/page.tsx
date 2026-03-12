@@ -4,13 +4,16 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useCategories } from '../../hooks/useCategories';
 import { fallbackCategories } from '../../lib/fallback-data';
+import { api } from '../../lib/api';
+import { uploadMediaToR2 } from '../../lib/uploads';
 
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
 type MediaItem = {
   id: string;
   type: 'image' | 'video';
-  url: string;
+  previewUrl: string;
+  file: File;
   name: string;
 };
 
@@ -25,12 +28,18 @@ export default function PostPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [condition, setCondition] = useState<'NEW' | 'USED'>('USED');
+  const [storeType, setStoreType] = useState<'ONLINE' | 'ROAD'>('ROAD');
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [coverImageId, setCoverImageId] = useState<string>('');
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
+  const [lat, setLat] = useState<number | undefined>(undefined);
+  const [lng, setLng] = useState<number | undefined>(undefined);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationHints, setLocationHints] = useState<Array<{ label: string; city?: string; lat: number; lng: number }>>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!window.localStorage.getItem('tgmg_token')) {
@@ -38,49 +47,83 @@ export default function PostPage() {
     }
   }, [router]);
 
-  const progress = useMemo(() => `${(step / 4) * 100}%`, [step]);
-  const imageCount = media.filter((item) => item.type === 'image').length;
-  const hasVideo = media.some((item) => item.type === 'video');
+  useEffect(() => {
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token || locationQuery.trim().length < 3) {
+      setLocationHints([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(locationQuery)}.json?autocomplete=true&limit=5&access_token=${token}`,
+        );
+        const result = await response.json();
+        const hints = (result.features || []).map((feature: any) => ({
+          label: feature.place_name as string,
+          city: feature.context?.find((item: any) => String(item.id || '').startsWith('place'))?.text as string | undefined,
+          lat: feature.center?.[1],
+          lng: feature.center?.[0],
+        }));
+        setLocationHints(hints.filter((item: any) => typeof item.lat === 'number' && typeof item.lng === 'number'));
+      } catch {
+        setLocationHints([]);
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [locationQuery]);
 
-  const onImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const progress = useMemo(() => `${(step / 4) * 100}%`, [step]);
+  const imageItems = media.filter((item) => item.type === 'image');
+  const videoItems = media.filter((item) => item.type === 'video');
+  const selectedCategory = categories.find((category) => category.id === categoryId);
+
+  const onImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
-    const slots = 6 - imageCount;
+    const slots = 6 - imageItems.length;
     const selected = files.filter((file) => file.type.startsWith('image/')).slice(0, Math.max(0, slots));
     if (!selected.length) return;
 
-    const newItems = selected.map((file) => ({
-      id: `${file.name}-${Date.now()}-${Math.random()}`,
-      type: 'image' as const,
-      url: URL.createObjectURL(file),
-      name: file.name,
-    }));
+    const newItems = await Promise.all(
+      selected.map(async (file) => {
+        const previewUrl = URL.createObjectURL(file);
+        return {
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+          type: 'image' as const,
+          previewUrl,
+          file,
+          name: file.name,
+        };
+      }),
+    );
+
     setMedia((current) => [...current, ...newItems]);
     if (!coverImageId) setCoverImageId(newItems[0]!.id);
     setMessage(null);
     event.target.value = '';
   };
 
-  const onVideoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const onVideoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('video/')) {
       setMessage('Sirf video file upload karein');
       return;
     }
-    if (hasVideo) {
+    if (videoItems.length >= 1) {
       setMessage('Sirf 1 video allow hai');
       return;
     }
 
-    const tempUrl = URL.createObjectURL(file);
+    const previewUrl = URL.createObjectURL(file);
     const video = document.createElement('video');
     video.preload = 'metadata';
-    video.src = tempUrl;
+    video.src = previewUrl;
 
-    video.onloadedmetadata = () => {
+    video.onloadedmetadata = async () => {
       if (video.duration > 30) {
         setMessage('Video maximum 30 seconds ka hona chahiye');
-        URL.revokeObjectURL(tempUrl);
+        URL.revokeObjectURL(previewUrl);
         return;
       }
 
@@ -89,7 +132,8 @@ export default function PostPage() {
         {
           id: `${file.name}-${Date.now()}-${Math.random()}`,
           type: 'video',
-          url: tempUrl,
+          previewUrl,
+          file,
           name: file.name,
         },
       ]);
@@ -99,9 +143,13 @@ export default function PostPage() {
   };
 
   const removeMedia = (id: string) => {
-    setMedia((current) => current.filter((item) => item.id !== id));
+    setMedia((current) => {
+      const removed = current.find((item) => item.id === id);
+      if (removed) URL.revokeObjectURL(removed.previewUrl);
+      return current.filter((item) => item.id !== id);
+    });
     if (coverImageId === id) {
-      const nextImage = media.find((item) => item.id !== id && item.type === 'image');
+      const nextImage = imageItems.find((item) => item.id !== id);
       setCoverImageId(nextImage?.id || '');
     }
   };
@@ -118,16 +166,15 @@ export default function PostPage() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          setLat(latitude);
+          setLng(longitude);
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
           );
           const result = await response.json();
           const addr = result.address || {};
-          const cityName =
-            addr.city || addr.town || addr.state_district || addr.state || '';
-          const locality =
-            addr.suburb || addr.neighbourhood || addr.road || result.display_name || '';
-
+          const cityName = addr.city || addr.town || addr.state_district || addr.state || '';
+          const locality = addr.suburb || addr.neighbourhood || addr.road || result.display_name || '';
           if (cityName) setCity(cityName);
           if (locality) setArea(locality);
         } catch {
@@ -152,7 +199,7 @@ export default function PostPage() {
       if (!price || Number(price) < 100) return 'Price minimum 100 rakhein';
     }
     if (step === 3) {
-      if (imageCount < 1) return 'Kam az kam 1 image required hai';
+      if (imageItems.length < 1) return 'Kam az kam 1 image required hai';
       if (!coverImageId) return 'Cover image select karein';
     }
     return null;
@@ -173,8 +220,74 @@ export default function PostPage() {
       setMessage('City select karein');
       return;
     }
-    setMessage('Ad submit integration in progress, demo redirect ho raha hai');
-    router.push('/listings/demo-1');
+    if (!imageItems.length) {
+      setMessage('Kam az kam 1 image required hai');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage('Media upload ho rahi hai...');
+    try {
+      const uploadedMedia = await uploadMediaToR2(
+        media.map((item) => ({
+          id: item.id,
+          kind: item.type,
+          file: item.file,
+        })),
+      );
+
+      const mediaMap = new Map(uploadedMedia.map((item) => [item.id, item.url]));
+      const coverImage = imageItems.find((item) => item.id === coverImageId);
+      const orderedImages = [
+        ...(coverImage ? [mediaMap.get(coverImage.id)] : []),
+        ...imageItems
+          .filter((item) => item.id !== coverImageId)
+          .map((item) => mediaMap.get(item.id)),
+      ]
+        .filter((url): url is string => Boolean(url))
+        .slice(0, 6);
+
+      const uploadedVideos = videoItems
+        .map((item) => mediaMap.get(item.id))
+        .filter((url): url is string => Boolean(url))
+        .slice(0, 1);
+
+      if (!orderedImages.length) {
+        setMessage('Image upload fail hui. Dobara try karein.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setMessage('Ad publish ho rahi hai...');
+      const response = await api.post('/listings', {
+        title: title.trim(),
+        description: description.trim(),
+        price: Number(price),
+        categoryId,
+        images: orderedImages,
+        videos: uploadedVideos,
+        condition,
+        storeType,
+        city,
+        area: area.trim() || undefined,
+        lat,
+        lng,
+      });
+
+      setMessage('Mubarak! Aapki ad publish ho gayi.');
+      const nextId = response.data.id ?? response.data.data?.id;
+      if (nextId) {
+        window.setTimeout(() => router.push(`/listings/${nextId}`), 900);
+      } else {
+        window.setTimeout(() => router.push('/listings'), 900);
+      }
+    } catch (error: any) {
+      const serverMessage = error?.response?.data?.message;
+      const messageText = Array.isArray(serverMessage) ? serverMessage[0] : serverMessage;
+      setMessage(typeof messageText === 'string' ? messageText : 'Ad publish nahi hui, dobara try karein.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -188,6 +301,11 @@ export default function PostPage() {
           <div className="h-2 overflow-hidden rounded-full bg-[#ECEEF2]">
             <div className="h-full rounded-full bg-red transition-all" style={{ width: progress }} />
           </div>
+          {selectedCategory ? (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-red/20 bg-red-light px-3 py-1 text-xs font-bold text-red">
+              {selectedCategory.icon} Selected: {selectedCategory.name}
+            </div>
+          ) : null}
         </div>
 
         {step === 1 ? (
@@ -235,7 +353,7 @@ export default function PostPage() {
           <div>
             <h1 className="section-title">Photos & Video</h1>
             <div className="mt-3 text-sm text-ink2">
-              Max 6 images + 1 video (30 sec max). Cover image لازمی select karein.
+              Max 6 images + 1 video (30 sec max). Cover image lazmi select karein.
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="surface flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[16px] border-dashed p-5 text-center text-sm text-ink2">
@@ -250,15 +368,15 @@ export default function PostPage() {
               </label>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {media.map((item) => (
                 <div key={item.id} className={`surface relative overflow-hidden rounded-xl p-1 ${coverImageId === item.id ? '!border-red' : ''}`}>
                   <div className="aspect-square overflow-hidden rounded-lg bg-border">
                     {item.type === 'image' ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                      <img src={item.previewUrl} alt={item.name} className="h-full w-full object-cover" />
                     ) : (
-                      <video src={item.url} className="h-full w-full object-cover" />
+                      <video src={item.previewUrl} className="h-full w-full object-cover" />
                     )}
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-1">
@@ -281,7 +399,7 @@ export default function PostPage() {
 
         {step === 4 ? (
           <div className="space-y-4">
-            <h1 className="section-title">Location</h1>
+            <h1 className="section-title">Location & Review</h1>
             <div className="flex flex-wrap gap-2">
               <select value={city} onChange={(event) => setCity(event.target.value)} className="field-select">
                 <option value="">City choose karo</option>
@@ -293,9 +411,59 @@ export default function PostPage() {
                 {isFetchingLocation ? 'Location aa rahi hai...' : '📍 Current Location'}
               </button>
             </div>
+
             <input value={area} onChange={(event) => setArea(event.target.value)} className="field-input" placeholder="Area / exact location" />
+
+            <div className="space-y-2">
+              <input
+                value={locationQuery}
+                onChange={(event) => setLocationQuery(event.target.value)}
+                className="field-input"
+                placeholder="Map search karo (area/street likho)"
+              />
+              {locationHints.length ? (
+                <div className="surface max-h-44 overflow-y-auto p-2">
+                  {locationHints.map((hint, index) => (
+                    <button
+                      key={`${hint.label}-${index}`}
+                      type="button"
+                      onClick={() => {
+                        setArea(hint.label);
+                        setCity(hint.city || city || 'Lahore');
+                        setLat(hint.lat);
+                        setLng(hint.lng);
+                        setLocationHints([]);
+                      }}
+                      className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink2 hover:bg-[#F8F9FB]"
+                    >
+                      {hint.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex gap-2">
+              <button type="button" className={`chip ${storeType === 'ROAD' ? 'active' : ''}`} onClick={() => setStoreType('ROAD')}>
+                Road Dukaan
+              </button>
+              <button type="button" className={`chip ${storeType === 'ONLINE' ? 'active' : ''}`} onClick={() => setStoreType('ONLINE')}>
+                Online Dukaan
+              </button>
+            </div>
+
             <div className="rounded-[16px] border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
               ⚠️ Rule: Aap ek category mein max 3 active ads post kar sakte hain.
+            </div>
+
+            <div className="surface p-4 text-sm text-ink2">
+              <div className="font-bold text-ink">Final Review</div>
+              <div className="mt-2">Category: {selectedCategory?.name || 'N/A'}</div>
+              <div>Price: PKR {price || '0'}</div>
+              <div>Condition: {condition}</div>
+              <div>Images: {imageItems.length} / 6</div>
+              <div>Video: {videoItems.length} / 1</div>
+              <div>Store: {storeType}</div>
             </div>
           </div>
         ) : null}
@@ -313,8 +481,8 @@ export default function PostPage() {
               Aage Barhein →
             </button>
           ) : (
-            <button type="button" onClick={submit} className="btn-red w-full max-w-[220px]">
-              Ad Lagao ✓
+            <button type="button" onClick={submit} className="btn-red w-full max-w-[220px]" disabled={isSubmitting}>
+              {isSubmitting ? 'Ad lag rahi hai...' : 'Ad Lagao ✓'}
             </button>
           )}
         </div>

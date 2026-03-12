@@ -1,5 +1,6 @@
 import type { Listing } from '@tgmg/types';
 import { Dimensions, Image, Pressable, Text, View } from 'react-native';
+import { distanceFromCity } from '../lib/distance';
 
 const screenWidth = Dimensions.get('window').width;
 const cardWidth = (screenWidth - 24) / 2;
@@ -7,11 +8,23 @@ const cardWidth = (screenWidth - 24) / 2;
 export function ListingCard({
   listing,
   onPress,
+  referenceCity = 'Lahore',
 }: {
   listing: Listing;
   onPress: () => void;
+  referenceCity?: string;
 }) {
   const location = [listing.city, listing.area].filter(Boolean).join(', ');
+  const distance =
+    typeof listing.distanceKm === 'number'
+      ? Math.round(listing.distanceKm)
+      : distanceFromCity(
+          referenceCity,
+          listing.city,
+          typeof listing.lat === 'number' && typeof listing.lng === 'number'
+            ? { lat: listing.lat, lng: listing.lng }
+            : undefined,
+        );
 
   return (
     <Pressable
@@ -45,10 +58,14 @@ export function ListingCard({
             <Text className="mt-1 text-[12px] font-medium text-ink2" numberOfLines={2}>
               {listing.title}
             </Text>
-            <Text className="mt-2 text-[11px] text-ink3">📍 {location || listing.city}</Text>
+            <Text className="mt-2 text-[11px] text-ink3">
+              📍 {location || listing.city}
+              {distance !== null ? ` • ${distance} km` : ''}
+            </Text>
           </View>
         </View>
       )}
     </Pressable>
   );
 }
+

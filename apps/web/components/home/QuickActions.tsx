@@ -50,7 +50,7 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
         const detectedCity = nearestCity(position.coords.latitude, position.coords.longitude);
         window.localStorage.setItem('tgmg_city', detectedCity);
         router.push(
-          `/listings?city=${encodeURIComponent(detectedCity)}&lat=${position.coords.latitude}&lng=${position.coords.longitude}`,
+          `/listings?city=${encodeURIComponent(detectedCity)}&lat=${position.coords.latitude}&lng=${position.coords.longitude}&radiusKm=10`,
         );
       },
       () => router.push(`/listings?city=${encodeURIComponent(city)}`),
@@ -64,20 +64,21 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
         + Ad Post Karo
       </Link>
       <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-        🔥 Taaza Listings
+        Taaza Listings
       </Link>
       <button type="button" onClick={openNearMe} className="chip shrink-0">
-        📍 Mere Paas
+        Mere Paas
       </button>
       <Link href={`/listings?sort=price_desc&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-        ⭐ Top Deals
+        Top Deals
       </Link>
       <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
-        🆕 Naye Items
+        Naye Items
       </Link>
       <Link href={`/dukaan?city=${encodeURIComponent(city)}`} className="chip shrink-0">
-        🏬 Dukaan
+        Dukaan
       </Link>
     </section>
   );
 }
+

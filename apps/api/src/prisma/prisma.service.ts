@@ -8,6 +8,7 @@ export class PrismaService
 {
   async onModuleInit() {
     await this.$connect();
+    await this.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS pg_trgm;');
   }
 
   async onModuleDestroy() {

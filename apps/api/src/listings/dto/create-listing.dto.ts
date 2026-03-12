@@ -1,9 +1,10 @@
-import { Condition } from '@prisma/client';
+import { Condition, StoreType } from '@prisma/client';
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -32,12 +33,22 @@ export class CreateListingDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(8)
+  @ArrayMaxSize(6)
   @IsString({ each: true })
   images!: string[];
 
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(1)
+  @IsString({ each: true })
+  videos?: string[];
+
   @IsEnum(Condition)
   condition!: 'NEW' | 'USED';
+
+  @IsOptional()
+  @IsEnum(StoreType)
+  storeType?: StoreType;
 
   @IsString()
   city!: string;
@@ -45,4 +56,16 @@ export class CreateListingDto {
   @IsOptional()
   @IsString()
   area?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number;
 }

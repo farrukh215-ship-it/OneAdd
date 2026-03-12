@@ -41,6 +41,13 @@ export async function getListings(params: Record<string, string | number | undef
     const filtered = fallbackListings.filter((listing) => {
       if (params.category && listing.category.slug !== params.category) return false;
       if (params.city && listing.city.toLowerCase() !== String(params.city).toLowerCase()) return false;
+      if (params.q) {
+        const q = String(params.q).toLowerCase();
+        const hay = `${listing.title} ${listing.description}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (params.store && String(params.store).toLowerCase() === 'online' && listing.storeType !== 'ONLINE') return false;
+      if (params.store && String(params.store).toLowerCase() === 'road' && listing.storeType !== 'ROAD') return false;
       return true;
     });
 

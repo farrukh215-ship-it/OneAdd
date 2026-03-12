@@ -6,6 +6,8 @@ import { HealthController } from './health.controller';
 import { ListingsModule } from './listings/listings.module';
 import { OtpModule } from './otp/otp.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SearchModule } from './search/search.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     ListingsModule,
     CategoriesModule,
+    SearchModule,
+    UploadsModule,
   ],
   controllers: [HealthController],
 })

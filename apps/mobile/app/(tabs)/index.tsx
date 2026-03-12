@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, Text, View, Vibration } from 'react-native';
 import type { Listing } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { SectionHeader } from '../../components/SectionHeader';
@@ -9,10 +9,11 @@ import { useListings } from '../../hooks/useListings';
 
 const quickActions = [
   { label: '+ Ad Post Karo', active: true, href: '/post/category' },
-  { label: '🔥 Taaza Listings', href: '/(tabs)/browse?sort=newest' },
-  { label: '📍 Mere Paas', href: '/(tabs)/browse?city=Lahore' },
-  { label: '⭐ Top Deals', href: '/(tabs)/browse?sort=price_asc' },
-  { label: '🆕 Naye Items', href: '/(tabs)/browse?condition=NEW' },
+  { label: 'Taaza Listings', href: '/(tabs)/browse?sort=newest' },
+  { label: 'Mere Paas', href: '/(tabs)/browse?city=Lahore&lat=31.5204&lng=74.3587&radiusKm=10' },
+  { label: 'Top Deals', href: '/(tabs)/browse?sort=price_asc' },
+  { label: 'Naye Items', href: '/(tabs)/browse?condition=NEW' },
+  { label: 'Dukaan', href: '/(tabs)/browse?store=road&city=Lahore' },
 ];
 
 export default function HomeScreen() {
@@ -35,7 +36,7 @@ export default function HomeScreen() {
         onPress={() => router.push('/(tabs)/browse')}
         className="mx-3 mb-2 h-10 flex-row items-center rounded-full bg-[#F5F6F7] px-4"
       >
-        <Text className="mr-2 text-ink3">🔍</Text>
+        <Text className="mr-2 text-ink3">Search</Text>
         <Text className="text-[13px] text-ink3">Kuch bhi dhundein...</Text>
       </Pressable>
 
@@ -48,7 +49,10 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingHorizontal: 12 }}
         renderItem={({ item, index }) => (
           <Pressable
-            onPress={() => router.push(`/(tabs)/browse?category=${item.slug}`)}
+            onPress={() => {
+              Vibration.vibrate(12);
+              router.push(`/(tabs)/browse?category=${item.slug}`);
+            }}
             className="mr-3 items-center px-3 py-2"
           >
             <Text className="text-[22px]">{item.icon}</Text>
@@ -65,10 +69,10 @@ export default function HomeScreen() {
           <View className="max-w-[76%]">
             <Text className="text-[18px] font-extrabold text-white">OLX se tang?</Text>
             <Text className="mt-1 text-[12px] text-white/80">
-              Sirf asli malik bechte hain — koi dealer nahi
+              Sirf asli malik bechte hain - koi dealer nahi
             </Text>
             <View className="mt-3 flex-row flex-wrap gap-2">
-              {['✓ Verified Sellers', '🚫 No Dealers', '⚡ Free'].map((item) => (
+              {['Verified Sellers', 'No Dealers', 'Free'].map((item) => (
                 <View key={item} className="rounded-full border border-white/30 bg-white/15 px-3 py-1">
                   <Text className="text-[11px] text-white">{item}</Text>
                 </View>
@@ -81,7 +85,7 @@ export default function HomeScreen() {
               <Text className="font-bold text-red">Abhi Dhundein</Text>
             </Pressable>
           </View>
-          <Text className="text-[52px]">🏪</Text>
+          <Text className="text-[40px] text-white">24H</Text>
         </View>
       </View>
 
@@ -145,7 +149,6 @@ export default function HomeScreen() {
       </View>
 
       <View className="mx-3 mt-2 rounded-xl bg-red p-4">
-        <Text className="text-center text-2xl">📢</Text>
         <Text className="mt-2 text-center text-lg font-extrabold text-white">Apna saman bechna hai?</Text>
         <Text className="mt-1 text-center text-sm text-white/80">
           Free mein ad lagao aur buyer tak seedha pohancho.
@@ -157,3 +160,4 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
+

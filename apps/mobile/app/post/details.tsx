@@ -5,7 +5,7 @@ import { ProgressHeader } from '../../components/ProgressHeader';
 
 export default function PostDetailsScreen() {
   const router = useRouter();
-  const { categoryId } = useLocalSearchParams<{ categoryId: string }>();
+  const { categoryId, categoryName } = useLocalSearchParams<{ categoryId: string; categoryName?: string }>();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -20,6 +20,9 @@ export default function PostDetailsScreen() {
     <View className="flex-1 bg-bg">
       <ProgressHeader step={2} title="Ad Ki Tafseel" />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <View className="mb-3 self-start rounded-full bg-red/10 px-3 py-1.5">
+          <Text className="text-xs font-bold text-red">Selected: {categoryName || 'Category'}</Text>
+        </View>
         <Text className="mb-2 text-sm font-semibold text-ink">Title</Text>
         <TextInput
           value={title}
@@ -79,7 +82,7 @@ export default function PostDetailsScreen() {
           onPress={() =>
             router.push({
               pathname: '/post/photos',
-              params: { categoryId, title, description, price, condition },
+              params: { categoryId, categoryName, title, description, price, condition },
             })
           }
           className={`mt-6 rounded-xl py-4 ${valid ? 'bg-red' : 'bg-border'}`}

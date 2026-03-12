@@ -1,10 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import type { ListingThreadResponse } from '@tgmg/types';
 import { useRequireAuthAction } from '../../components/AuthGuardAction';
 import { ListingCard } from '../../components/ListingCard';
 import { useListing } from '../../hooks/useListing';
 import { useListings } from '../../hooks/useListings';
+import { api } from '../../lib/api';
 
 export default function ListingDetailScreen() {
   const router = useRouter();
@@ -12,6 +14,9 @@ export default function ListingDetailScreen() {
   const { data: listing } = useListing(id);
   const { data: related } = useListings({ category: listing?.category?.slug, limit: 4, sort: 'newest' });
   const [activeIndex, setActiveIndex] = useState(0);
+  const [thread, setThread] = useState<ListingThreadResponse | null>(null);
+  const [message, setMessage] = useState('');
+  const [offerAmount, setOfferAmount] = useState('');
 
   const initials = useMemo(() => {
     const name = listing?.user?.name || 'Seller';
@@ -25,6 +30,38 @@ export default function ListingDetailScreen() {
 
   const openWhatsapp = useRequireAuthAction(() => {});
   const showPhone = useRequireAuthAction(() => {});
+  const sendPublicMessage = useRequireAuthAction(() => {
+    void (async () => {
+      if (!message.trim()) return;
+      await api.post(`/listings/${id}/chat/messages`, { message: message.trim() });
+      setMessage('');
+      const response = await api.get<ListingThreadResponse>(`/listings/${id}/chat`);
+      setThread(response.data);
+    })();
+  });
+  const sendOffer = useRequireAuthAction(() => {
+    void (async () => {
+      const amount = Number(offerAmount);
+      if (!amount || amount < 100) return;
+      await api.post(`/listings/${id}/offers`, { amount });
+      setOfferAmount('');
+      const response = await api.get<ListingThreadResponse>(`/listings/${id}/chat`);
+      setThread(response.data);
+    })();
+  });
+
+  useEffect(() => {
+    if (!id) return;
+    const loadThread = async () => {
+      try {
+        const response = await api.get<ListingThreadResponse>(`/listings/${id}/chat`);
+        setThread(response.data);
+      } catch {
+        setThread(null);
+      }
+    };
+    void loadThread();
+  }, [id]);
 
   if (!listing) {
     return (
@@ -106,7 +143,59 @@ export default function ListingDetailScreen() {
                 </Text>
               </View>
             </View>
-            <Text className="mt-3 text-[12px] font-semibold text-green">✓ Asli Malik — Dealer Nahi</Text>
+            <Text className="mt-3 text-[12px] font-semibold text-green">✓ Asli Malik - Dealer Nahi</Text>
+          </View>
+
+          <View className="mt-3 rounded-xl bg-white p-4">
+            <Text className="text-base font-bold text-ink">Public Chat & Offers</Text>
+            <Text className="mt-1 text-xs text-ink2">Is listing ki chat sab users ko nazar aati hai.</Text>
+            {thread?.nearestOffer ? (
+              <Text className="mt-2 text-xs font-semibold text-red">
+                Closest: PKR {thread.nearestOffer.amount.toLocaleString()}
+              </Text>
+            ) : null}
+            {thread?.bestOffer ? (
+              <Text className="mt-1 text-xs font-semibold text-green">
+                Best: PKR {thread.bestOffer.amount.toLocaleString()}
+              </Text>
+            ) : null}
+            <View className="mt-3 gap-2">
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                className="rounded-xl border border-border bg-white px-3 py-3 text-ink"
+                placeholder="Public message"
+              />
+              <TextInput
+                value={offerAmount}
+                onChangeText={setOfferAmount}
+                className="rounded-xl border border-border bg-white px-3 py-3 text-ink"
+                placeholder="Offer amount"
+                keyboardType="numeric"
+              />
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={sendPublicMessage}
+                  className="flex-1 rounded-xl border border-border bg-white py-3"
+                >
+                  <Text className="text-center font-semibold text-ink">Send</Text>
+                </Pressable>
+                <Pressable
+                  onPress={sendOffer}
+                  className="flex-1 rounded-xl bg-red py-3"
+                >
+                  <Text className="text-center font-semibold text-white">Offer</Text>
+                </Pressable>
+              </View>
+            </View>
+            <View className="mt-3 gap-2">
+              {(thread?.messages ?? []).slice(-6).map((entry) => (
+                <View key={entry.id} className="rounded-lg bg-[#F5F6F7] p-2">
+                  <Text className="text-xs font-semibold text-ink">{entry.user?.name || 'User'}</Text>
+                  <Text className="text-xs text-ink2">{entry.message}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           <View className="mt-5">
@@ -119,7 +208,7 @@ export default function ListingDetailScreen() {
               contentContainerStyle={{ paddingTop: 12 }}
               columnWrapperStyle={{ justifyContent: 'space-between' }}
               renderItem={({ item }) => (
-                <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} />
+                <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={listing.city} />
               )}
             />
           </View>
@@ -129,10 +218,10 @@ export default function ListingDetailScreen() {
       <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-white px-4 py-3">
         <View className="flex-row gap-3">
           <Pressable onPress={openWhatsapp} className="flex-1 rounded-xl bg-green py-3">
-            <Text className="text-center text-[15px] font-bold text-white">💬 WhatsApp</Text>
+            <Text className="text-center text-[15px] font-bold text-white">WhatsApp</Text>
           </Pressable>
           <Pressable onPress={showPhone} className="flex-1 rounded-xl bg-red py-3">
-            <Text className="text-center text-[15px] font-bold text-white">📞 Number</Text>
+            <Text className="text-center text-[15px] font-bold text-white">Phone</Text>
           </Pressable>
         </View>
       </View>

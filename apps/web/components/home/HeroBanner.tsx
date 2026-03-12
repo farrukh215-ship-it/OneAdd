@@ -12,7 +12,7 @@ export function HeroBanner() {
             Sirf asli malik bechte hain, koi dealer nahi.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {['✓ Verified Sellers', 'No Dealers', '⚡ Free'].map((item) => (
+            {['Verified Sellers', 'No Dealers', 'Free'].map((item) => (
               <span
                 key={item}
                 className="rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[11px] font-medium text-white"
@@ -28,7 +28,7 @@ export function HeroBanner() {
             Abhi Dhundein
           </Link>
         </div>
-        <div className="text-center text-[52px] leading-none sm:text-[72px]">🏪</div>
+        <div className="text-center text-[52px] leading-none sm:text-[72px]">24H</div>
       </div>
     </section>
   );

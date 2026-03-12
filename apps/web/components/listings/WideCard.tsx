@@ -22,6 +22,7 @@ export function WideCard({ listing }: { listing: Listing }) {
         <div className="mt-2 flex flex-wrap gap-2">
           <span className="badge-soft-green">✓ Asli Malik</span>
           <span className="badge-soft-gray">{listing.condition === 'NEW' ? 'New' : 'Used'}</span>
+          {listing.storeType ? <span className="badge-soft-gray">{listing.storeType}</span> : null}
         </div>
         <div className="mt-2 text-[11px] text-ink3">
           📍 {[listing.city, listing.area].filter(Boolean).join(', ')} ·{' '}

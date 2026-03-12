@@ -22,7 +22,12 @@ export function ListingCard({
     referenceLat !== undefined && referenceLng !== undefined
       ? { lat: referenceLat, lng: referenceLng }
       : undefined,
+    typeof listing.lat === 'number' && typeof listing.lng === 'number'
+      ? { lat: listing.lat, lng: listing.lng }
+      : undefined,
   );
+  const effectiveDistance = typeof listing.distanceKm === 'number' ? Math.round(listing.distanceKm) : distance;
+  const nearby = listing.isNearby || (typeof effectiveDistance === 'number' && effectiveDistance <= 10);
 
   return (
     <Link
@@ -55,7 +60,8 @@ export function ListingCard({
         </div>
         <div className="mt-2 text-[11px] text-ink3">
           📍 {location || listing.city}
-          {distance !== null ? ` • ${distance} km door` : ''}
+          {effectiveDistance !== null ? ` • ${effectiveDistance} km door` : ''}
+          {nearby ? ' • Near' : ''}
         </div>
       </div>
     </Link>

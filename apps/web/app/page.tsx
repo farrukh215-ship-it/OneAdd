@@ -22,9 +22,13 @@ function fallbackListingsByCategory(city: string): Listing[] {
       category: { id: 'c-cars', name: 'Cars', slug: 'cars', icon: '🚗' },
       categoryId: 'c-cars',
       images: [],
+      videos: [],
       condition: 'USED',
+      storeType: 'ROAD',
       city,
       area: 'DHA',
+      lat: 31.5204,
+      lng: 74.3587,
       status: 'ACTIVE',
       views: 0,
       createdAt: now,
@@ -39,9 +43,13 @@ function fallbackListingsByCategory(city: string): Listing[] {
       category: { id: 'c-mobiles', name: 'Mobile Phones', slug: 'mobiles', icon: '📱' },
       categoryId: 'c-mobiles',
       images: [],
+      videos: [],
       condition: 'USED',
+      storeType: 'ONLINE',
       city,
       area: 'Johar Town',
+      lat: 31.4697,
+      lng: 74.2728,
       status: 'ACTIVE',
       views: 0,
       createdAt: now,
@@ -62,13 +70,13 @@ export default async function HomePage({
   const categories = await getCategories();
 
   const featured = activeCategory
-    ? await getListings({ category: activeCategory, city, limit: 8 }).then((result) => result.data)
+    ? await getListings({ category: activeCategory, city, limit: 6 }).then((result) => result.data)
     : await getFeaturedListings();
 
   const categorySections = await Promise.all(
     categories.map(async (category) => ({
       category,
-      listings: await getListings({ category: category.slug, city, limit: 10 }).then((result) => result.data),
+      listings: await getListings({ category: category.slug, city, limit: 6 }).then((result) => result.data),
     })),
   );
 
@@ -99,8 +107,8 @@ export default async function HomePage({
       <section className="border-y border-border bg-white">
         <div className="page-wrap">
           <div id="today">
-            <SectionHeader title="🔥 Aaj Ki Listings" link="/listings" />
-            <ListingGrid listings={featured} referenceCity={city} />
+            <SectionHeader title="Aaj Ki Listings" link="/listings" />
+            <ListingGrid listings={featured.slice(0, 6)} referenceCity={city} />
           </div>
         </div>
       </section>
@@ -125,3 +133,4 @@ export default async function HomePage({
     </>
   );
 }
+

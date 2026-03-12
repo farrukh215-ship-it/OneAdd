@@ -4,9 +4,6 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   islamabad: { lat: 33.6844, lng: 73.0479 },
   rawalpindi: { lat: 33.5651, lng: 73.0169 },
   faisalabad: { lat: 31.4504, lng: 73.135 },
-  multan: { lat: 30.1575, lng: 71.5249 },
-  peshawar: { lat: 34.0151, lng: 71.5249 },
-  quetta: { lat: 30.1798, lng: 66.975 },
 };
 
 type Coordinate = { lat: number; lng: number };
@@ -29,15 +26,13 @@ function haversineKm(a: Coordinate, b: Coordinate) {
 export function distanceFromCity(
   referenceCity: string | undefined,
   listingCity: string | undefined,
-  referenceCoords?: Coordinate,
   listingCoords?: Coordinate,
 ) {
   const to = listingCoords || CITY_COORDS[normalizeCity(listingCity)];
   if (!to) return null;
 
-  if (referenceCoords) return haversineKm(referenceCoords, to);
-
   const from = CITY_COORDS[normalizeCity(referenceCity)];
   if (!from) return null;
   return haversineKm(from, to);
 }
+

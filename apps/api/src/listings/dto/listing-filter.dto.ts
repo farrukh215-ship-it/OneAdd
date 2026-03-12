@@ -1,8 +1,9 @@
-import { Condition } from '@prisma/client';
+import { Condition, StoreType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsIn,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -10,6 +11,10 @@ import {
 } from 'class-validator';
 
 export class ListingFilterDto {
+  @IsOptional()
+  @IsString()
+  q?: string;
+
   @IsOptional()
   @IsString()
   category?: string;
@@ -33,8 +38,37 @@ export class ListingFilterDto {
   condition?: 'NEW' | 'USED';
 
   @IsOptional()
+  @IsEnum(StoreType)
+  storeType?: StoreType;
+
+  @IsOptional()
+  @IsIn(['online', 'road'])
+  store?: 'online' | 'road';
+
+  @IsOptional()
   @IsIn(['newest', 'price_asc', 'price_desc'])
   sort?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  radiusKm?: number = 10;
 
   @IsOptional()
   @Type(() => Number)
