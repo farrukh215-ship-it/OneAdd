@@ -12,12 +12,8 @@ RUN pnpm prisma generate
 RUN pnpm build
 
 FROM node:20-alpine AS runner
-WORKDIR /app
 RUN npm i -g pnpm
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api/prisma ./prisma
-COPY --from=builder /app/apps/api/package.json ./package.json
+WORKDIR /app
+COPY --from=builder /app /app
 EXPOSE 3001
-CMD ["node", "dist/src/main.js"]
+CMD ["pnpm", "--dir", "apps/api", "start"]
