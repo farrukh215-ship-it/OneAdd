@@ -34,6 +34,16 @@ export function AuthPageClient() {
   const fullPhone = useMemo(() => `+92${phone.replace(/\D/g, '').slice(0, 10)}`, [phone]);
   const otp = digits.join('');
 
+  const friendlyMessage = (error: any, fallback: string) => {
+    const code = error?.code as string | undefined;
+    if (code === 'auth/invalid-phone-number') return 'Phone number format sahi nahi hai';
+    if (code === 'auth/too-many-requests') return 'Bohat zyada attempts hue hain, thori dair baad koshish karein';
+    if (code === 'auth/invalid-verification-code') return 'OTP ghalat hai';
+    if (code === 'auth/code-expired') return 'OTP expire ho gaya, dobara bhejein';
+    if (code === 'auth/captcha-check-failed') return 'Verification check complete nahi hua, dobara try karein';
+    return error?.response?.data?.message || fallback;
+  };
+
   const getOrCreateRecaptcha = () => {
     const auth = getFirebaseAuth();
     if (!auth) return null;
@@ -54,7 +64,7 @@ export function AuthPageClient() {
 
     const auth = getFirebaseAuth();
     if (!auth) {
-      setMessage('Firebase web config missing hai, env set karo');
+      setMessage('Service temporarily unavailable hai, thori dair baad dobara try karein');
       return;
     }
 
@@ -63,7 +73,7 @@ export function AuthPageClient() {
     try {
       const verifier = getOrCreateRecaptcha();
       if (!verifier) {
-        setMessage('Recaptcha init nahi hua');
+        setMessage('Verification service start nahi ho saki, dobara try karein');
         return;
       }
 
@@ -72,7 +82,7 @@ export function AuthPageClient() {
       setOtpSent(true);
       setMessage('OTP bhej di gayi hai');
     } catch (error: any) {
-      setMessage(error?.message || 'OTP bhejne mein masla aaya');
+      setMessage(friendlyMessage(error, 'OTP bhejne mein masla aaya'));
     } finally {
       setLoading(false);
     }
@@ -121,7 +131,7 @@ export function AuthPageClient() {
       setToken(response.data.accessToken);
       router.replace(next);
     } catch (error: any) {
-      setMessage(error?.response?.data?.message || error?.message || 'Account create nahi hua');
+      setMessage(friendlyMessage(error, 'Account create nahi hua'));
     } finally {
       setLoading(false);
     }
