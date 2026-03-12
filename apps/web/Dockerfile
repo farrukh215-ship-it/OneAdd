@@ -11,7 +11,7 @@ WORKDIR /app/apps/web
 RUN pnpm build
 
 FROM node:20-alpine AS runner
-WORKDIR /app
+WORKDIR /app/apps/web
 ENV NODE_ENV=production
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./.next/static
