@@ -41,6 +41,8 @@ export function AuthPageClient() {
     if (code === 'auth/invalid-verification-code') return 'OTP ghalat hai';
     if (code === 'auth/code-expired') return 'OTP expire ho gaya, dobara bhejein';
     if (code === 'auth/captcha-check-failed') return 'Verification check complete nahi hua, dobara try karein';
+    if (code === 'auth/operation-not-allowed') return 'Phone sign-in Firebase me enable karein';
+    if (code === 'auth/unauthorized-domain') return 'Domain authorized nahi hai, admin se rabta karein';
     return error?.response?.data?.message || fallback;
   };
 
