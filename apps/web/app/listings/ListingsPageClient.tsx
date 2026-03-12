@@ -14,6 +14,7 @@ export function ListingsPageClient({
   initialParams: {
     category?: string;
     city?: string;
+    store?: string;
     minPrice?: number;
     maxPrice?: number;
     condition?: 'NEW' | 'USED';
@@ -33,6 +34,7 @@ export function ListingsPageClient({
   );
   const { data: categories = [] } = useCategories();
   const { data, isLoading } = useListings(filters);
+  const cityQuery = filters.city ? `&city=${encodeURIComponent(filters.city)}` : '';
 
   const sidebar = (
     <div className="surface sticky top-[76px] space-y-4 p-4">
@@ -42,7 +44,7 @@ export function ListingsPageClient({
           {categories.map((category) => (
             <Link
               key={category.id}
-              href={`/listings?category=${category.slug}`}
+              href={`/listings?category=${category.slug}${cityQuery}`}
               className={`block rounded-xl px-3 py-2 text-sm ${
                 filters.category === category.slug ? 'bg-red-light text-red' : 'bg-[#F8F9FB] text-ink2'
               }`}
@@ -52,6 +54,19 @@ export function ListingsPageClient({
           ))}
         </div>
       </div>
+
+      <div>
+        <div className="mb-2 text-sm font-bold">Dukaan type</div>
+        <div className="flex gap-2">
+          <Link href={`/listings?store=online${cityQuery}`} className={`chip ${filters.store === 'online' ? 'active' : ''}`}>
+            Online
+          </Link>
+          <Link href={`/listings?store=road${cityQuery}`} className={`chip ${filters.store === 'road' ? 'active' : ''}`}>
+            Road
+          </Link>
+        </div>
+      </div>
+
       <div>
         <div className="mb-2 text-sm font-bold">Price range</div>
         <div className="grid grid-cols-2 gap-2">
@@ -59,6 +74,7 @@ export function ListingsPageClient({
           <input defaultValue={filters.maxPrice} className="field-input" placeholder="Max" />
         </div>
       </div>
+
       <div>
         <div className="mb-2 text-sm font-bold">City</div>
         <select defaultValue={filters.city} className="field-select">
@@ -70,6 +86,7 @@ export function ListingsPageClient({
           ))}
         </select>
       </div>
+
       <div>
         <div className="mb-2 text-sm font-bold">Condition</div>
         <div className="flex gap-2">
@@ -90,7 +107,13 @@ export function ListingsPageClient({
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-lg font-extrabold text-ink">{data?.total ?? 0} listings mile</div>
-            <div className="section-subtle">Saaf results, simple browsing</div>
+            <div className="section-subtle">
+              {filters.store === 'online'
+                ? 'Online Dukaan results'
+                : filters.store === 'road'
+                  ? `Road Dukaan results${filters.city ? ` • ${filters.city}` : ''}`
+                  : 'Saaf results, simple browsing'}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button

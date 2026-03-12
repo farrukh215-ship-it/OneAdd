@@ -87,7 +87,9 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
       </section>
 
       <section className="hide-scrollbar flex gap-2 overflow-x-auto px-2 pb-2 md:px-5">
-        <span className="chip shrink-0 !bg-[#FFF3F0] !text-red">Dukaan</span>
+        <Link href={`/dukaan?city=${encodeURIComponent(city)}`} className="chip shrink-0 !bg-[#FFF3F0] !text-red">
+          Dukaan
+        </Link>
         <Link href="/listings?store=online" className="chip shrink-0">
           Online Dukaan
         </Link>

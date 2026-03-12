@@ -216,6 +216,25 @@ textarea {
   background-size: 200% 100%;
 }
 
+/* Fallback utility mapping so colors stay consistent even if Tailwind color tokens are not expanded */
+.bg-red { background-color: var(--red) !important; }
+.text-red { color: var(--red) !important; }
+.border-red { border-color: var(--red) !important; }
+.bg-red-light { background-color: var(--red-light) !important; }
+
+.bg-green { background-color: var(--green) !important; }
+.text-green { color: var(--green) !important; }
+
+.bg-border { background-color: var(--border) !important; }
+.border-border { border-color: var(--border) !important; }
+
+.bg-white { background-color: var(--white) !important; }
+.text-white { color: var(--white) !important; }
+
+.text-ink { color: var(--ink) !important; }
+.text-ink2 { color: var(--ink2) !important; }
+.text-ink3 { color: var(--ink3) !important; }
+
 @keyframes pulse {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }

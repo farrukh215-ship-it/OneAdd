@@ -8,6 +8,7 @@ import { fallbackListings } from '../lib/fallback-data';
 export type ListingsFilters = {
   category?: string;
   city?: string;
+  store?: string;
   minPrice?: number;
   maxPrice?: number;
   condition?: 'NEW' | 'USED';

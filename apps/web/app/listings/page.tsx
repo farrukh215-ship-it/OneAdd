@@ -6,6 +6,7 @@ export default async function ListingsPage({
   searchParams: Promise<{
     category?: string;
     city?: string;
+    store?: string;
     minPrice?: string;
     maxPrice?: string;
     condition?: 'NEW' | 'USED';
@@ -20,6 +21,7 @@ export default async function ListingsPage({
       initialParams={{
         category: params.category,
         city: params.city,
+        store: params.store,
         minPrice: params.minPrice ? Number(params.minPrice) : undefined,
         maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
         condition: params.condition,
