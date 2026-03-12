@@ -2,8 +2,16 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { ConfirmationResult, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { getFirebaseAuth } from '../../lib/firebase';
+
+declare global {
+  interface Window {
+    tgmgRecaptchaVerifier?: RecaptchaVerifier;
+  }
+}
 
 export function AuthPageClient() {
   const router = useRouter();
@@ -19,11 +27,24 @@ export function AuthPageClient() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const fullPhone = useMemo(() => `+92${phone.replace(/\D/g, '').slice(0, 10)}`, [phone]);
   const otp = digits.join('');
+
+  const getOrCreateRecaptcha = () => {
+    const auth = getFirebaseAuth();
+    if (!auth) return null;
+
+    if (!window.tgmgRecaptchaVerifier) {
+      window.tgmgRecaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+      });
+    }
+    return window.tgmgRecaptchaVerifier;
+  };
 
   const sendOtp = async () => {
     if (phone.length !== 10) {
@@ -31,25 +52,34 @@ export function AuthPageClient() {
       return;
     }
 
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setMessage('Firebase web config missing hai, env set karo');
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
     try {
-      const response = await api.post('/auth/send-otp', { phone: fullPhone });
-      setOtpSent(true);
-      if (response.data?.devOtp) {
-        setMessage(`OTP bhej di gayi hai (dev): ${response.data.devOtp}`);
-      } else {
-        setMessage('OTP bhej di gayi hai');
+      const verifier = getOrCreateRecaptcha();
+      if (!verifier) {
+        setMessage('Recaptcha init nahi hua');
+        return;
       }
+
+      const confirmation = await signInWithPhoneNumber(auth, fullPhone, verifier);
+      setConfirmationResult(confirmation);
+      setOtpSent(true);
+      setMessage('OTP bhej di gayi hai');
     } catch (error: any) {
-      setMessage(error?.response?.data?.message || 'OTP bhejne mein masla aaya');
+      setMessage(error?.message || 'OTP bhejne mein masla aaya');
     } finally {
       setLoading(false);
     }
   };
 
   const signUp = async () => {
-    if (!otpSent) {
+    if (!otpSent || !confirmationResult) {
       setMessage('Pehle OTP bhejo');
       return;
     }
@@ -77,9 +107,12 @@ export function AuthPageClient() {
     setLoading(true);
     setMessage(null);
     try {
+      const credential = await confirmationResult.confirm(otp);
+      const firebaseIdToken = await credential.user.getIdToken();
+
       const response = await api.post('/auth/verify-otp', {
         phone: fullPhone,
-        otpCode: otp,
+        firebaseIdToken,
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
@@ -88,7 +121,7 @@ export function AuthPageClient() {
       setToken(response.data.accessToken);
       router.replace(next);
     } catch (error: any) {
-      setMessage(error?.response?.data?.message || 'Account create nahi hua');
+      setMessage(error?.response?.data?.message || error?.message || 'Account create nahi hua');
     } finally {
       setLoading(false);
     }
@@ -162,45 +195,22 @@ export function AuthPageClient() {
 
             <div className="mt-3 text-left">
               <label className="mb-2 block text-sm font-semibold text-ink2">Profile Name</label>
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="field-input"
-                placeholder="Apna naam"
-              />
+              <input value={name} onChange={(event) => setName(event.target.value)} className="field-input" placeholder="Apna naam" />
             </div>
 
             <div className="mt-3 text-left">
               <label className="mb-2 block text-sm font-semibold text-ink2">Email</label>
-              <input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="field-input"
-                type="email"
-                placeholder="you@example.com"
-              />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} className="field-input" type="email" placeholder="you@example.com" />
             </div>
 
             <div className="mt-3 text-left">
               <label className="mb-2 block text-sm font-semibold text-ink2">Password</label>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="field-input"
-                type="password"
-                placeholder="Minimum 8 characters"
-              />
+              <input value={password} onChange={(event) => setPassword(event.target.value)} className="field-input" type="password" placeholder="Minimum 8 characters" />
             </div>
 
             <div className="mt-3 text-left">
               <label className="mb-2 block text-sm font-semibold text-ink2">Confirm Password</label>
-              <input
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                className="field-input"
-                type="password"
-                placeholder="Password dobara likho"
-              />
+              <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="field-input" type="password" placeholder="Password dobara likho" />
             </div>
 
             <button type="button" onClick={sendOtp} className="btn-white mt-4 w-full" disabled={loading}>
@@ -217,9 +227,7 @@ export function AuthPageClient() {
                       value={digit}
                       onChange={(event) => {
                         const value = event.target.value.replace(/\D/g, '').slice(-1);
-                        setDigits((current) =>
-                          current.map((item, itemIndex) => (itemIndex === index ? value : item)),
-                        );
+                        setDigits((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
                       }}
                       className="h-12 w-12 rounded-xl border border-border text-center text-lg font-bold outline-none"
                       inputMode="numeric"
@@ -233,29 +241,18 @@ export function AuthPageClient() {
             <button type="button" onClick={signUp} className="btn-red mt-4 w-full" disabled={loading}>
               Account Create Karo
             </button>
+            <div id="recaptcha-container" />
           </>
         ) : (
           <>
             <div className="mt-5 text-left">
               <label className="mb-2 block text-sm font-semibold text-ink2">Email</label>
-              <input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="field-input"
-                type="email"
-                placeholder="you@example.com"
-              />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} className="field-input" type="email" placeholder="you@example.com" />
             </div>
 
             <div className="mt-3 text-left">
               <label className="mb-2 block text-sm font-semibold text-ink2">Password</label>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="field-input"
-                type="password"
-                placeholder="Password"
-              />
+              <input value={password} onChange={(event) => setPassword(event.target.value)} className="field-input" type="password" placeholder="Password" />
             </div>
 
             <button type="button" onClick={signIn} className="btn-red mt-4 w-full" disabled={loading}>
