@@ -1,10 +1,18 @@
 import type { Listing } from '@tgmg/types';
 import Image from 'next/image';
 import Link from 'next/link';
+import { distanceFromCity } from '../../lib/distance';
 
-export function ListingCard({ listing }: { listing: Listing }) {
+export function ListingCard({
+  listing,
+  referenceCity,
+}: {
+  listing: Listing;
+  referenceCity?: string;
+}) {
   const image = listing.images[0];
   const location = [listing.city, listing.area].filter(Boolean).join(', ');
+  const distance = distanceFromCity(referenceCity, listing.city);
 
   return (
     <Link
@@ -39,9 +47,11 @@ export function ListingCard({ listing }: { listing: Listing }) {
         <div className="mt-1 clamp-2 text-[12px] leading-5 text-ink2">
           {listing.title}
         </div>
-        <div className="mt-2 text-[11px] text-ink3">📍 {location || listing.city}</div>
+        <div className="mt-2 text-[11px] text-ink3">
+          📍 {location || listing.city}
+          {distance !== null ? ` • ${distance} km door` : ''}
+        </div>
       </div>
     </Link>
   );
 }
-

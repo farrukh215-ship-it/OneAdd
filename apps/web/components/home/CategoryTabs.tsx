@@ -2,24 +2,39 @@
 
 import type { Category } from '@tgmg/types';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 export function CategoryTabs({
   categories,
   activeSlug,
+  city,
 }: {
   categories: Category[];
   activeSlug?: string;
+  city?: string;
 }) {
+  const searchParams = useSearchParams();
+
   return (
     <section className="border-b border-border bg-white">
       <div className="page-wrap hide-scrollbar flex gap-4 overflow-x-auto px-3 py-3 md:px-5">
         {categories.map((category) => {
-          const active = activeSlug === category.slug;
+          const isAll = !category.slug;
+          const active = isAll ? !activeSlug : activeSlug === category.slug;
+          const params = new URLSearchParams(searchParams.toString());
+
+          if (city) params.set('city', city);
+          else params.delete('city');
+
+          if (isAll) params.delete('category');
+          else params.set('category', category.slug);
+
+          const href = params.toString() ? `/?${params.toString()}#today` : '/#today';
 
           return (
             <Link
               key={category.id}
-              href={active ? '/' : `/?category=${category.slug}#today`}
+              href={href}
               className={`flex shrink-0 flex-col items-center gap-1 border-b-[3px] px-1 pb-2 text-center ${
                 active ? 'border-red text-red' : 'border-transparent text-ink2'
               }`}

@@ -1,17 +1,36 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+
+const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
 export function Navbar() {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
+  const [city, setCity] = useState(searchParams.get('city') ?? 'Lahore');
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('tgmg_city');
+    if (saved && CITIES.includes(saved)) {
+      setCity(saved);
+    }
+  }, []);
+
+  const updateUrlWithCity = (nextCity: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('city', nextCity);
+    const target = pathname?.startsWith('/listings') ? '/listings' : '/';
+    router.push(`${target}?${params.toString()}`);
+  };
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
+    params.set('city', city);
     if (query.trim()) params.set('q', query.trim());
     else params.delete('q');
     router.push(`/listings?${params.toString()}`);
@@ -39,9 +58,24 @@ export function Navbar() {
           </label>
         </form>
 
-        <div className="hidden items-center gap-2 rounded-full bg-[#F8F9FB] px-3 py-2 text-sm text-ink2 sm:flex">
+        <div className="hidden items-center gap-2 rounded-full bg-[#F8F9FB] px-2 py-1.5 text-sm text-ink2 sm:flex">
           <span className="h-2.5 w-2.5 rounded-full bg-green" />
-          Lahore
+          <select
+            value={city}
+            onChange={(event) => {
+              const nextCity = event.target.value;
+              setCity(nextCity);
+              window.localStorage.setItem('tgmg_city', nextCity);
+              updateUrlWithCity(nextCity);
+            }}
+            className="bg-transparent text-sm font-semibold outline-none"
+          >
+            {CITIES.map((cityOption) => (
+              <option key={cityOption} value={cityOption}>
+                {cityOption}
+              </option>
+            ))}
+          </select>
         </div>
 
         <Link

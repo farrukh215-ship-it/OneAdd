@@ -4,9 +4,11 @@ import { ListingCard } from './ListingCard';
 export function ListingGrid({
   listings,
   loading = false,
+  referenceCity,
 }: {
   listings: Listing[];
   loading?: boolean;
+  referenceCity?: string;
 }) {
   if (loading) {
     return (
@@ -26,10 +28,10 @@ export function ListingGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 px-2 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-4 lg:px-10">
-      {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} />
+      <div className="grid grid-cols-2 gap-2 px-2 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-4 lg:px-10">
+        {listings.map((listing) => (
+          <ListingCard key={listing.id} listing={listing} referenceCity={referenceCity} />
       ))}
-    </div>
+      </div>
   );
 }

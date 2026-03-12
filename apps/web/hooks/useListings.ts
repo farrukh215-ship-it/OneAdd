@@ -26,9 +26,15 @@ export function useListings(filters: ListingsFilters) {
         });
         return response.data;
       } catch {
+        const filtered = fallbackListings.filter((listing) => {
+          if (filters.category && listing.category.slug !== filters.category) return false;
+          if (filters.city && listing.city.toLowerCase() !== filters.city.toLowerCase()) return false;
+          return true;
+        });
+
         return {
-          data: fallbackListings,
-          total: fallbackListings.length,
+          data: filtered,
+          total: filtered.length,
           page: filters.page ?? 1,
           totalPages: 1,
         };

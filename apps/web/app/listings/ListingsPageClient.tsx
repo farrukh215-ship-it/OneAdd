@@ -107,7 +107,11 @@ export function ListingsPageClient({
             </select>
           </div>
         </div>
-        <ListingGrid listings={data?.data ?? []} loading={isLoading} />
+        <ListingGrid
+          listings={data?.data ?? []}
+          loading={isLoading}
+          referenceCity={filters.city}
+        />
         <div className="mt-4 flex items-center justify-center gap-2">
           <button type="button" className="btn-white">Prev</button>
           <span className="chip active">Page {data?.page ?? 1}</span>

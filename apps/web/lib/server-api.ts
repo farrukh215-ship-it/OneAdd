@@ -38,9 +38,15 @@ export async function getListings(params: Record<string, string | number | undef
     if (!response.ok) throw new Error('Failed');
     return (await response.json()) as PaginatedResponse<Listing>;
   } catch {
+    const filtered = fallbackListings.filter((listing) => {
+      if (params.category && listing.category.slug !== params.category) return false;
+      if (params.city && listing.city.toLowerCase() !== String(params.city).toLowerCase()) return false;
+      return true;
+    });
+
     return {
-      data: fallbackListings,
-      total: fallbackListings.length,
+      data: filtered,
+      total: filtered.length,
       page: Number(params.page ?? 1),
       totalPages: 1,
     };
