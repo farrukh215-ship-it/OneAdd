@@ -2,7 +2,8 @@ import type { Category, Listing, PaginatedResponse } from '@tgmg/types';
 import { fallbackCategories, fallbackListings } from './fallback-data';
 
 function apiBase() {
-  return process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3001';
+  // Server-side fetches should use the internal API service directly.
+  return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 }
 
 export async function getCategories(): Promise<Category[]> {
