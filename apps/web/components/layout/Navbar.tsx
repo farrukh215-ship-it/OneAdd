@@ -84,8 +84,13 @@ export function Navbar() {
         >
           + Ad Post Karo
         </Link>
+        <Link
+          href="/auth"
+          className="hidden rounded-xl border border-red px-4 py-2 text-sm font-bold text-red lg:inline-flex"
+        >
+          Sign Up
+        </Link>
       </div>
     </header>
   );
 }
-
