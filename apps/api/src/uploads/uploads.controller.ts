@@ -36,7 +36,8 @@ export class UploadsController {
   }
 
   @Get('file')
-  @Header('Cross-Origin-Resource-Policy', 'same-origin')
+  @Header('Cross-Origin-Resource-Policy', 'cross-origin')
+  @Header('Access-Control-Allow-Origin', '*')
   async getFile(@Query('key') key: string, @Res() res: Response) {
     const asset = await this.uploadsService.getPublicAsset(key);
     res.setHeader('Content-Type', asset.contentType || 'application/octet-stream');
