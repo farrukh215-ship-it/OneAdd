@@ -10,7 +10,15 @@ export function WideCard({ listing }: { listing: Listing }) {
   const displayImage = toDisplayMediaUrl(image);
   const [imageFailed, setImageFailed] = useState(false);
   const statusLabel =
-    listing.status === 'SOLD' ? 'Sold' : listing.status === 'DELETED' ? 'Inactive' : 'Available';
+    listing.isFeatured
+      ? 'Featured'
+      : listing.status === 'SOLD'
+        ? 'Sold'
+        : listing.status === 'PENDING'
+          ? 'Pending'
+          : listing.status === 'DELETED' || listing.status === 'INACTIVE'
+            ? 'Inactive'
+            : 'Available';
 
   return (
     <Link href={`/listings/${listing.id}`} className="surface flex gap-3 overflow-hidden p-3">

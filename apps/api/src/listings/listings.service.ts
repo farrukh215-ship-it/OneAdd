@@ -290,6 +290,7 @@ export class ListingsService {
         ...(dto.images !== undefined ? { images: dto.images } : {}),
         ...(dto.videos !== undefined ? { videos: dto.videos } : {}),
         ...(dto.condition !== undefined ? { condition: dto.condition } : {}),
+        ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
         ...((dto.isStore !== undefined || dto.storeType !== undefined)
           ? { isStore: nextIsStore, storeType: nextStoreType }
           : {}),
@@ -537,7 +538,7 @@ export class ListingsService {
       totalContacts: contactCount,
       activeListings: listings.filter((listing) => listing.status === 'ACTIVE').length,
       soldListings: listings.filter((listing) => listing.status === 'SOLD').length,
-      inactiveListings: listings.filter((listing) => listing.status === 'DELETED').length,
+      inactiveListings: listings.filter((listing) => listing.status === 'INACTIVE' || listing.status === 'DELETED').length,
       points,
     };
   }
@@ -624,6 +625,7 @@ export class ListingsService {
       createdAt: { gte: expiryCutoff },
       OR: [
         { status: 'ACTIVE' },
+        { status: 'PENDING' },
         { status: 'SOLD', updatedAt: { gte: soldCutoff } },
       ],
     };
@@ -633,6 +635,6 @@ export class ListingsService {
     const expired = createdAt.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000;
     const soldExpired =
       status === 'SOLD' && updatedAt.getTime() < Date.now() - 24 * 60 * 60 * 1000;
-    return !expired && status !== 'DELETED' && !soldExpired;
+    return !expired && status !== 'DELETED' && status !== 'INACTIVE' && !soldExpired;
   }
 }

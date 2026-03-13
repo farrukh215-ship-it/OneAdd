@@ -22,6 +22,7 @@ export class CategoriesService {
                 createdAt: { gte: expiryCutoff },
                 OR: [
                   { status: 'ACTIVE' },
+                  { status: 'PENDING' },
                   { status: 'SOLD', updatedAt: { gte: soldCutoff } },
                 ],
               },

@@ -173,14 +173,24 @@ export function ProfilePageClient() {
                     <button type="button" className="btn-white" onClick={() => setEditingId(listing.id)}>
                       Inline Edit
                     </button>
+                    <button type="button" className="btn-white" onClick={() => setListingStatus(listing.id, 'PENDING')}>
+                      Pending
+                    </button>
                     <button type="button" className="btn-white" onClick={() => setListingStatus(listing.id, 'SOLD')}>
                       Mark Sold
                     </button>
-                    <button type="button" className="btn-white" onClick={() => setListingStatus(listing.id, 'DELETED')}>
+                    <button type="button" className="btn-white" onClick={() => setListingStatus(listing.id, 'INACTIVE')}>
                       Deactivate
                     </button>
                     <button type="button" className="btn-white" onClick={() => setListingStatus(listing.id, 'ACTIVE')}>
                       Reactivate
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-white"
+                      onClick={() => api.patch(`/listings/${listing.id}`, { isFeatured: !listing.isFeatured }).then(loadProfileData)}
+                    >
+                      {listing.isFeatured ? 'Unfeature' : 'Feature'}
                     </button>
                   </div>
                 )}

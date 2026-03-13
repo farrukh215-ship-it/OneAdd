@@ -29,7 +29,7 @@ export class ListingsRepository {
 
   countActiveByUserAndCategory(userId: string, categoryId: string) {
     return this.prisma.listing.count({
-      where: { userId, categoryId, status: 'ACTIVE' },
+      where: { userId, categoryId, status: { in: ['ACTIVE', 'PENDING'] } },
     });
   }
 
@@ -218,7 +218,7 @@ export class ListingsRepository {
   }): Promise<string[]> {
     const values: Array<string | number> = [params.q];
     const whereClauses: string[] = [
-      "(l.status = 'ACTIVE' OR (l.status = 'SOLD' AND l.\"updatedAt\" >= NOW() - interval '1 day'))",
+      "((l.status = 'ACTIVE' OR l.status = 'PENDING') OR (l.status = 'SOLD' AND l.\"updatedAt\" >= NOW() - interval '1 day'))",
       `l."createdAt" >= NOW() - interval '30 days'`,
     ];
 

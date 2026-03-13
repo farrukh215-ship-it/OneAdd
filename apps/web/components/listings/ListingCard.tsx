@@ -35,8 +35,12 @@ export function ListingCard({
     typeof listing.distanceKm === 'number' ? Math.round(listing.distanceKm) : distance;
   const nearby = listing.isNearby || (typeof effectiveDistance === 'number' && effectiveDistance <= 10);
   const statusBadge =
-    listing.status === 'SOLD'
+    listing.isFeatured
+      ? { label: 'Featured', className: 'bg-[#FFF1D8] text-[#B4690E]' }
+      : listing.status === 'SOLD'
       ? { label: 'Sold', className: 'bg-[#FDECEC] text-red' }
+      : listing.status === 'PENDING'
+        ? { label: 'Pending', className: 'bg-[#FFF7D6] text-[#8A6B00]' }
       : listing.status === 'DELETED'
         ? { label: 'Inactive', className: 'bg-[#EFF1F4] text-ink2' }
         : { label: 'Available', className: 'bg-[rgba(46,125,50,0.1)] text-green' };

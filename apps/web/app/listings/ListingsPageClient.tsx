@@ -44,6 +44,8 @@ export function ListingsPageClient({
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pullStartY, setPullStartY] = useState<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
 
   const filters = useMemo(
     () => ({
@@ -194,7 +196,33 @@ export function ListingsPageClient({
     <div className="page-wrap grid gap-4 px-2 py-4 lg:grid-cols-[256px_minmax(0,1fr)] lg:px-5">
       <aside className="hidden lg:block">{sidebar}</aside>
       <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div
+          onTouchStart={(event) => {
+            if (window.scrollY === 0) {
+              setPullStartY(event.touches[0]?.clientY ?? null);
+            }
+          }}
+          onTouchMove={(event) => {
+            if (pullStartY === null) return;
+            const currentY = event.touches[0]?.clientY ?? 0;
+            const delta = Math.max(0, currentY - pullStartY);
+            setPullDistance(Math.min(delta, 120));
+          }}
+          onTouchEnd={() => {
+            if (pullDistance > 80) {
+              void refreshListings();
+            }
+            setPullStartY(null);
+            setPullDistance(0);
+          }}
+        >
+          <div
+            className="overflow-hidden text-center text-xs font-semibold text-ink2 transition-all"
+            style={{ maxHeight: pullDistance ? `${pullDistance}px` : '0px', opacity: pullDistance ? 1 : 0 }}
+          >
+            {refreshing ? 'Refreshing listings...' : pullDistance > 80 ? 'Release to refresh' : 'Pull down to refresh'}
+          </div>
+          <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-lg font-extrabold text-ink">{firstPage?.total ?? 0} listings mile</div>
             <div className="section-subtle">
@@ -239,12 +267,13 @@ export function ListingsPageClient({
           </div>
         ) : null}
 
-        <div ref={loadMoreRef} className="py-6 text-center text-sm text-ink2">
-          {listings.isFetchingNextPage
-            ? 'Aur listings load ho rahi hain...'
-            : listings.hasNextPage
-              ? 'Neeche scroll karo, aur listings aayengi'
-              : 'Abhi itni hi listings hain'}
+          <div ref={loadMoreRef} className="py-6 text-center text-sm text-ink2">
+            {listings.isFetchingNextPage
+              ? 'Aur listings load ho rahi hain...'
+              : listings.hasNextPage
+                ? 'Neeche scroll karo, aur listings aayengi'
+                : 'Abhi itni hi listings hain'}
+          </div>
         </div>
       </section>
 

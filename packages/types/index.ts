@@ -34,13 +34,14 @@ export interface Listing {
   condition: "NEW" | "USED";
   storeType?: "ONLINE" | "ROAD";
   isStore?: boolean;
+  isFeatured?: boolean;
   city: string;
   area?: string;
   lat?: number;
   lng?: number;
   distanceKm?: number;
   isNearby?: boolean;
-  status: "ACTIVE" | "SOLD" | "DELETED";
+  status: "ACTIVE" | "PENDING" | "INACTIVE" | "SOLD" | "DELETED";
   views: number;
   createdAt: string;
   updatedAt: string;

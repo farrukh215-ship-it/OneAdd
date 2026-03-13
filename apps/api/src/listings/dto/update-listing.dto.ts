@@ -54,6 +54,10 @@ export class UpdateListingDto {
   isStore?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @IsOptional()
   @IsEnum(StoreType)
   storeType?: StoreType;
 
