@@ -20,9 +20,7 @@ function Placeholder({ title }: { title: string }) {
 
 type MediaItem = {
   id: string;
-  rawUrl: string;
-  fallbackUrl: string;
-  canFallback: boolean;
+  src: string;
 };
 
 export function ListingMediaCarousel({
@@ -34,22 +32,17 @@ export function ListingMediaCarousel({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [fallbackMode, setFallbackMode] = useState<Record<string, true>>({});
   const [heroFailed, setHeroFailed] = useState<Record<string, true>>({});
 
   const mediaItems = useMemo<MediaItem[]>(
     () =>
       images
         .filter(Boolean)
-        .map((rawUrl) => {
-          const fallbackUrl = toDisplayMediaUrl(rawUrl);
-          return {
-            id: rawUrl,
-            rawUrl,
-            fallbackUrl,
-            canFallback: fallbackUrl !== rawUrl,
-          };
-        }),
+        .map((image) => ({
+          id: image,
+          src: toDisplayMediaUrl(image),
+        }))
+        .filter((item) => Boolean(item.src)),
     [images],
   );
 
@@ -84,20 +77,7 @@ export function ListingMediaCarousel({
     setActiveIndex((current) => (current === mediaItems.length - 1 ? 0 : current + 1));
 
   const activeItem = mediaItems[activeIndex];
-  const activeImage = activeItem
-    ? fallbackMode[activeItem.id] && activeItem.canFallback
-      ? activeItem.fallbackUrl
-      : activeItem.rawUrl
-    : '';
   const showControls = mediaItems.length > 1;
-
-  const handleHeroError = (item: MediaItem) => {
-    if (!fallbackMode[item.id] && item.canFallback) {
-      setFallbackMode((current) => ({ ...current, [item.id]: true }));
-      return;
-    }
-    setHeroFailed((current) => ({ ...current, [item.id]: true }));
-  };
 
   return (
     <div className="surface-premium overflow-hidden p-3 md:p-4">
@@ -114,14 +94,14 @@ export function ListingMediaCarousel({
           setTouchStart(null);
         }}
       >
-        {activeItem && activeImage && !heroFailed[activeItem.id] ? (
+        {activeItem && !heroFailed[activeItem.id] ? (
           <img
-            key={`${activeItem.id}-${fallbackMode[activeItem.id] ? 'fallback' : 'raw'}`}
-            src={activeImage}
+            key={activeItem.id}
+            src={activeItem.src}
             alt={title}
             className="h-full w-full object-contain p-4 md:p-6"
             loading="eager"
-            onError={() => handleHeroError(activeItem)}
+            onError={() => setHeroFailed((current) => ({ ...current, [activeItem.id]: true }))}
           />
         ) : (
           <Placeholder title={title} />
@@ -171,7 +151,7 @@ export function ListingMediaCarousel({
               }`}
             >
               <img
-                src={item.rawUrl}
+                src={item.src}
                 alt={`${title} ${index + 1}`}
                 className="h-full w-full object-cover"
                 loading="lazy"
