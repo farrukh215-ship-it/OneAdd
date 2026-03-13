@@ -21,8 +21,8 @@ function Placeholder({ title }: { title: string }) {
 type MediaItem = {
   id: string;
   rawUrl: string;
-  proxyUrl: string;
-  prefersRaw: boolean;
+  fallbackUrl: string;
+  canFallback: boolean;
 };
 
 export function ListingMediaCarousel({
@@ -34,74 +34,69 @@ export function ListingMediaCarousel({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [failedImages, setFailedImages] = useState<Record<string, true>>({});
-  const [useRawSource, setUseRawSource] = useState<Record<string, true>>({});
+  const [fallbackMode, setFallbackMode] = useState<Record<string, true>>({});
+  const [heroFailed, setHeroFailed] = useState<Record<string, true>>({});
 
   const mediaItems = useMemo<MediaItem[]>(
     () =>
       images
         .filter(Boolean)
         .map((rawUrl) => {
-          const proxyUrl = toDisplayMediaUrl(rawUrl);
+          const fallbackUrl = toDisplayMediaUrl(rawUrl);
           return {
             id: rawUrl,
             rawUrl,
-            proxyUrl,
-            prefersRaw: /^https?:\/\//i.test(rawUrl),
+            fallbackUrl,
+            canFallback: fallbackUrl !== rawUrl,
           };
         }),
     [images],
   );
 
-  const safeItems = useMemo(
-    () => mediaItems.filter((item) => !failedImages[item.id]),
-    [failedImages, mediaItems],
-  );
-
   useEffect(() => {
-    if (!safeItems.length) {
+    if (!mediaItems.length) {
       setActiveIndex(0);
       return;
     }
-    if (activeIndex > safeItems.length - 1) {
+    if (activeIndex > mediaItems.length - 1) {
       setActiveIndex(0);
     }
-  }, [activeIndex, safeItems.length]);
+  }, [activeIndex, mediaItems.length]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!safeItems.length) return;
+      if (!mediaItems.length) return;
       if (event.key === 'ArrowLeft') {
-        setActiveIndex((current) => (current === 0 ? safeItems.length - 1 : current - 1));
+        setActiveIndex((current) => (current === 0 ? mediaItems.length - 1 : current - 1));
       }
       if (event.key === 'ArrowRight') {
-        setActiveIndex((current) => (current === safeItems.length - 1 ? 0 : current + 1));
+        setActiveIndex((current) => (current === mediaItems.length - 1 ? 0 : current + 1));
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [safeItems.length]);
+  }, [mediaItems.length]);
 
   const goPrev = () =>
-    setActiveIndex((current) => (current === 0 ? safeItems.length - 1 : current - 1));
+    setActiveIndex((current) => (current === 0 ? mediaItems.length - 1 : current - 1));
   const goNext = () =>
-    setActiveIndex((current) => (current === safeItems.length - 1 ? 0 : current + 1));
+    setActiveIndex((current) => (current === mediaItems.length - 1 ? 0 : current + 1));
 
-  const activeItem = safeItems[activeIndex];
+  const activeItem = mediaItems[activeIndex];
   const activeImage = activeItem
-    ? useRawSource[activeItem.id] || activeItem.prefersRaw
-      ? activeItem.rawUrl
-      : activeItem.proxyUrl
+    ? fallbackMode[activeItem.id] && activeItem.canFallback
+      ? activeItem.fallbackUrl
+      : activeItem.rawUrl
     : '';
-  const showControls = safeItems.length > 1;
+  const showControls = mediaItems.length > 1;
 
-  const handleImageError = (item: MediaItem) => {
-    if (!useRawSource[item.id] && !item.prefersRaw && item.rawUrl && item.rawUrl !== item.proxyUrl) {
-      setUseRawSource((current) => ({ ...current, [item.id]: true }));
+  const handleHeroError = (item: MediaItem) => {
+    if (!fallbackMode[item.id] && item.canFallback) {
+      setFallbackMode((current) => ({ ...current, [item.id]: true }));
       return;
     }
-    setFailedImages((current) => ({ ...current, [item.id]: true }));
+    setHeroFailed((current) => ({ ...current, [item.id]: true }));
   };
 
   return (
@@ -119,14 +114,14 @@ export function ListingMediaCarousel({
           setTouchStart(null);
         }}
       >
-        {activeItem && activeImage ? (
+        {activeItem && activeImage && !heroFailed[activeItem.id] ? (
           <img
-            key={activeImage}
+            key={`${activeItem.id}-${fallbackMode[activeItem.id] ? 'fallback' : 'raw'}`}
             src={activeImage}
             alt={title}
             className="h-full w-full object-contain p-4 md:p-6"
             loading="eager"
-            onError={() => handleImageError(activeItem)}
+            onError={() => handleHeroError(activeItem)}
           />
         ) : (
           <Placeholder title={title} />
@@ -137,7 +132,7 @@ export function ListingMediaCarousel({
         </div>
 
         <div className="absolute right-3 top-3 rounded-full bg-[#111827]/88 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-          {safeItems.length ? `${activeIndex + 1}/${safeItems.length}` : '0/0'}
+          {mediaItems.length ? `${activeIndex + 1}/${mediaItems.length}` : '0/0'}
         </div>
 
         {showControls ? (
@@ -162,31 +157,27 @@ export function ListingMediaCarousel({
         ) : null}
       </div>
 
-      {safeItems.length > 1 ? (
+      {mediaItems.length > 1 ? (
         <div className="hide-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1">
-          {safeItems.map((item, index) => {
-            const thumbSrc = useRawSource[item.id] || item.prefersRaw ? item.rawUrl : item.proxyUrl;
-            return (
-              <button
-                key={`${item.id}-${index}`}
-                type="button"
-                onClick={() => setActiveIndex(index)}
-                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-[#F6F7F9] transition ${
-                  index === activeIndex
-                    ? 'border-red shadow-[0_0_0_3px_rgba(229,57,53,0.12)]'
-                    : 'border-border hover:border-[#cfd4dc]'
-                }`}
-              >
-                <img
-                  src={thumbSrc}
-                  alt={`${title} ${index + 1}`}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  onError={() => handleImageError(item)}
-                />
-              </button>
-            );
-          })}
+          {mediaItems.map((item, index) => (
+            <button
+              key={`${item.id}-${index}`}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border bg-[#F6F7F9] transition ${
+                index === activeIndex
+                  ? 'border-red shadow-[0_0_0_3px_rgba(229,57,53,0.12)]'
+                  : 'border-border hover:border-[#cfd4dc]'
+              }`}
+            >
+              <img
+                src={item.rawUrl}
+                alt={`${title} ${index + 1}`}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          ))}
         </div>
       ) : null}
     </div>
