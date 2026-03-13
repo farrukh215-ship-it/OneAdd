@@ -7,8 +7,21 @@ export function toDisplayMediaUrl(url?: string | null) {
 
   try {
     const parsed = new URL(url);
-    // Public absolute URLs should stay absolute. They are already browser-ready.
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return url;
+    const cleanPath = parsed.pathname.replace(/^\/+/, '');
+
+    if (cleanPath.startsWith('uploads/')) {
+      return toProxy(cleanPath);
+    }
+
+    const marker = '/uploads/';
+    const markerIndex = cleanPath.indexOf(marker);
+    if (markerIndex !== -1) {
+      const key = cleanPath.slice(markerIndex + 1);
+      if (key.startsWith('uploads/')) {
+        return toProxy(key);
+      }
+    }
+
     return url;
   } catch {
     if (url.startsWith('uploads/')) return toProxy(url);
