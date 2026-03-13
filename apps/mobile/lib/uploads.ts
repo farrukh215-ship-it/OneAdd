@@ -2,23 +2,6 @@ import { api } from './api';
 
 type UploadKind = 'image' | 'video';
 
-type PresignPayloadFile = {
-  filename: string;
-  mimeType: string;
-  size: number;
-  kind: UploadKind;
-};
-
-type PresignResponse = {
-  files: Array<{
-    key: string;
-    uploadUrl: string;
-    publicUrl: string;
-    kind: UploadKind;
-    mimeType: string;
-  }>;
-};
-
 type UploadDescriptor = {
   uri: string;
   kind: UploadKind;
@@ -70,44 +53,22 @@ export async function uploadPostMediaToR2(input: { images: string[]; videos: str
     return { imageUrls: [] as string[], videoUrls: [] as string[] };
   }
 
-  const payloadFiles: PresignPayloadFile[] = descriptors.map((file) => ({
-    filename: file.filename,
-    mimeType: file.mimeType,
-    size: file.size,
-    kind: file.kind,
-  }));
-
-  const presign = await api.post<PresignResponse>('/uploads/r2/presign', {
-    files: payloadFiles,
-  });
-
-  if (presign.data.files.length !== descriptors.length) {
-    throw new Error('Upload target mismatch');
-  }
-
   const imageUrls: string[] = [];
   const videoUrls: string[] = [];
 
-  for (let i = 0; i < descriptors.length; i += 1) {
-    const descriptor = descriptors[i]!;
-    const target = presign.data.files[i]!;
-    let uploadResponse: Response;
-    try {
-      uploadResponse = await fetch(target.uploadUrl, {
-        method: 'PUT',
-        headers: {},
-        body: descriptor.blob,
-      });
-    } catch {
-      throw new Error('Upload network/CORS failure');
-    }
+  for (const descriptor of descriptors) {
+    const formData = new FormData();
+    formData.append('kind', descriptor.kind);
+    formData.append('file', descriptor.blob, descriptor.filename);
 
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed (${uploadResponse.status})`);
-    }
+    const response = await api.post('/uploads/proxy', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
-    if (descriptor.kind === 'image') imageUrls.push(target.publicUrl);
-    else videoUrls.push(target.publicUrl);
+    if (descriptor.kind === 'image') imageUrls.push(response.data.publicUrl);
+    else videoUrls.push(response.data.publicUrl);
   }
 
   return { imageUrls, videoUrls };

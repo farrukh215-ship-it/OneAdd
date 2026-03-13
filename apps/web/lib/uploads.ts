@@ -2,23 +2,6 @@
 
 import { api } from './api';
 
-type PresignFile = {
-  filename: string;
-  mimeType: string;
-  size: number;
-  kind: 'image' | 'video';
-};
-
-type PresignResponse = {
-  files: Array<{
-    key: string;
-    uploadUrl: string;
-    publicUrl: string;
-    kind: 'image' | 'video';
-    mimeType: string;
-  }>;
-};
-
 export type UploadItem = {
   id: string;
   kind: 'image' | 'video';
@@ -30,45 +13,22 @@ export async function uploadMediaToR2(items: UploadItem[]) {
     return [];
   }
 
-  const presignPayload: PresignFile[] = items.map((item) => ({
-    filename: item.file.name || `${item.kind}-${Date.now()}`,
-    mimeType: item.file.type || (item.kind === 'image' ? 'image/jpeg' : 'video/mp4'),
-    size: item.file.size,
-    kind: item.kind,
-  }));
-
-  const presign = await api.post<PresignResponse>('/uploads/r2/presign', {
-    files: presignPayload,
-  });
-
-  const targets = presign.data.files;
-  if (targets.length !== items.length) {
-    throw new Error('Upload target mismatch');
-  }
-
   const uploaded = [];
-  for (let i = 0; i < items.length; i += 1) {
-    const item = items[i]!;
-    const target = targets[i]!;
-    let response: Response;
-    try {
-      response = await fetch(target.uploadUrl, {
-        method: 'PUT',
-        headers: {},
-        body: item.file,
-      });
-    } catch {
-      throw new Error('Media upload network/CORS failure');
-    }
+  for (const item of items) {
+    const formData = new FormData();
+    formData.append('kind', item.kind);
+    formData.append('file', item.file, item.file.name || `${item.kind}-${Date.now()}`);
 
-    if (!response.ok) {
-      throw new Error(`Media upload failed (${response.status})`);
-    }
+    const response = await api.post('/uploads/proxy', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
     uploaded.push({
       id: item.id,
       kind: item.kind,
-      url: target.publicUrl,
+      url: response.data.publicUrl,
     });
   }
 

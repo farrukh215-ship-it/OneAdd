@@ -8,6 +8,13 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PresignUploadFileDto, UploadKind } from './dto/presign-upload.dto';
 
+type UploadedBinaryFile = {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+};
+
 type PresignedUpload = {
   key: string;
   uploadUrl: string;
@@ -67,6 +74,49 @@ export class UploadsService {
     return { files: uploads };
   }
 
+  async uploadFile(userId: string, file: UploadedBinaryFile, kind?: UploadKind) {
+    this.ensureConfigured();
+
+    if (!file) {
+      throw new BadRequestException('File upload missing.');
+    }
+
+    const resolvedKind = this.resolveKind(file, kind);
+    const uploadFile: PresignUploadFileDto = {
+      filename: file.originalname || `${resolvedKind}-${Date.now()}`,
+      mimeType: file.mimetype || (resolvedKind === UploadKind.IMAGE ? 'image/jpeg' : 'video/mp4'),
+      size: file.size,
+      kind: resolvedKind,
+    };
+
+    if (resolvedKind === UploadKind.IMAGE) {
+      this.validateImage(uploadFile);
+    } else {
+      this.validateVideo(uploadFile);
+    }
+
+    const key = this.buildKey(userId, uploadFile);
+    await this.client!.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: uploadFile.mimeType,
+        CacheControl:
+          resolvedKind === UploadKind.IMAGE
+            ? 'public, max-age=31536000, immutable'
+            : 'public, max-age=86400',
+      }),
+    );
+
+    return {
+      key,
+      kind: resolvedKind,
+      mimeType: uploadFile.mimeType,
+      publicUrl: this.toPublicUrl(key),
+    };
+  }
+
   private ensureConfigured() {
     if (this.client) return;
     throw new InternalServerErrorException(
@@ -119,6 +169,19 @@ export class UploadsService {
     if (file.size > 40 * 1024 * 1024) {
       throw new BadRequestException('Video size is too large (max 40MB).');
     }
+  }
+
+  private resolveKind(file: UploadedBinaryFile, kind?: UploadKind) {
+    if (kind === UploadKind.IMAGE || kind === UploadKind.VIDEO) {
+      return kind;
+    }
+    if (file.mimetype?.startsWith('image/')) {
+      return UploadKind.IMAGE;
+    }
+    if (file.mimetype?.startsWith('video/')) {
+      return UploadKind.VIDEO;
+    }
+    throw new BadRequestException('Unsupported upload type.');
   }
 
   private buildKey(userId: string, file: PresignUploadFileDto) {
