@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useCategories } from '../../hooks/useCategories';
-import { fallbackCategories } from '../../lib/fallback-data';
 import { api } from '../../lib/api';
 import { uploadMediaToR2 } from '../../lib/uploads';
 
@@ -20,7 +19,7 @@ type MediaItem = {
 export default function PostPage() {
   const router = useRouter();
   const { data: apiCategories = [] } = useCategories();
-  const categories = apiCategories.length ? apiCategories : fallbackCategories;
+  const categories = apiCategories;
   const [isDukaanMode, setIsDukaanMode] = useState(false);
 
   const [step, setStep] = useState(1);

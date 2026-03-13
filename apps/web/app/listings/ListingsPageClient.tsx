@@ -204,6 +204,26 @@ export function ListingsPageClient({
           referenceLng={filters.lng}
         />
 
+        {!isLoading && (data?.total ?? 0) === 0 ? (
+          <div className="mt-4 rounded-2xl border border-border bg-white p-4">
+            <div className="text-base font-bold text-ink">Koi listing nahi mili</div>
+            <div className="mt-1 text-sm text-ink2">
+              Search broad karein ya quick reset use karein.
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="chip" onClick={() => navigateWith({ q: undefined, city: undefined, category: undefined })}>
+                Sab clear
+              </button>
+              <button type="button" className="chip" onClick={() => navigateWith({ q: filters.q, city: undefined })}>
+                City filter hatao
+              </button>
+              <button type="button" className="chip" onClick={() => navigateWith({ sort: 'newest' })}>
+                Newest dekho
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-4 flex items-center justify-center gap-2">
           <button
             type="button"

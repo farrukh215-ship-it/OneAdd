@@ -102,6 +102,9 @@ export function SellerSidebarClient({
   const { currentUser, isLoading } = useAuth();
   const [phone, setPhone] = useState('');
   const [loadingAction, setLoadingAction] = useState<'phone' | 'whatsapp' | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [distanceText, setDistanceText] = useState<string>('');
 
   const initials = useMemo(
@@ -150,6 +153,26 @@ export function SellerSidebarClient({
     );
   }, [sellerCity, sellerLat, sellerLng]);
 
+  useEffect(() => {
+    if (!currentUser) {
+      setIsSaved(false);
+      return;
+    }
+
+    let mounted = true;
+    api
+      .get<Array<{ id: string }>>('/listings/saved')
+      .then((response) => {
+        if (!mounted) return;
+        setIsSaved(response.data.some((item) => item.id === listingId));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser, listingId]);
+
   const redirectToAuth = () => {
     window.location.href = `/auth?next=${encodeURIComponent(`/listings/${listingId}`)}`;
   };
@@ -192,6 +215,44 @@ export function SellerSidebarClient({
       );
     } finally {
       setLoadingAction(null);
+    }
+  };
+
+  const toggleSaved = async () => {
+    if (isLoading || saveLoading) return;
+    if (!currentUser) {
+      redirectToAuth();
+      return;
+    }
+
+    try {
+      setSaveLoading(true);
+      if (isSaved) {
+        await api.delete(`/listings/${listingId}/save`);
+        setIsSaved(false);
+      } else {
+        await api.post(`/listings/${listingId}/save`);
+        setIsSaved(true);
+      }
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const shareListing = async () => {
+    if (typeof window === 'undefined') return;
+    const url = window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: sellerName, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2200);
+    } catch {
+      // ignore cancelled share/copy failures
     }
   };
 
@@ -266,6 +327,23 @@ export function SellerSidebarClient({
                 {loadingAction === 'whatsapp' ? 'WhatsApp khul raha hai...' : 'WhatsApp pe Message'}
               </span>
             </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={toggleSaved}
+                className="btn-white w-full rounded-2xl !py-2.5 text-sm"
+                disabled={saveLoading || loadingAction !== null}
+              >
+                {saveLoading ? 'Saving...' : isSaved ? 'Saved ✓' : 'Save Ad'}
+              </button>
+              <button
+                type="button"
+                onClick={shareListing}
+                className="btn-white w-full rounded-2xl !py-2.5 text-sm"
+              >
+                {shareCopied ? 'Link Copied' : 'Share'}
+              </button>
+            </div>
             {!currentUser && !isLoading ? (
               <Link
                 href={`/auth?next=${encodeURIComponent(`/listings/${listingId}`)}`}
@@ -274,6 +352,17 @@ export function SellerSidebarClient({
                 Number dekhne ke liye login zaroori hai
               </Link>
             ) : null}
+          </div>
+        </div>
+
+        <div className="surface-premium p-5">
+          <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-ink3">
+            Buyer Safety
+          </div>
+          <div className="space-y-2 text-xs text-ink2">
+            <p>Deal se pehle product in-person check karein.</p>
+            <p>Advance payment unknown seller ko na bhejein.</p>
+            <p>Public jagah par meet-up prefer karein.</p>
           </div>
         </div>
       </div>

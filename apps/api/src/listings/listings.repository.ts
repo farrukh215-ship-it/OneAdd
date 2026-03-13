@@ -137,14 +137,15 @@ export class ListingsRepository {
     });
   }
 
-  async findSuggestions(query: string, limit = 8): Promise<Array<{ label: string; categorySlug: string | null; city: string | null }>> {
+  async findSuggestions(query: string, limit = 8): Promise<Array<{ label: string; categorySlug: string | null; categoryName: string | null; city: string | null }>> {
     const q = query.trim();
     if (!q) return [];
 
-    const rows = await this.prisma.$queryRaw<Array<{ label: string; category_slug: string | null; city: string | null }>>`
+    const rows = await this.prisma.$queryRaw<Array<{ label: string; category_slug: string | null; category_name: string | null; city: string | null }>>`
       SELECT DISTINCT
         l.title AS label,
         c.slug AS category_slug,
+        c.name AS category_name,
         l.city AS city
       FROM "Listing" l
       LEFT JOIN "Category" c ON c.id = l."categoryId"
@@ -153,6 +154,7 @@ export class ListingsRepository {
         AND (
           similarity(lower(l.title), lower(${q})) > 0.15
           OR lower(l.title) ILIKE ${`%${q.toLowerCase()}%`}
+          OR lower(coalesce(c.name, '')) ILIKE ${`%${q.toLowerCase()}%`}
           OR to_tsvector('simple', coalesce(l.title, '') || ' ' || coalesce(l.description, ''))
              @@ plainto_tsquery('simple', ${q})
         )
@@ -165,6 +167,7 @@ export class ListingsRepository {
     return rows.map((row) => ({
       label: row.label,
       categorySlug: row.category_slug,
+      categoryName: row.category_name,
       city: row.city,
     }));
   }
@@ -231,6 +234,7 @@ export class ListingsRepository {
           similarity(lower(l.title), lower($1)) > 0.1
           OR lower(l.title) ILIKE '%' || lower($1) || '%'
           OR lower(l.description) ILIKE '%' || lower($1) || '%'
+          OR lower(coalesce(c.name, '')) ILIKE '%' || lower($1) || '%'
           OR to_tsvector('simple', coalesce(l.title, '') || ' ' || coalesce(l.description, ''))
              @@ plainto_tsquery('simple', $1)
         )

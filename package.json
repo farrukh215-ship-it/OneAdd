@@ -1,10 +1,12 @@
 {
   "name": "tgmg-monorepo",
   "private": true,
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "prisma:seed": "pnpm --filter @tgmg/api run prisma:seed"
   },
   "devDependencies": {
     "turbo": "latest"

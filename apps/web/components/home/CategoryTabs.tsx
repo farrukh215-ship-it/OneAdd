@@ -26,6 +26,10 @@ export function CategoryTabs({
   const [selected, setSelected] = useState(activeSlug ?? '');
 
   useEffect(() => {
+    setSelected(activeSlug ?? '');
+  }, [activeSlug]);
+
+  useEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (hash.startsWith('category-')) {
       setSelected(hash.replace('category-', ''));
@@ -52,14 +56,18 @@ export function CategoryTabs({
     if (city) params.set('city', city);
     else params.delete('city');
 
-    if (isAll) params.delete('category');
-    else params.set('category', category.slug);
-
     if (pathname === '/') {
+      const section = document.getElementById(anchor);
       const nextQuery = params.toString();
       const nextUrl = `${nextQuery ? `/?${nextQuery}` : '/'}#${anchor}`;
       window.history.replaceState({}, '', nextUrl);
-      scrollToAnchor(anchor);
+      if (section) {
+        scrollToAnchor(anchor);
+        return;
+      }
+      if (!isAll) {
+        router.push(`/listings?category=${encodeURIComponent(category.slug)}${city ? `&city=${encodeURIComponent(city)}` : ''}`);
+      }
       return;
     }
 
@@ -77,6 +85,7 @@ export function CategoryTabs({
               key={category.id}
               type="button"
               onClick={() => onSelect(category)}
+              aria-pressed={active}
               className={`flex shrink-0 flex-col items-center gap-1 border-b-[3px] px-1 pb-2 text-center transition-all duration-200 ${
                 active ? 'scale-[1.02] border-red text-red' : 'border-transparent text-ink2'
               }`}
@@ -90,4 +99,3 @@ export function CategoryTabs({
     </section>
   );
 }
-

@@ -87,7 +87,9 @@ export class ListingsService {
     const where: Prisma.ListingWhereInput = {
       status: 'ACTIVE',
       isStore,
-      ...(filter.city ? { city: filter.city } : {}),
+      ...(filter.city
+        ? { city: { equals: filter.city.trim(), mode: 'insensitive' } }
+        : {}),
       ...(filter.condition ? { condition: filter.condition } : {}),
       ...(storeType ? { storeType } : {}),
       ...(typeof filter.minPrice === 'number' || typeof filter.maxPrice === 'number'
@@ -104,6 +106,7 @@ export class ListingsService {
             OR: [
               { title: { contains: normalizedQ, mode: 'insensitive' } },
               { description: { contains: normalizedQ, mode: 'insensitive' } },
+              { category: { name: { contains: normalizedQ, mode: 'insensitive' } } },
             ],
           }
         : {}),

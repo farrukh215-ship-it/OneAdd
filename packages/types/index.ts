@@ -76,6 +76,7 @@ export interface ListingThreadResponse {
 export interface SearchSuggestion {
   label: string;
   categorySlug?: string;
+  categoryName?: string;
   city?: string;
 }
 

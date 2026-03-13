@@ -86,9 +86,15 @@ export function Navbar() {
 
   const navigateSearch = (nextQuery: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('city', city);
-    if (nextQuery.trim()) params.set('q', nextQuery.trim());
-    else params.delete('q');
+    const cleanQuery = nextQuery.trim();
+    if (cleanQuery) {
+      params.set('q', cleanQuery);
+      // Search by default global rakho; city user later listings page se narrow kar sakta hai.
+      params.delete('city');
+    } else {
+      params.delete('q');
+      params.set('city', city);
+    }
     writeRecentSearches(nextQuery);
     setRecentSearches(readRecentSearches());
     setOpen(false);
@@ -143,8 +149,14 @@ export function Navbar() {
                   }}
                   className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-ink2 hover:bg-[#F8F9FB]"
                 >
-                  <span>{item.label}</span>
-                  {item.city ? <span className="text-xs text-ink3">{item.city}</span> : null}
+                  <span className="min-w-0">
+                    <span className="block truncate">{item.label}</span>
+                    {item.categoryName || item.city ? (
+                      <span className="mt-0.5 block text-xs text-ink3">
+                        {[item.categoryName, item.city].filter(Boolean).join(' • ')}
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               ))}
             </div>

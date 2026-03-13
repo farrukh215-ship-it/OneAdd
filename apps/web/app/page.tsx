@@ -1,4 +1,3 @@
-import type { Listing } from '@tgmg/types';
 import { CategorySectionCarousel } from '../components/home/CategorySectionCarousel';
 import { CategoryTabs } from '../components/home/CategoryTabs';
 import { HeroBanner } from '../components/home/HeroBanner';
@@ -10,52 +9,14 @@ import { Footer } from '../components/layout/Footer';
 import { ListingGrid } from '../components/listings/ListingGrid';
 import { getCategories, getFeaturedListings, getListings } from '../lib/server-api';
 
-function fallbackListingsByCategory(city: string): Listing[] {
-  const now = new Date().toISOString();
-  return [
-    {
-      id: 'fallback-1',
-      userId: 'u1',
-      title: 'Honda Civic 2016',
-      description: 'Clean car.',
-      price: 2200000,
-      category: { id: 'c-cars', name: 'Cars', slug: 'cars', icon: '🚗' },
-      categoryId: 'c-cars',
-      images: [],
-      videos: [],
-      condition: 'USED',
-      isStore: false,
-      city,
-      area: 'DHA',
-      lat: 31.5204,
-      lng: 74.3587,
-      status: 'ACTIVE',
-      views: 0,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 'fallback-2',
-      userId: 'u2',
-      title: 'iPhone 13 PTA',
-      description: 'Good condition.',
-      price: 115000,
-      category: { id: 'c-mobiles', name: 'Mobile Phones', slug: 'mobiles', icon: '📱' },
-      categoryId: 'c-mobiles',
-      images: [],
-      videos: [],
-      condition: 'USED',
-      isStore: false,
-      city,
-      area: 'Johar Town',
-      lat: 31.4697,
-      lng: 74.2728,
-      status: 'ACTIVE',
-      views: 0,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
+export const dynamic = 'force-dynamic';
+
+async function getCategoryListings(slug: string, city: string) {
+  const cityResult = await getListings({ category: slug, city, limit: 6 });
+  if (cityResult.data.length) return cityResult.data;
+
+  const globalResult = await getListings({ category: slug, limit: 6 });
+  return globalResult.data;
 }
 
 export default async function HomePage({
@@ -70,30 +31,24 @@ export default async function HomePage({
   const categories = await getCategories();
 
   const featured = activeCategory
-    ? await getListings({ category: activeCategory, city, limit: 6 }).then((result) => result.data)
-    : await getFeaturedListings();
+    ? await getCategoryListings(activeCategory, city)
+    : await (async () => {
+        const featuredListings = await getFeaturedListings(city);
+        if (featuredListings.length) return featuredListings;
+        return getFeaturedListings();
+      })();
 
   const categorySections = await Promise.all(
     categories.map(async (category) => ({
       category,
-      listings: await getListings({ category: category.slug, city, limit: 6 }).then((result) => result.data),
+      listings: await getCategoryListings(category.slug, city),
     })),
   );
-
-  const nonEmptySections = categorySections.filter((section) => section.listings.length > 0);
-  const safeSections = nonEmptySections.length
-    ? nonEmptySections
-    : [
-        {
-          category: { id: 'c-fallback', name: 'Cars', slug: 'cars', icon: '🚗' },
-          listings: fallbackListingsByCategory(city),
-        },
-      ];
 
   return (
     <>
       <CategoryTabs
-        categories={[{ id: 'all', name: 'Sab', slug: '', icon: '🏠' }, ...categories]}
+        categories={[{ id: 'all', name: 'Sab', slug: '', icon: 'Home' }, ...categories]}
         activeSlug={activeCategory}
         city={city}
       />
@@ -117,7 +72,7 @@ export default async function HomePage({
         <StripBanner />
       </section>
 
-      {safeSections.map((section) => (
+      {categorySections.map((section) => (
         <CategorySectionCarousel
           key={section.category.id}
           title={`${section.category.icon} ${section.category.name}`}

@@ -38,10 +38,11 @@ function nearestCity(lat: number, lng: number) {
 
 export function QuickActions({ city = 'Lahore' }: { city?: string }) {
   const router = useRouter();
+  const nearMeFallbackHref = `/listings?city=${encodeURIComponent(city)}`;
 
   const openNearMe = () => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      router.push(`/listings?city=${encodeURIComponent(city)}`);
+      router.push(nearMeFallbackHref);
       return;
     }
 
@@ -53,7 +54,7 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
           `/listings?city=${encodeURIComponent(detectedCity)}&lat=${position.coords.latitude}&lng=${position.coords.longitude}&radiusKm=10`,
         );
       },
-      () => router.push(`/listings?city=${encodeURIComponent(city)}`),
+      () => router.push(nearMeFallbackHref),
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
@@ -66,7 +67,12 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
       <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
         Taaza Listings
       </Link>
-      <button type="button" onClick={openNearMe} className="chip shrink-0">
+      <button
+        type="button"
+        onClick={openNearMe}
+        aria-label="Mere Paas listings kholo"
+        className="chip shrink-0 cursor-pointer select-none transition hover:border-[#d8dde6] hover:text-ink"
+      >
         Mere Paas
       </button>
       <Link href={`/listings?sort=price_desc&city=${encodeURIComponent(city)}`} className="chip shrink-0">
@@ -81,4 +87,3 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
     </section>
   );
 }
-
