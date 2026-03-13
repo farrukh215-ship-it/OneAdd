@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ListingGrid } from '../../../components/listings/ListingGrid';
 import { distanceFromCity } from '../../../lib/distance';
+import { toDisplayMediaUrl } from '../../../lib/media';
 import { getListing, getListings } from '../../../lib/server-api';
 import { ListingPublicChat } from './ListingPublicChat';
 
@@ -29,6 +30,11 @@ export default async function ListingDetailPage({
       : undefined,
   );
   const locationText = [listing.city, listing.area].filter(Boolean).join(', ');
+  const heroImage = toDisplayMediaUrl(listing.images[0]);
+  const galleryImages = listing.images
+    .slice(0, 6)
+    .map((image) => toDisplayMediaUrl(image))
+    .filter(Boolean);
 
   return (
     <div className="page-wrap px-2 py-4 md:px-5">
@@ -36,14 +42,14 @@ export default async function ListingDetailPage({
         <section>
           <div className="surface overflow-hidden p-3">
             <div className="relative aspect-square overflow-hidden rounded-xl bg-border">
-              {listing.images[0] ? (
-                <Image src={listing.images[0]} alt={listing.title} fill unoptimized className="object-cover" />
+              {heroImage ? (
+                <Image src={heroImage} alt={listing.title} fill unoptimized className="object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center text-7xl">📦</div>
               )}
             </div>
             <div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto">
-              {listing.images.slice(0, 6).map((image, index) => (
+              {galleryImages.map((image, index) => (
                 <div key={index} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-border">
                   <Image src={image} alt={`${listing.title} ${index + 1}`} fill unoptimized className="object-cover" />
                 </div>
@@ -142,4 +148,3 @@ export default async function ListingDetailPage({
     </div>
   );
 }
-

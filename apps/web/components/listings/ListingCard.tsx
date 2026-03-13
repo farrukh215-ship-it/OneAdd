@@ -2,6 +2,7 @@ import type { Listing } from '@tgmg/types';
 import Image from 'next/image';
 import Link from 'next/link';
 import { distanceFromCity } from '../../lib/distance';
+import { toDisplayMediaUrl } from '../../lib/media';
 
 export function ListingCard({
   listing,
@@ -15,6 +16,7 @@ export function ListingCard({
   referenceLng?: number;
 }) {
   const image = listing.images[0];
+  const displayImage = toDisplayMediaUrl(image);
   const location = [listing.city, listing.area].filter(Boolean).join(', ');
   const distance = distanceFromCity(
     referenceCity,
@@ -35,9 +37,9 @@ export function ListingCard({
       className="surface block overflow-hidden transition-transform active:scale-[0.97]"
     >
       <div className="relative aspect-square bg-border">
-        {image ? (
+        {displayImage ? (
           <Image
-            src={image}
+            src={displayImage}
             alt={listing.title}
             fill
             unoptimized

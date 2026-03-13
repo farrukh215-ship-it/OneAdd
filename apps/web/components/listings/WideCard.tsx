@@ -1,15 +1,17 @@
 import type { Listing } from '@tgmg/types';
 import Image from 'next/image';
 import Link from 'next/link';
+import { toDisplayMediaUrl } from '../../lib/media';
 
 export function WideCard({ listing }: { listing: Listing }) {
   const image = listing.images[0];
+  const displayImage = toDisplayMediaUrl(image);
 
   return (
     <Link href={`/listings/${listing.id}`} className="surface flex gap-3 overflow-hidden p-3">
       <div className="relative h-[90px] w-[90px] shrink-0 overflow-hidden rounded-xl bg-border">
-        {image ? (
-          <Image src={image} alt={listing.title} fill unoptimized className="object-cover" />
+        {displayImage ? (
+          <Image src={displayImage} alt={listing.title} fill unoptimized className="object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-4xl">📦</div>
         )}
@@ -32,4 +34,3 @@ export function WideCard({ listing }: { listing: Listing }) {
     </Link>
   );
 }
-

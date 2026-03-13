@@ -2,9 +2,10 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PresignUploadFileDto, UploadKind } from './dto/presign-upload.dto';
 
@@ -21,6 +22,13 @@ type PresignedUpload = {
   publicUrl: string;
   kind: UploadKind;
   mimeType: string;
+};
+
+type PublicAsset = {
+  body: Buffer;
+  contentType?: string;
+  cacheControl?: string;
+  contentLength?: number;
 };
 
 @Injectable()
@@ -117,6 +125,36 @@ export class UploadsService {
     };
   }
 
+  async getPublicAsset(key: string): Promise<PublicAsset> {
+    this.ensureConfigured();
+    this.validatePublicKey(key);
+
+    try {
+      const response = await this.client!.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+      const body = await response.Body?.transformToByteArray();
+      if (!body) {
+        throw new NotFoundException('Media file not found.');
+      }
+
+      return {
+        body: Buffer.from(body),
+        contentType: response.ContentType,
+        cacheControl: response.CacheControl,
+        contentLength: response.ContentLength,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new NotFoundException('Media file not found.');
+    }
+  }
+
   private ensureConfigured() {
     if (this.client) return;
     throw new InternalServerErrorException(
@@ -194,6 +232,12 @@ export class UploadsService {
     const ext = extension ? `.${extension}` : file.kind === UploadKind.IMAGE ? '.jpg' : '.mp4';
     const folder = file.kind === UploadKind.IMAGE ? 'images' : 'videos';
     return `uploads/${userId}/${folder}/${Date.now()}-${randomUUID()}${ext}`;
+  }
+
+  private validatePublicKey(key: string) {
+    if (!key || !key.startsWith('uploads/')) {
+      throw new BadRequestException('Invalid media key.');
+    }
   }
 
   private toPublicUrl(key: string) {
