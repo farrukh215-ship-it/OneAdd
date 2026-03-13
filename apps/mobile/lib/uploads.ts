@@ -16,6 +16,7 @@ type PresignResponse = {
     publicUrl: string;
     kind: UploadKind;
     mimeType: string;
+    cacheControl: string;
   }>;
 };
 
@@ -97,6 +98,7 @@ export async function uploadPostMediaToR2(input: { images: string[]; videos: str
         method: 'PUT',
         headers: {
           'Content-Type': target.mimeType || descriptor.mimeType,
+          'Cache-Control': target.cacheControl || 'public, max-age=86400',
         },
         body: descriptor.blob,
       });
