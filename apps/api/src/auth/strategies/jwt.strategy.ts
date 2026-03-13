@@ -38,6 +38,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User banned');
     }
 
+    const shouldRefreshLastActive =
+      !user.updatedAt || Date.now() - new Date(user.updatedAt).getTime() > 5 * 60 * 1000;
+
+    if (shouldRefreshLastActive) {
+      await this.prisma.$executeRaw`
+        UPDATE "User"
+        SET "updatedAt" = NOW()
+        WHERE id = ${user.id}
+      `;
+
+      return {
+        ...user,
+        updatedAt: new Date(),
+      };
+    }
+
     return user;
   }
 }

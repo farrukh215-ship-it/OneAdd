@@ -9,6 +9,7 @@ export interface User {
   verified: boolean;
   banned: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Category {
@@ -22,7 +23,7 @@ export interface Category {
 export interface Listing {
   id: string;
   userId: string;
-  user?: Pick<User, "id" | "name" | "city" | "verified">;
+  user?: Pick<User, "id" | "name" | "city" | "area" | "verified" | "createdAt" | "updatedAt">;
   title: string;
   description: string;
   price: number;

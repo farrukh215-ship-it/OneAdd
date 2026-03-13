@@ -17,6 +17,16 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ListingsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly sellerSelect = {
+    id: true,
+    name: true,
+    city: true,
+    area: true,
+    verified: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
+
   countActiveByUserAndCategory(userId: string, categoryId: string) {
     return this.prisma.listing.count({
       where: { userId, categoryId, status: 'ACTIVE' },
@@ -29,7 +39,7 @@ export class ListingsRepository {
       include: {
         category: true,
         user: {
-          select: { id: true, name: true, city: true, verified: true },
+          select: this.sellerSelect,
         },
       },
     });
@@ -92,7 +102,7 @@ export class ListingsRepository {
         messages: {
           orderBy: { createdAt: 'asc' },
           include: {
-            user: { select: { id: true, name: true, city: true, verified: true } },
+            user: { select: this.sellerSelect },
           },
         },
       },
@@ -103,7 +113,7 @@ export class ListingsRepository {
     return this.prisma.listingMessage.create({
       data,
       include: {
-        user: { select: { id: true, name: true, city: true, verified: true } },
+        user: { select: this.sellerSelect },
       },
     });
   }
@@ -112,17 +122,17 @@ export class ListingsRepository {
     return this.prisma.offer.create({
       data,
       include: {
-        user: { select: { id: true, name: true, city: true, verified: true } },
+        user: { select: this.sellerSelect },
       },
     });
   }
 
-  findOffersForListing(listingId: string): Promise<(Offer & { user: { id: string; name: string | null; city: string | null; verified: boolean } })[]> {
+  findOffersForListing(listingId: string): Promise<(Offer & { user: { id: string; name: string | null; city: string | null; area: string | null; verified: boolean; createdAt: Date; updatedAt: Date } })[]> {
     return this.prisma.offer.findMany({
       where: { listingId },
       orderBy: [{ amount: 'asc' }, { createdAt: 'asc' }],
       include: {
-        user: { select: { id: true, name: true, city: true, verified: true } },
+        user: { select: this.sellerSelect },
       },
     });
   }

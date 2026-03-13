@@ -144,14 +144,27 @@ export class AuthService {
       throw new ForbiddenException('Aapka account band kar diya gaya hai');
     }
 
+    await this.prisma.$executeRaw`
+      UPDATE "User"
+      SET "updatedAt" = NOW()
+      WHERE id = ${user.id}
+    `;
+
+    const refreshedUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+    });
+    if (!refreshedUser) {
+      throw new UnauthorizedException('User not found');
+    }
+
     const accessToken = await this.jwtService.signAsync(
-      { sub: user.id, phone: user.phone },
+      { sub: refreshedUser.id, phone: refreshedUser.phone },
       { expiresIn: '30d' },
     );
 
     return {
       accessToken,
-      user: UserDto.fromUser(user),
+      user: UserDto.fromUser(refreshedUser),
       isNewUser: false,
     };
   }

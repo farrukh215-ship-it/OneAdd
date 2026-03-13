@@ -9,6 +9,7 @@ export class UserDto {
   area!: string | null;
   verified!: boolean;
   createdAt!: Date;
+  updatedAt!: Date;
 
   static fromUser(user: User): UserDto {
     return {
@@ -20,6 +21,7 @@ export class UserDto {
       area: user.area,
       verified: user.verified,
       createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
   }
 }

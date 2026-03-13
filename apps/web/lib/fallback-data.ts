@@ -27,14 +27,18 @@ export const fallbackListings: Listing[] = fallbackCategories.flatMap((category,
     const isStore = entryIndex === 1;
     const storeType = isStore ? (index % 2 === 0 ? 'ROAD' : 'ONLINE') : undefined;
     const now = new Date().toISOString();
+    const sellerId = `demo-user-${entryIndex + 1}`;
     return {
       id: `demo-${category.slug}-${entryIndex + 1}`,
-      userId: `demo-user-${entryIndex + 1}`,
+      userId: sellerId,
       user: {
-        id: `demo-user-${entryIndex + 1}`,
+        id: sellerId,
         name: entryIndex === 0 ? 'Ali Khan' : 'Sara Malik',
         city: city.city,
+        area: city.area,
         verified: true,
+        createdAt: now,
+        updatedAt: now,
       },
       title: `${category.name} Demo ${entryIndex + 1}`,
       description: `${category.name} ki clean condition listing, asli malik se direct deal.`,

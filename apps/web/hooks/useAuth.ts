@@ -12,6 +12,7 @@ type CurrentUser = {
   area?: string | null;
   verified: boolean;
   createdAt: string;
+  updatedAt: string;
 };
 
 const TOKEN_KEY = 'tgmg_token';

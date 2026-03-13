@@ -20,6 +20,15 @@ import { CreateOfferDto } from './dto/create-offer.dto';
 @Injectable()
 export class ListingsService {
   private readonly redis: Redis;
+  private readonly sellerSelect = {
+    id: true,
+    name: true,
+    city: true,
+    area: true,
+    verified: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
 
   constructor(private readonly listingsRepository: ListingsRepository) {
     this.redis = new Redis(process.env.REDIS_URL ?? 'redis://127.0.0.1:6379', {
@@ -132,7 +141,7 @@ export class ListingsService {
           include: {
             category: true,
             user: {
-              select: { id: true, name: true, city: true, verified: true },
+              select: this.sellerSelect,
             },
           },
         });
@@ -152,7 +161,7 @@ export class ListingsService {
           include: {
             category: true,
             user: {
-              select: { id: true, name: true, city: true, verified: true },
+              select: this.sellerSelect,
             },
           },
         }),
@@ -182,7 +191,7 @@ export class ListingsService {
       include: {
         category: true,
         user: {
-          select: { id: true, name: true, city: true, verified: true },
+          select: this.sellerSelect,
         },
       },
     });
@@ -201,7 +210,7 @@ export class ListingsService {
       include: {
         category: true,
         user: {
-          select: { id: true, name: true, city: true, verified: true },
+          select: this.sellerSelect,
         },
       },
     });
@@ -287,7 +296,7 @@ export class ListingsService {
       include: {
         category: true,
         user: {
-          select: { id: true, name: true, city: true, verified: true },
+          select: this.sellerSelect,
         },
       },
     });
@@ -323,7 +332,7 @@ export class ListingsService {
         include: {
           category: true,
           user: {
-            select: { id: true, name: true, city: true, verified: true },
+            select: this.sellerSelect,
           },
         },
       }),
@@ -358,7 +367,7 @@ export class ListingsService {
       include: {
         category: true,
         user: {
-          select: { id: true, name: true, city: true, verified: true },
+          select: this.sellerSelect,
         },
       },
     });

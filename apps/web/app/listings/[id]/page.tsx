@@ -5,6 +5,7 @@ import { distanceFromCity } from '../../../lib/distance';
 import { toDisplayMediaUrl } from '../../../lib/media';
 import { getListing, getListings } from '../../../lib/server-api';
 import { ListingPublicChat } from './ListingPublicChat';
+import { SellerSidebarClient } from './SellerSidebarClient';
 
 export default async function ListingDetailPage({
   params,
@@ -15,12 +16,6 @@ export default async function ListingDetailPage({
   const listing = await getListing(id);
   const related = await getListings({ category: listing.category.slug, limit: 4 });
   const sellerName = listing.user?.name || 'Seller';
-  const initials = sellerName
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
   const distanceKm = distanceFromCity(
     undefined,
     listing.city,
@@ -30,6 +25,9 @@ export default async function ListingDetailPage({
       : undefined,
   );
   const locationText = [listing.city, listing.area].filter(Boolean).join(', ');
+  const sellerLocation = [listing.user?.area || listing.area, listing.user?.city || listing.city]
+    .filter(Boolean)
+    .join(', ');
   const heroImage = toDisplayMediaUrl(listing.images[0]);
   const galleryImages = listing.images
     .slice(0, 6)
@@ -80,41 +78,19 @@ export default async function ListingDetailPage({
         </section>
 
         <aside className="space-y-4">
-          <div className="surface p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F3F4F6] font-bold text-ink2">
-                {initials}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-sm font-bold text-ink">
-                  {sellerName}
-                  <span className="text-green">✓</span>
-                </div>
-                <div className="text-xs text-ink2">{listing.user?.city || listing.city}</div>
-              </div>
-            </div>
-            <div className="mt-3 text-xs text-ink2">
-              Joined {new Date(listing.createdAt).toLocaleDateString('en-GB')}
-            </div>
-            <div className="mt-2 text-sm font-semibold text-green">
-              Dealer nahi — asli malik
-            </div>
-          </div>
-          <div className="surface p-4">
-            <div className="grid gap-3">
-              <Link href={`/auth?next=/listings/${listing.id}`} className="btn-red">
-                Phone Number Dekho
-              </Link>
-              <a
-                href={`https://wa.me/${listing.user?.id ?? ''}`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-white"
-              >
-                WhatsApp pe Message
-              </a>
-            </div>
-          </div>
+          <SellerSidebarClient
+            listingId={listing.id}
+            sellerName={sellerName}
+            sellerVerified={Boolean(listing.user?.verified)}
+            sellerLocation={sellerLocation}
+            joinedAt={listing.user?.createdAt}
+            sellerLastOnlineAt={listing.user?.updatedAt}
+            listingCreatedAt={listing.createdAt}
+            listingUpdatedAt={listing.updatedAt}
+            sellerCity={listing.user?.city || listing.city}
+            sellerLat={listing.lat}
+            sellerLng={listing.lng}
+          />
         </aside>
       </div>
 
@@ -131,19 +107,7 @@ export default async function ListingDetailPage({
       <ListingPublicChat listingId={listing.id} askingPrice={listing.price} />
 
       <div className="mobile-safe-bottom fixed inset-x-0 bottom-14 z-40 border-t border-border bg-white p-3 md:hidden">
-        <div className="grid grid-cols-2 gap-2">
-          <Link href={`/auth?next=/listings/${listing.id}`} className="btn-red">
-            Phone Number
-          </Link>
-          <a
-            href={`https://wa.me/${listing.user?.id ?? ''}`}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-white"
-          >
-            WhatsApp
-          </a>
-        </div>
+        <div className="text-center text-xs font-semibold text-ink3">Seller contact actions upar available hain.</div>
       </div>
     </div>
   );
