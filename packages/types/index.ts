@@ -20,6 +20,34 @@ export interface Category {
   count?: number;
 }
 
+export type StandardCategorySeed = {
+  name: string;
+  slug: string;
+  icon: string;
+  order: number;
+};
+
+export const STANDARD_CATEGORY_SEEDS: StandardCategorySeed[] = [
+  { name: 'Mobile Phones', slug: 'mobiles', icon: '📱', order: 1 },
+  { name: 'Cars', slug: 'cars', icon: '🚗', order: 2 },
+  { name: 'Property', slug: 'property', icon: '🏠', order: 3 },
+  { name: 'Electronics', slug: 'electronics', icon: '💻', order: 4 },
+  { name: 'Furniture', slug: 'furniture', icon: '🛋️', order: 5 },
+  { name: 'Cycles & Bikes', slug: 'cycles', icon: '🚲', order: 6 },
+  { name: 'Fashion', slug: 'fashion', icon: '👕', order: 7 },
+  { name: 'Books', slug: 'books', icon: '📚', order: 8 },
+  { name: 'Pets', slug: 'pets', icon: '🐾', order: 9 },
+  { name: 'Services', slug: 'services', icon: '⚙️', order: 10 },
+];
+
+export const STANDARD_CATEGORIES: Category[] = STANDARD_CATEGORY_SEEDS.map((category) => ({
+  id: category.slug,
+  name: category.name,
+  slug: category.slug,
+  icon: category.icon,
+  count: 0,
+}));
+
 export interface Listing {
   id: string;
   userId: string;

@@ -11,7 +11,7 @@ import { api } from '../../lib/api';
 export default function ListingDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: listing } = useListing(id);
+  const { data: listing, isLoading, isError } = useListing(id);
   const { data: related } = useListings({ category: listing?.category?.slug, limit: 4, sort: 'newest' });
   const [activeIndex, setActiveIndex] = useState(0);
   const [thread, setThread] = useState<ListingThreadResponse | null>(null);
@@ -63,10 +63,21 @@ export default function ListingDetailScreen() {
     void loadThread();
   }, [id]);
 
-  if (!listing) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-bg">
         <Text className="text-sm text-ink2">Loading...</Text>
+      </View>
+    );
+  }
+
+  if (isError || !listing) {
+    return (
+      <View className="flex-1 items-center justify-center bg-bg px-6">
+        <Text className="text-base font-bold text-ink">Listing nahi mili</Text>
+        <Text className="mt-2 text-center text-sm text-ink2">
+          Real listing data load nahi hui. Dobara try karein.
+        </Text>
       </View>
     );
   }

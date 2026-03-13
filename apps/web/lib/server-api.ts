@@ -1,4 +1,5 @@
 import type { Category, Listing, PaginatedResponse } from '@tgmg/types';
+import { STANDARD_CATEGORIES } from '@tgmg/types';
 
 function apiBase() {
   // Server-side fetches should use the internal API service directly.
@@ -9,9 +10,15 @@ export async function getCategories(): Promise<Category[]> {
   try {
     const response = await fetch(`${apiBase()}/categories`, { cache: 'no-store' });
     if (!response.ok) throw new Error('Failed');
-    return (await response.json()) as Category[];
+    const categories = (await response.json()) as Category[];
+    if (!categories.length) return STANDARD_CATEGORIES;
+
+    return STANDARD_CATEGORIES.map((fallback) => {
+      const match = categories.find((category) => category.slug === fallback.slug);
+      return match ? { ...fallback, ...match, count: match.count ?? 0 } : fallback;
+    });
   } catch {
-    return [];
+    return STANDARD_CATEGORIES;
   }
 }
 

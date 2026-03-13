@@ -32,4 +32,20 @@ export class CategoriesService {
       },
     });
   }
+
+  async health() {
+    const rows = await this.prisma.category.findMany({
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    });
+
+    return {
+      count: rows.length,
+      slugs: rows.map((row) => row.slug),
+    };
+  }
 }

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Category } from '@tgmg/types';
+import { STANDARD_CATEGORIES } from '@tgmg/types';
 import { api, categoryKeys } from '../lib/api';
-import { fallbackCategories } from '../lib/fallback-data';
 
 export function useCategories() {
   return useQuery({
@@ -10,9 +10,15 @@ export function useCategories() {
     queryFn: async () => {
       try {
         const response = await api.get<Category[]>('/categories');
-        return response.data;
+        const categories = response.data;
+        if (!categories.length) return STANDARD_CATEGORIES;
+
+        return STANDARD_CATEGORIES.map((fallback) => {
+          const match = categories.find((category) => category.slug === fallback.slug);
+          return match ? { ...fallback, ...match, count: match.count ?? 0 } : fallback;
+        });
       } catch {
-        return fallbackCategories;
+        return STANDARD_CATEGORIES;
       }
     },
   });

@@ -5,6 +5,11 @@ import { CategoriesService } from './categories.service';
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
+  @Get('health')
+  async health() {
+    return this.categoriesService.health();
+  }
+
   @Get()
   async findAll() {
     const rows = await this.categoriesService.findAll();
@@ -17,4 +22,3 @@ export class CategoriesController {
     }));
   }
 }
-

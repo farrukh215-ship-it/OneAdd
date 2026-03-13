@@ -1,26 +1,14 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import { STANDARD_CATEGORY_SEEDS } from '@tgmg/types';
 
 const prisma = new PrismaClient();
 
-const categories = [
-  { name: "Mobile Phones", slug: "mobiles", icon: "📱", order: 1 },
-  { name: "Cars", slug: "cars", icon: "🚗", order: 2 },
-  { name: "Property", slug: "property", icon: "🏡", order: 3 },
-  { name: "Electronics", slug: "electronics", icon: "💻", order: 4 },
-  { name: "Furniture", slug: "furniture", icon: "🛋️", order: 5 },
-  { name: "Cycles & Bikes", slug: "cycles", icon: "🚲", order: 6 },
-  { name: "Fashion", slug: "fashion", icon: "👕", order: 7 },
-  { name: "Books", slug: "books", icon: "📚", order: 8 },
-  { name: "Pets", slug: "pets", icon: "🐾", order: 9 },
-  { name: "Services", slug: "services", icon: "⚙️", order: 10 }
-];
-
 async function main() {
-  for (const category of categories) {
+  for (const category of STANDARD_CATEGORY_SEEDS) {
     await prisma.category.upsert({
       where: { slug: category.slug },
       update: category,
-      create: category
+      create: category,
     });
   }
 

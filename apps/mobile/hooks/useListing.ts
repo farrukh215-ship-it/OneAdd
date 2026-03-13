@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Listing } from '@tgmg/types';
 import { api, listingKeys } from '../lib/api';
-import { fallbackListings } from '../lib/fallback-data';
 
 export function useListing(id: string) {
   return useQuery({
@@ -13,7 +12,7 @@ export function useListing(id: string) {
         const response = await api.get<Listing>(`/listings/${id}`);
         return response.data;
       } catch {
-        return fallbackListings[0]!;
+        return null;
       }
     },
   });

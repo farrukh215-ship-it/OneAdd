@@ -16,11 +16,43 @@ const quickActions = [
   { label: 'Dukaan', href: '/(tabs)/browse?store=road&city=Lahore' },
 ];
 
+function CategoryShowcase({
+  slug,
+  title,
+}: {
+  slug: string;
+  title: string;
+}) {
+  const router = useRouter();
+  const { data } = useListings({ category: slug, limit: 3, sort: 'newest' });
+  const listings = data?.data ?? [];
+
+  return (
+    <View className="mt-4">
+      <SectionHeader
+        title={title}
+        linkLabel="Aur Dekho"
+        onPress={() => router.push(`/(tabs)/browse?category=${slug}`)}
+      />
+      <View className="mx-3">
+        {listings.length ? (
+          listings.map((listing: Listing) => (
+            <WideCard key={listing.id} listing={listing} onPress={() => router.push(`/listing/${listing.id}`)} />
+          ))
+        ) : (
+          <View className="rounded-xl bg-white px-4 py-4 shadow-sm">
+            <Text className="text-sm text-ink2">Is category mein abhi real listing nahi mili.</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { data: categories = [] } = useCategories();
   const { data: featured } = useListings({ limit: 8, sort: 'newest' });
-  const { data: cars } = useListings({ category: 'cars', limit: 3, sort: 'newest' });
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -141,12 +173,13 @@ export default function HomeScreen() {
         <Text className="mt-1 text-xs text-white/80">Sirf asli ghar walay seller ko listing milti hai.</Text>
       </View>
 
-      <SectionHeader title="Gaadiyaan" linkLabel="Aur Dekho" onPress={() => router.push('/(tabs)/browse?category=cars')} />
-      <View className="mx-3">
-        {(cars?.data ?? []).slice(0, 3).map((listing: Listing) => (
-          <WideCard key={listing.id} listing={listing} onPress={() => router.push(`/listing/${listing.id}`)} />
-        ))}
-      </View>
+      {categories.map((category) => (
+        <CategoryShowcase
+          key={category.id}
+          slug={category.slug}
+          title={`${category.icon} ${category.name}`}
+        />
+      ))}
 
       <View className="mx-3 mt-2 rounded-xl bg-red p-4">
         <Text className="mt-2 text-center text-lg font-extrabold text-white">Apna saman bechna hai?</Text>
@@ -160,4 +193,3 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
-
