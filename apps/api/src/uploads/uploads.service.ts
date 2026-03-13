@@ -14,7 +14,6 @@ type PresignedUpload = {
   publicUrl: string;
   kind: UploadKind;
   mimeType: string;
-  cacheControl: string;
 };
 
 @Injectable()
@@ -50,15 +49,9 @@ export class UploadsService {
     const uploads: PresignedUpload[] = [];
     for (const file of files) {
       const key = this.buildKey(userId, file);
-      const cacheControl =
-        file.kind === UploadKind.IMAGE
-          ? 'public, max-age=31536000, immutable'
-          : 'public, max-age=86400';
       const command = new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
-        ContentType: file.mimeType,
-        CacheControl: cacheControl,
       });
 
       const uploadUrl = await getSignedUrl(this.client!, command, { expiresIn: 15 * 60 });
@@ -68,7 +61,6 @@ export class UploadsService {
         publicUrl: this.toPublicUrl(key),
         kind: file.kind,
         mimeType: file.mimeType,
-        cacheControl,
       });
     }
 

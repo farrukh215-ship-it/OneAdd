@@ -16,7 +16,6 @@ type PresignResponse = {
     publicUrl: string;
     kind: UploadKind;
     mimeType: string;
-    cacheControl: string;
   }>;
 };
 
@@ -96,10 +95,7 @@ export async function uploadPostMediaToR2(input: { images: string[]; videos: str
     try {
       uploadResponse = await fetch(target.uploadUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': target.mimeType || descriptor.mimeType,
-          'Cache-Control': target.cacheControl || 'public, max-age=86400',
-        },
+        headers: {},
         body: descriptor.blob,
       });
     } catch {
