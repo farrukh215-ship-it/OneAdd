@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -27,9 +28,10 @@ export class ListingsService {
   }
 
   async create(userId: string, dto: CreateListingDto) {
+    const resolvedCategoryId = await this.resolveCategoryId(dto.categoryId);
     const activeCount = await this.listingsRepository.countActiveByUserAndCategory(
       userId,
-      dto.categoryId,
+      resolvedCategoryId,
     );
 
     if (activeCount >= 3) {
@@ -38,16 +40,22 @@ export class ListingsService {
       );
     }
 
+    const isStore = dto.isStore === true;
+    if (isStore && !dto.storeType) {
+      throw new BadRequestException('Dukaan ad ke liye store type select karein.');
+    }
+
     return this.listingsRepository.create({
       userId,
       title: dto.title,
       description: dto.description,
       price: dto.price,
-      categoryId: dto.categoryId,
+      categoryId: resolvedCategoryId,
       images: dto.images,
       videos: dto.videos ?? [],
       condition: dto.condition,
-      storeType: dto.storeType ?? 'ROAD',
+      isStore,
+      storeType: isStore ? dto.storeType : null,
       city: dto.city,
       area: dto.area,
       lat: dto.lat,
@@ -66,8 +74,10 @@ export class ListingsService {
         : filter.store === 'road'
           ? 'ROAD'
           : undefined);
+    const isStore = storeType ? true : filter.isStore ?? false;
     const where: Prisma.ListingWhereInput = {
       status: 'ACTIVE',
+      isStore,
       ...(filter.city ? { city: filter.city } : {}),
       ...(filter.condition ? { condition: filter.condition } : {}),
       ...(storeType ? { storeType } : {}),
@@ -108,6 +118,7 @@ export class ListingsService {
         category: filter.category,
         city: filter.city,
         condition: filter.condition as Condition | undefined,
+        isStore,
         storeType: storeType as StoreType | undefined,
         minPrice: filter.minPrice,
         maxPrice: filter.maxPrice,
@@ -165,7 +176,7 @@ export class ListingsService {
 
   async featured() {
     return this.listingsRepository.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', isStore: false },
       orderBy: { createdAt: 'desc' },
       take: 8,
       include: {
@@ -242,6 +253,17 @@ export class ListingsService {
       throw new ForbiddenException();
     }
 
+    const nextIsStore = dto.isStore ?? listing.isStore;
+    const nextStoreType = nextIsStore
+      ? dto.storeType ?? listing.storeType
+      : null;
+    const resolvedCategoryId = dto.categoryId
+      ? await this.resolveCategoryId(dto.categoryId)
+      : undefined;
+    if (nextIsStore && !nextStoreType) {
+      throw new BadRequestException('Dukaan ad ke liye store type select karein.');
+    }
+
     return this.listingsRepository.update({
       where: { id },
       data: {
@@ -251,7 +273,12 @@ export class ListingsService {
         ...(dto.images !== undefined ? { images: dto.images } : {}),
         ...(dto.videos !== undefined ? { videos: dto.videos } : {}),
         ...(dto.condition !== undefined ? { condition: dto.condition } : {}),
-        ...(dto.storeType !== undefined ? { storeType: dto.storeType } : {}),
+        ...((dto.isStore !== undefined || dto.storeType !== undefined)
+          ? { isStore: nextIsStore, storeType: nextStoreType }
+          : {}),
+        ...(resolvedCategoryId !== undefined
+          ? { category: { connect: { id: resolvedCategoryId } } }
+          : {}),
         ...(dto.city !== undefined ? { city: dto.city } : {}),
         ...(dto.area !== undefined ? { area: dto.area } : {}),
         ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
@@ -482,5 +509,15 @@ export class ListingsService {
       Math.sin(dLat / 2) ** 2 +
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
     return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  private async resolveCategoryId(input: string) {
+    const direct = await this.listingsRepository.findCategoryById(input);
+    if (direct) return direct.id;
+
+    const bySlug = await this.listingsRepository.findCategoryBySlug(input);
+    if (bySlug) return bySlug.id;
+
+    throw new BadRequestException('Selected category valid nahi hai. Dobara category choose karein.');
   }
 }

@@ -35,6 +35,13 @@ export function useListings(filters: ListingsFilters) {
         const filtered = fallbackListings.filter((listing) => {
           if (filters.category && listing.category.slug !== filters.category) return false;
           if (filters.city && listing.city.toLowerCase() !== filters.city.toLowerCase()) return false;
+          if (filters.store === 'online') {
+            if (!listing.isStore || listing.storeType !== 'ONLINE') return false;
+          } else if (filters.store === 'road') {
+            if (!listing.isStore || listing.storeType !== 'ROAD') return false;
+          } else if (listing.isStore) {
+            return false;
+          }
           return true;
         });
 

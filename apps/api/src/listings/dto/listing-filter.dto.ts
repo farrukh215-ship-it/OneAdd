@@ -1,6 +1,7 @@
 import { Condition, StoreType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsIn,
   IsNumber,
@@ -40,6 +41,13 @@ export class ListingFilterDto {
   @IsOptional()
   @IsEnum(StoreType)
   storeType?: StoreType;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === 'true' || value === true ? true : value === 'false' || value === false ? false : undefined,
+  )
+  @IsBoolean()
+  isStore?: boolean;
 
   @IsOptional()
   @IsIn(['online', 'road'])

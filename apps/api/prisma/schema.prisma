@@ -40,7 +40,8 @@ model Listing {
   images      String[]
   videos      String[]      @default([])
   condition   Condition     @default(USED)
-  storeType   StoreType     @default(ROAD)
+  storeType   StoreType?
+  isStore     Boolean       @default(false)
   city        String
   area        String?
   lat         Float?
@@ -56,6 +57,8 @@ model Listing {
 
   @@index([city])
   @@index([storeType])
+  @@index([isStore])
+  @@index([isStore, storeType])
   @@index([lat, lng])
 }
 

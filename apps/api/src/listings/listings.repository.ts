@@ -69,6 +69,10 @@ export class ListingsRepository {
     });
   }
 
+  findCategoryById(id: string): Promise<Category | null> {
+    return this.prisma.category.findUnique({ where: { id } });
+  }
+
   findCategoryBySlug(slug: string): Promise<Category | null> {
     return this.prisma.category.findUnique({ where: { slug } });
   }
@@ -135,6 +139,7 @@ export class ListingsRepository {
       FROM "Listing" l
       LEFT JOIN "Category" c ON c.id = l."categoryId"
       WHERE l.status = 'ACTIVE'
+        AND l."isStore" = false
         AND (
           similarity(lower(l.title), lower(${q})) > 0.15
           OR lower(l.title) ILIKE ${`%${q.toLowerCase()}%`}
@@ -159,6 +164,7 @@ export class ListingsRepository {
     category?: string;
     city?: string;
     condition?: Condition;
+    isStore: boolean;
     storeType?: StoreType;
     minPrice?: number;
     maxPrice?: number;
@@ -167,6 +173,9 @@ export class ListingsRepository {
   }): Promise<string[]> {
     const values: Array<string | number> = [params.q];
     const whereClauses: string[] = ["l.status = 'ACTIVE'"];
+
+    values.push(params.isStore ? 1 : 0);
+    whereClauses.push(`l."isStore" = ($${values.length} = 1)`);
 
     if (params.category) {
       values.push(params.category);

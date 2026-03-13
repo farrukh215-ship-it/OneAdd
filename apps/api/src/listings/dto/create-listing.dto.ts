@@ -2,6 +2,7 @@ import { Condition, StoreType } from '@prisma/client';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  IsBoolean,
   IsArray,
   IsEnum,
   IsNumber,
@@ -11,6 +12,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateListingDto {
@@ -47,6 +49,10 @@ export class CreateListingDto {
   condition!: 'NEW' | 'USED';
 
   @IsOptional()
+  @IsBoolean()
+  isStore?: boolean;
+
+  @ValidateIf((object: CreateListingDto) => object.isStore === true)
   @IsEnum(StoreType)
   storeType?: StoreType;
 

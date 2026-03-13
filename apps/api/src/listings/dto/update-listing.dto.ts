@@ -2,6 +2,7 @@ import { Condition, StoreType } from '@prisma/client';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  IsBoolean,
   IsArray,
   IsEnum,
   IsNumber,
@@ -47,6 +48,10 @@ export class UpdateListingDto {
   @IsOptional()
   @IsEnum(Condition)
   condition?: 'NEW' | 'USED';
+
+  @IsOptional()
+  @IsBoolean()
+  isStore?: boolean;
 
   @IsOptional()
   @IsEnum(StoreType)

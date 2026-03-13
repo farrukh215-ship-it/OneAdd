@@ -24,7 +24,7 @@ function fallbackListingsByCategory(city: string): Listing[] {
       images: [],
       videos: [],
       condition: 'USED',
-      storeType: 'ROAD',
+      isStore: false,
       city,
       area: 'DHA',
       lat: 31.5204,
@@ -45,7 +45,7 @@ function fallbackListingsByCategory(city: string): Listing[] {
       images: [],
       videos: [],
       condition: 'USED',
-      storeType: 'ONLINE',
+      isStore: false,
       city,
       area: 'Johar Town',
       lat: 31.4697,
@@ -133,4 +133,3 @@ export default async function HomePage({
     </>
   );
 }
-

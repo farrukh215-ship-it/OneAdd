@@ -79,6 +79,10 @@ async function main() {
       const city = cityNames[(category.order + i) % cityNames.length]!;
       const coords = cityCoords[city]!;
       const title = titles[i] ?? `${category.name} Listing ${i + 1}`;
+      const isStore = i === 1;
+      const storeType = isStore
+        ? (category.order % 2 === 0 ? 'ONLINE' : 'ROAD')
+        : null;
       await prisma.listing.upsert({
         where: { id: `seed-${category.slug}-${i + 1}` },
         update: {},
@@ -94,7 +98,8 @@ async function main() {
           ],
           videos: [],
           condition: i % 2 === 0 ? 'USED' : 'NEW',
-          storeType: i % 2 === 0 ? 'ROAD' : 'ONLINE',
+          isStore,
+          storeType,
           city,
           area: coords.area,
           lat: coords.lat + i * 0.01,

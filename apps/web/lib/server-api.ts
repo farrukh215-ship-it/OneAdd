@@ -46,8 +46,13 @@ export async function getListings(params: Record<string, string | number | undef
         const hay = `${listing.title} ${listing.description}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      if (params.store && String(params.store).toLowerCase() === 'online' && listing.storeType !== 'ONLINE') return false;
-      if (params.store && String(params.store).toLowerCase() === 'road' && listing.storeType !== 'ROAD') return false;
+      if (params.store && String(params.store).toLowerCase() === 'online') {
+        if (!listing.isStore || listing.storeType !== 'ONLINE') return false;
+      } else if (params.store && String(params.store).toLowerCase() === 'road') {
+        if (!listing.isStore || listing.storeType !== 'ROAD') return false;
+      } else if (listing.isStore) {
+        return false;
+      }
       return true;
     });
 

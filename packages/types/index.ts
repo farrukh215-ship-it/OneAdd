@@ -32,6 +32,7 @@ export interface Listing {
   videos?: string[];
   condition: "NEW" | "USED";
   storeType?: "ONLINE" | "ROAD";
+  isStore?: boolean;
   city: string;
   area?: string;
   lat?: number;

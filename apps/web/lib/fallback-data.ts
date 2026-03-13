@@ -1,16 +1,16 @@
 import type { Category, Listing } from '@tgmg/types';
 
 export const fallbackCategories: Category[] = [
-  { id: '1', name: 'Mobile Phones', slug: 'mobiles', icon: '📱' },
-  { id: '2', name: 'Cars', slug: 'cars', icon: '🚗' },
-  { id: '3', name: 'Property', slug: 'property', icon: '🏠' },
-  { id: '4', name: 'Electronics', slug: 'electronics', icon: '💻' },
-  { id: '5', name: 'Furniture', slug: 'furniture', icon: '🛋️' },
-  { id: '6', name: 'Cycles & Bikes', slug: 'cycles', icon: '🚲' },
-  { id: '7', name: 'Fashion', slug: 'fashion', icon: '👕' },
-  { id: '8', name: 'Books', slug: 'books', icon: '📚' },
-  { id: '9', name: 'Pets', slug: 'pets', icon: '🐾' },
-  { id: '10', name: 'Services', slug: 'services', icon: '⚙️' },
+  { id: 'mobiles', name: 'Mobile Phones', slug: 'mobiles', icon: '📱' },
+  { id: 'cars', name: 'Cars', slug: 'cars', icon: '🚗' },
+  { id: 'property', name: 'Property', slug: 'property', icon: '🏠' },
+  { id: 'electronics', name: 'Electronics', slug: 'electronics', icon: '💻' },
+  { id: 'furniture', name: 'Furniture', slug: 'furniture', icon: '🛋️' },
+  { id: 'cycles', name: 'Cycles & Bikes', slug: 'cycles', icon: '🚲' },
+  { id: 'fashion', name: 'Fashion', slug: 'fashion', icon: '👕' },
+  { id: 'books', name: 'Books', slug: 'books', icon: '📚' },
+  { id: 'pets', name: 'Pets', slug: 'pets', icon: '🐾' },
+  { id: 'services', name: 'Services', slug: 'services', icon: '⚙️' },
 ];
 
 const cityData: Array<{ city: string; area: string; lat: number; lng: number }> = [
@@ -24,6 +24,8 @@ const cityData: Array<{ city: string; area: string; lat: number; lng: number }> 
 export const fallbackListings: Listing[] = fallbackCategories.flatMap((category, index) =>
   Array.from({ length: 2 }).map((_, entryIndex) => {
     const city = cityData[(index + entryIndex) % cityData.length]!;
+    const isStore = entryIndex === 1;
+    const storeType = isStore ? (index % 2 === 0 ? 'ROAD' : 'ONLINE') : undefined;
     const now = new Date().toISOString();
     return {
       id: `demo-${category.slug}-${entryIndex + 1}`,
@@ -44,7 +46,8 @@ export const fallbackListings: Listing[] = fallbackCategories.flatMap((category,
       ],
       videos: [],
       condition: entryIndex === 0 ? 'USED' : 'NEW',
-      storeType: entryIndex === 0 ? 'ROAD' : 'ONLINE',
+      storeType,
+      isStore,
       city: city.city,
       area: city.area,
       lat: city.lat + entryIndex * 0.01,
@@ -56,4 +59,3 @@ export const fallbackListings: Listing[] = fallbackCategories.flatMap((category,
     };
   }),
 );
-

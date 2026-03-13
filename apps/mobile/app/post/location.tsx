@@ -20,6 +20,7 @@ const cityCoords: Record<string, { lat: number; lng: number }> = {
 export default function PostLocationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<Record<string, string>>();
+  const isDukaanMode = params.mode === 'dukaan' || params.mode === 'store';
   const [city, setCity] = useState(cities.includes(params.city || '') ? params.city! : cities[0]);
   const [area, setArea] = useState('');
   const [storeType, setStoreType] = useState<'ONLINE' | 'ROAD'>('ROAD');
@@ -62,7 +63,8 @@ export default function PostLocationScreen() {
         images: imageUrls,
         videos: videoUrls,
         condition: params.condition,
-        storeType,
+        isStore: isDukaanMode,
+        storeType: isDukaanMode ? storeType : undefined,
         city,
         area: area.trim() || undefined,
         lat: lat ?? coords?.lat,
@@ -159,29 +161,33 @@ export default function PostLocationScreen() {
           placeholder="Area optional hai"
         />
 
-        <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Dukaan Type</Text>
-        <View className="flex-row gap-2">
-          <Pressable
-            onPress={() => setStoreType('ROAD')}
-            className={`rounded-full px-4 py-3 ${
-              storeType === 'ROAD' ? 'bg-red' : 'border border-border bg-white'
-            }`}
-          >
-            <Text className={`font-semibold ${storeType === 'ROAD' ? 'text-white' : 'text-ink2'}`}>
-              Road Dukaan
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setStoreType('ONLINE')}
-            className={`rounded-full px-4 py-3 ${
-              storeType === 'ONLINE' ? 'bg-red' : 'border border-border bg-white'
-            }`}
-          >
-            <Text className={`font-semibold ${storeType === 'ONLINE' ? 'text-white' : 'text-ink2'}`}>
-              Online Dukaan
-            </Text>
-          </Pressable>
-        </View>
+        {isDukaanMode ? (
+          <>
+            <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Dukaan Type</Text>
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => setStoreType('ROAD')}
+                className={`rounded-full px-4 py-3 ${
+                  storeType === 'ROAD' ? 'bg-red' : 'border border-border bg-white'
+                }`}
+              >
+                <Text className={`font-semibold ${storeType === 'ROAD' ? 'text-white' : 'text-ink2'}`}>
+                  Road Dukaan
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setStoreType('ONLINE')}
+                className={`rounded-full px-4 py-3 ${
+                  storeType === 'ONLINE' ? 'bg-red' : 'border border-border bg-white'
+                }`}
+              >
+                <Text className={`font-semibold ${storeType === 'ONLINE' ? 'text-white' : 'text-ink2'}`}>
+                  Online Dukaan
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
 
         <View className="mt-5 rounded-xl bg-[#FFF8E1] p-4">
           <Text className="text-sm font-semibold text-[#8A6D1D]">

@@ -50,16 +50,21 @@ export async function uploadMediaToR2(items: UploadItem[]) {
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i]!;
     const target = targets[i]!;
-    const response = await fetch(target.uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': target.mimeType || item.file.type,
-      },
-      body: item.file,
-    });
+    let response: Response;
+    try {
+      response = await fetch(target.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': target.mimeType || item.file.type,
+        },
+        body: item.file,
+      });
+    } catch {
+      throw new Error('Media upload network/CORS failure');
+    }
 
     if (!response.ok) {
-      throw new Error('Media upload failed');
+      throw new Error(`Media upload failed (${response.status})`);
     }
 
     uploaded.push({
@@ -71,4 +76,3 @@ export async function uploadMediaToR2(items: UploadItem[]) {
 
   return uploaded;
 }
-

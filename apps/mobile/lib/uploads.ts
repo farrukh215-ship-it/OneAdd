@@ -91,16 +91,21 @@ export async function uploadPostMediaToR2(input: { images: string[]; videos: str
   for (let i = 0; i < descriptors.length; i += 1) {
     const descriptor = descriptors[i]!;
     const target = presign.data.files[i]!;
-    const uploadResponse = await fetch(target.uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': target.mimeType || descriptor.mimeType,
-      },
-      body: descriptor.blob,
-    });
+    let uploadResponse: Response;
+    try {
+      uploadResponse = await fetch(target.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': target.mimeType || descriptor.mimeType,
+        },
+        body: descriptor.blob,
+      });
+    } catch {
+      throw new Error('Upload network/CORS failure');
+    }
 
     if (!uploadResponse.ok) {
-      throw new Error('Upload failed');
+      throw new Error(`Upload failed (${uploadResponse.status})`);
     }
 
     if (descriptor.kind === 'image') imageUrls.push(target.publicUrl);
@@ -109,4 +114,3 @@ export async function uploadPostMediaToR2(input: { images: string[]; videos: str
 
   return { imageUrls, videoUrls };
 }
-

@@ -21,6 +21,7 @@ export default function PostPage() {
   const router = useRouter();
   const { data: apiCategories = [] } = useCategories();
   const categories = apiCategories.length ? apiCategories : fallbackCategories;
+  const [isDukaanMode, setIsDukaanMode] = useState(false);
 
   const [step, setStep] = useState(1);
   const [categoryId, setCategoryId] = useState('');
@@ -46,6 +47,16 @@ export default function PostPage() {
       router.replace('/auth?next=/post');
     }
   }, [router]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsDukaanMode(params.get('mode') === 'dukaan' || params.get('mode') === 'store');
+    if (params.get('store') === 'online') {
+      setStoreType('ONLINE');
+    } else if (params.get('store') === 'road') {
+      setStoreType('ROAD');
+    }
+  }, []);
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -267,7 +278,8 @@ export default function PostPage() {
         images: orderedImages,
         videos: uploadedVideos,
         condition,
-        storeType,
+        isStore: isDukaanMode,
+        storeType: isDukaanMode ? storeType : undefined,
         city,
         area: area.trim() || undefined,
         lat,
@@ -283,8 +295,14 @@ export default function PostPage() {
       }
     } catch (error: any) {
       const serverMessage = error?.response?.data?.message;
-      const messageText = Array.isArray(serverMessage) ? serverMessage[0] : serverMessage;
-      setMessage(typeof messageText === 'string' ? messageText : 'Ad publish nahi hui, dobara try karein.');
+      const messageText = Array.isArray(serverMessage)
+        ? serverMessage[0]
+        : serverMessage ?? error?.message;
+      if (typeof messageText === 'string' && /upload|network|failed|cors/i.test(messageText)) {
+        setMessage('Media upload fail hui. Cloudflare R2 CORS/API config check karke dobara try karein.');
+      } else {
+        setMessage(typeof messageText === 'string' ? messageText : 'Ad publish nahi hui, dobara try karein.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -304,6 +322,11 @@ export default function PostPage() {
           {selectedCategory ? (
             <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-red/20 bg-red-light px-3 py-1 text-xs font-bold text-red">
               {selectedCategory.icon} Selected: {selectedCategory.name}
+            </div>
+          ) : null}
+          {isDukaanMode ? (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-green/20 bg-green-light px-3 py-1 text-xs font-bold text-green">
+              Dukaan ad mode active
             </div>
           ) : null}
         </div>
@@ -443,14 +466,16 @@ export default function PostPage() {
               ) : null}
             </div>
 
-            <div className="flex gap-2">
-              <button type="button" className={`chip ${storeType === 'ROAD' ? 'active' : ''}`} onClick={() => setStoreType('ROAD')}>
-                Road Dukaan
-              </button>
-              <button type="button" className={`chip ${storeType === 'ONLINE' ? 'active' : ''}`} onClick={() => setStoreType('ONLINE')}>
-                Online Dukaan
-              </button>
-            </div>
+            {isDukaanMode ? (
+              <div className="flex gap-2">
+                <button type="button" className={`chip ${storeType === 'ROAD' ? 'active' : ''}`} onClick={() => setStoreType('ROAD')}>
+                  Road Dukaan
+                </button>
+                <button type="button" className={`chip ${storeType === 'ONLINE' ? 'active' : ''}`} onClick={() => setStoreType('ONLINE')}>
+                  Online Dukaan
+                </button>
+              </div>
+            ) : null}
 
             <div className="rounded-[16px] border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
               ⚠️ Rule: Aap ek category mein max 3 active ads post kar sakte hain.
@@ -463,7 +488,8 @@ export default function PostPage() {
               <div>Condition: {condition}</div>
               <div>Images: {imageItems.length} / 6</div>
               <div>Video: {videoItems.length} / 1</div>
-              <div>Store: {storeType}</div>
+              <div>Ad Type: {isDukaanMode ? 'Dukaan' : 'Normal'}</div>
+              {isDukaanMode ? <div>Store: {storeType}</div> : null}
             </div>
           </div>
         ) : null}
