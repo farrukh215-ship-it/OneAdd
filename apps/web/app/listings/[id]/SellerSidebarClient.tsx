@@ -1,16 +1,25 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { api } from '../../../lib/api';
 import { distanceFromCity } from '../../../lib/distance';
+import {
+  CalendarIcon,
+  ClockIcon,
+  LocationIcon,
+  PhoneIcon,
+  VerifiedIcon,
+  WhatsAppIcon,
+} from './DetailIcons';
 
 function formatAbsolute(value?: string | null) {
   if (!value) return 'N/A';
   return new Date(value).toLocaleString('en-GB', {
     day: '2-digit',
-    month: '2-digit',
+    month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -20,7 +29,7 @@ function formatAbsolute(value?: string | null) {
 function formatRelative(value?: string | null) {
   if (!value) return 'N/A';
   const diffMs = Date.now() - new Date(value).getTime();
-  if (diffMs < 60_000) return 'abhi abhi';
+  if (diffMs < 60_000) return 'Abhi active';
   const minutes = Math.floor(diffMs / 60_000);
   if (minutes < 60) return `${minutes} min pehle`;
   const hours = Math.floor(minutes / 60);
@@ -43,6 +52,26 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
 
 function normalizePhoneForWhatsapp(phone: string) {
   return phone.replace(/[^\d]/g, '');
+}
+
+function MiniStat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="detail-stat">
+      <div className="flex items-center gap-2 text-ink2">
+        {icon}
+        <span className="detail-stat-label">{label}</span>
+      </div>
+      <div className="detail-stat-value">{value}</div>
+    </div>
+  );
 }
 
 export function SellerSidebarClient({
@@ -90,13 +119,16 @@ export function SellerSidebarClient({
     if (typeof window === 'undefined') return;
 
     const savedCity = window.localStorage.getItem('tgmg_city') || undefined;
-    const estimated = distanceFromCity(savedCity, sellerCity, undefined, 
+    const estimated = distanceFromCity(
+      savedCity,
+      sellerCity,
+      undefined,
       typeof sellerLat === 'number' && typeof sellerLng === 'number'
         ? { lat: sellerLat, lng: sellerLng }
         : undefined,
     );
     if (estimated !== null) {
-      setDistanceText(`${estimated} km aap ke city reference se`);
+      setDistanceText(`${estimated} km city match se`);
     }
 
     if (!navigator.geolocation || typeof sellerLat !== 'number' || typeof sellerLng !== 'number') {
@@ -129,8 +161,7 @@ export function SellerSidebarClient({
   };
 
   const revealPhone = async () => {
-    if (phone) return;
-    if (isLoading) return;
+    if (phone || isLoading) return;
     if (!currentUser) {
       redirectToAuth();
       return;
@@ -154,7 +185,11 @@ export function SellerSidebarClient({
     try {
       setLoadingAction('whatsapp');
       const contactPhone = phone || (await fetchPhone());
-      window.open(`https://wa.me/${normalizePhoneForWhatsapp(contactPhone)}`, '_blank', 'noopener,noreferrer');
+      window.open(
+        `https://wa.me/${normalizePhoneForWhatsapp(contactPhone)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
     } finally {
       setLoadingAction(null);
     }
@@ -162,54 +197,107 @@ export function SellerSidebarClient({
 
   return (
     <>
-      <div className="surface p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F3F4F6] font-bold text-ink2">
-            {initials}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-ink">
-              {sellerName}
-              {sellerVerified ? <span className="text-green">✓</span> : null}
+      <div className="space-y-4 lg:sticky lg:top-[86px]">
+        <div className="surface-premium overflow-hidden p-5">
+          <div className="rounded-[18px] border border-black/5 bg-[linear-gradient(135deg,_rgba(248,249,251,0.96),_rgba(255,255,255,0.96))] p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#F3F4F6] text-lg font-extrabold text-ink2 shadow-sm">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-base font-extrabold text-ink">
+                  <span className="truncate">{sellerName}</span>
+                  {sellerVerified ? (
+                    <span className="text-green">
+                      <VerifiedIcon />
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <span className="detail-chip">
+                    <LocationIcon />
+                    <span>{sellerLocation}</span>
+                  </span>
+                  {distanceText ? (
+                    <span className="detail-chip bg-[rgba(46,125,50,0.09)] text-green">
+                      <LocationIcon />
+                      <span>{distanceText}</span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-ink2">{sellerLocation}</div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <MiniStat label="Joined" value={formatAbsolute(joinedAt)} icon={<CalendarIcon />} />
+              <MiniStat label="Last online" value={formatRelative(sellerLastOnlineAt)} icon={<ClockIcon />} />
+              <MiniStat label="Posted" value={formatAbsolute(listingCreatedAt)} icon={<CalendarIcon />} />
+              <MiniStat label="Updated" value={formatRelative(listingUpdatedAt)} icon={<ClockIcon />} />
+            </div>
           </div>
         </div>
-        <div className="mt-3 space-y-1 text-xs text-ink2">
-          <div>Joined: {formatAbsolute(joinedAt)}</div>
-          <div>Ad posted: {formatAbsolute(listingCreatedAt)}</div>
-          <div>Ad updated: {formatRelative(listingUpdatedAt)}</div>
-          <div>Last online: {formatRelative(sellerLastOnlineAt)}</div>
-          {distanceText ? <div>Distance: {distanceText}</div> : null}
+
+        <div className="surface-premium p-5">
+          <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-ink3">
+            Contact seller
+          </div>
+          <div className="grid gap-3">
+            <button
+              type="button"
+              onClick={revealPhone}
+              className="btn-red w-full rounded-2xl !py-3.5"
+              disabled={loadingAction !== null}
+            >
+              <PhoneIcon />
+              <span>
+                {loadingAction === 'phone'
+                  ? 'Number load ho raha hai...'
+                  : phone || 'Phone Number Dekho'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={openWhatsapp}
+              className="btn-white w-full rounded-2xl !py-3.5"
+              disabled={loadingAction !== null}
+            >
+              <WhatsAppIcon />
+              <span>
+                {loadingAction === 'whatsapp' ? 'WhatsApp khul raha hai...' : 'WhatsApp pe Message'}
+              </span>
+            </button>
+            {!currentUser && !isLoading ? (
+              <Link
+                href={`/auth?next=${encodeURIComponent(`/listings/${listingId}`)}`}
+                className="text-center text-xs font-semibold text-ink2"
+              >
+                Number dekhne ke liye login zaroori hai
+              </Link>
+            ) : null}
+          </div>
         </div>
-        <div className="mt-2 text-sm font-semibold text-green">Dealer nahi - asli malik</div>
       </div>
 
-      <div className="surface p-4">
-        <div className="grid gap-3">
+      <div className="mobile-safe-bottom fixed inset-x-0 bottom-14 z-40 border-t border-border bg-white/96 px-3 py-3 backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-[560px] grid-cols-2 gap-2">
           <button
             type="button"
             onClick={revealPhone}
-            className="btn-red"
+            className="btn-red w-full !rounded-[16px] !py-3"
             disabled={loadingAction !== null}
           >
-            {loadingAction === 'phone'
-              ? 'Number load ho raha hai...'
-              : phone || 'Phone Number Dekho'}
+            <PhoneIcon />
+            <span className="truncate text-xs">{phone || 'Phone'}</span>
           </button>
           <button
             type="button"
             onClick={openWhatsapp}
-            className="btn-white"
+            className="btn-white w-full !rounded-[16px] !py-3"
             disabled={loadingAction !== null}
           >
-            {loadingAction === 'whatsapp' ? 'WhatsApp khul raha hai...' : 'WhatsApp pe Message'}
+            <WhatsAppIcon />
+            <span className="truncate text-xs">WhatsApp</span>
           </button>
-          {!currentUser && !isLoading ? (
-            <Link href={`/auth?next=${encodeURIComponent(`/listings/${listingId}`)}`} className="text-center text-xs font-semibold text-ink3">
-              Number dekhne ke liye login zaroori hai
-            </Link>
-          ) : null}
         </div>
       </div>
     </>
