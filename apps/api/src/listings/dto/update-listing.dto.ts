@@ -1,4 +1,4 @@
-import { Condition, StoreType } from '@prisma/client';
+import { Condition, ListingStatus, StoreType } from '@prisma/client';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -80,4 +80,8 @@ export class UpdateListingDto {
   @Min(-180)
   @Max(180)
   lng?: number;
+
+  @IsOptional()
+  @IsEnum(ListingStatus)
+  status?: ListingStatus;
 }

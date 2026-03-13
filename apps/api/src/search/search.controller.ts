@@ -9,5 +9,9 @@ export class SearchController {
   suggestions(@Query('q') q?: string) {
     return this.listingsService.searchSuggestions(q ?? '');
   }
-}
 
+  @Get('popular')
+  popular() {
+    return this.listingsService.popularSearches();
+  }
+}

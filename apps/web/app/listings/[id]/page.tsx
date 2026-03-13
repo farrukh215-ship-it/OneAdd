@@ -146,6 +146,8 @@ export default async function ListingDetailPage({
           </aside>
         </div>
 
+        <ListingPublicChat listingId={listing.id} askingPrice={listing.price} />
+
         <div className="surface-premium mt-7 p-4 md:p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -161,7 +163,6 @@ export default async function ListingDetailPage({
           <ListingGrid listings={related.data.filter((item) => item.id !== listing.id).slice(0, 4)} />
         </div>
 
-        <ListingPublicChat listingId={listing.id} askingPrice={listing.price} />
       </div>
     </div>
   );

@@ -51,6 +51,12 @@ export class ListingsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('my/dashboard')
+  dashboard(@CurrentUser() user: User) {
+    return this.listingsService.dashboard(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('saved')
   saved(@CurrentUser() user: User) {
     return this.listingsService.saved(user);

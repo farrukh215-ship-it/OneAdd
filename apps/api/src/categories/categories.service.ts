@@ -6,6 +6,8 @@ export class CategoriesService {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll() {
+    const expiryCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const soldCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return this.prisma.category.findMany({
       orderBy: { order: 'asc' },
       select: {
@@ -16,7 +18,13 @@ export class CategoriesService {
         _count: {
           select: {
             listings: {
-              where: { status: 'ACTIVE' },
+              where: {
+                createdAt: { gte: expiryCutoff },
+                OR: [
+                  { status: 'ACTIVE' },
+                  { status: 'SOLD', updatedAt: { gte: soldCutoff } },
+                ],
+              },
             },
           },
         },
@@ -24,4 +32,3 @@ export class CategoriesService {
     });
   }
 }
-

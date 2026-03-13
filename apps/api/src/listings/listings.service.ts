@@ -16,6 +16,7 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { CreateListingMessageDto } from './dto/create-listing-message.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ListingsService {
@@ -30,7 +31,10 @@ export class ListingsService {
     updatedAt: true,
   } as const;
 
-  constructor(private readonly listingsRepository: ListingsRepository) {
+  constructor(
+    private readonly listingsRepository: ListingsRepository,
+    private readonly prisma: PrismaService,
+  ) {
     this.redis = new Redis(process.env.REDIS_URL ?? 'redis://127.0.0.1:6379', {
       maxRetriesPerRequest: 1,
     });
@@ -75,6 +79,7 @@ export class ListingsService {
   async findAll(
     filter: ListingFilterDto,
   ): Promise<PaginatedResponse<Listing & { category: unknown; user: unknown }>> {
+    const publicVisibilityWhere = this.publicVisibilityWhere();
     const normalizedQ = filter.q?.trim();
     const storeType =
       filter.storeType ??
@@ -85,7 +90,7 @@ export class ListingsService {
           : undefined);
     const isStore = storeType ? true : filter.isStore ?? false;
     const where: Prisma.ListingWhereInput = {
-      status: 'ACTIVE',
+      ...publicVisibilityWhere,
       isStore,
       ...(filter.city
         ? { city: { equals: filter.city.trim(), mode: 'insensitive' } }
@@ -188,7 +193,7 @@ export class ListingsService {
 
   async featured() {
     return this.listingsRepository.findMany({
-      where: { status: 'ACTIVE', isStore: false },
+      where: { ...this.publicVisibilityWhere(), isStore: false },
       orderBy: { createdAt: 'desc' },
       take: 8,
       include: {
@@ -218,7 +223,7 @@ export class ListingsService {
       },
     });
 
-    if (!listing || listing.status === 'DELETED') {
+    if (!listing || !this.isPubliclyVisible(listing.status, listing.createdAt, listing.updatedAt)) {
       throw new NotFoundException('Listing not found');
     }
 
@@ -295,6 +300,7 @@ export class ListingsService {
         ...(dto.area !== undefined ? { area: dto.area } : {}),
         ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
         ...(dto.lng !== undefined ? { lng: dto.lng } : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
       },
       include: {
         category: true,
@@ -363,7 +369,7 @@ export class ListingsService {
   async saved(currentUser: User) {
     const savedAds = await this.listingsRepository.findMany({
       where: {
-        status: 'ACTIVE',
+        ...this.publicVisibilityWhere(),
         savedBy: { some: { userId: currentUser.id } },
       },
       orderBy: { createdAt: 'desc' },
@@ -428,10 +434,15 @@ export class ListingsService {
     }
 
     const thread = await this.listingsRepository.findOrCreateThread(id);
+    const messagePayload = this.buildChatMessagePayload(dto.message, dto.imageUrl);
+    if (!messagePayload) {
+      throw new BadRequestException('Message ya image required hai.');
+    }
+
     return this.listingsRepository.createThreadMessage({
       threadId: thread.id,
       userId: currentUser.id,
-      message: dto.message.trim(),
+      message: messagePayload,
       offerAmount: null,
     });
   }
@@ -467,6 +478,68 @@ export class ListingsService {
 
   async searchSuggestions(q: string) {
     return this.listingsRepository.findSuggestions(q, 8);
+  }
+
+  async popularSearches() {
+    return this.listingsRepository.findPopularSuggestions(8);
+  }
+
+  async dashboard(currentUser: User) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const listings = await this.prisma.listing.findMany({
+      where: { userId: currentUser.id },
+      select: {
+        id: true,
+        views: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const listingIds = listings.map((listing) => listing.id);
+    const [contactCount, groupedContacts] = listingIds.length
+      ? await Promise.all([
+          this.prisma.contactLog.count({
+            where: { listingId: { in: listingIds } },
+          }),
+          this.prisma.contactLog.findMany({
+            where: {
+              listingId: { in: listingIds },
+              createdAt: { gte: sevenDaysAgo },
+            },
+            select: { createdAt: true },
+          }),
+        ])
+      : [0, []];
+
+    const totalViews = listings.reduce((sum, listing) => sum + listing.views, 0);
+    const points = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - (6 - index));
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      return {
+        label: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        contacts: groupedContacts.filter(
+          (entry) => entry.createdAt >= date && entry.createdAt < nextDate,
+        ).length,
+        listings: listings.filter(
+          (entry) => entry.createdAt >= date && entry.createdAt < nextDate,
+        ).length,
+      };
+    });
+
+    return {
+      totalViews,
+      totalContacts: contactCount,
+      activeListings: listings.filter((listing) => listing.status === 'ACTIVE').length,
+      soldListings: listings.filter((listing) => listing.status === 'SOLD').length,
+      inactiveListings: listings.filter((listing) => listing.status === 'DELETED').length,
+      points,
+    };
   }
 
   private applyDistanceSorting(
@@ -531,5 +604,35 @@ export class ListingsService {
     if (bySlug) return bySlug.id;
 
     throw new BadRequestException('Selected category valid nahi hai. Dobara category choose karein.');
+  }
+
+  private buildChatMessagePayload(message?: string, imageUrl?: string) {
+    const trimmedMessage = message?.trim() ?? '';
+    const trimmedImage = imageUrl?.trim() ?? '';
+    if (!trimmedMessage && !trimmedImage) return '';
+    if (trimmedImage && trimmedMessage) return `[image]${trimmedImage}\n${trimmedMessage}`;
+    if (trimmedImage) return `[image]${trimmedImage}`;
+    return trimmedMessage;
+  }
+
+  private publicVisibilityWhere(): Prisma.ListingWhereInput {
+    const now = Date.now();
+    const soldCutoff = new Date(now - 24 * 60 * 60 * 1000);
+    const expiryCutoff = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    return {
+      createdAt: { gte: expiryCutoff },
+      OR: [
+        { status: 'ACTIVE' },
+        { status: 'SOLD', updatedAt: { gte: soldCutoff } },
+      ],
+    };
+  }
+
+  private isPubliclyVisible(status: string, createdAt: Date, updatedAt: Date) {
+    const expired = createdAt.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const soldExpired =
+      status === 'SOLD' && updatedAt.getTime() < Date.now() - 24 * 60 * 60 * 1000;
+    return !expired && status !== 'DELETED' && !soldExpired;
   }
 }

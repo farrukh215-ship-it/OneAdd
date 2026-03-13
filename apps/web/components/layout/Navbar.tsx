@@ -1,6 +1,6 @@
 'use client';
 
-import type { SearchSuggestion } from '@tgmg/types';
+import type { NotificationItem, SearchSuggestion } from '@tgmg/types';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -37,8 +37,11 @@ export function Navbar() {
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [city, setCity] = useState(searchParams.get('city') ?? 'Lahore');
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [popularSearches, setPopularSearches] = useState<SearchSuggestion[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { currentUser, logout } = useAuth();
 
   useEffect(() => {
@@ -55,6 +58,24 @@ export function Navbar() {
   useEffect(() => {
     setQuery(searchParams.get('q') ?? '');
   }, [searchParams]);
+
+  useEffect(() => {
+    api
+      .get<SearchSuggestion[]>('/search/popular')
+      .then((response) => setPopularSearches(response.data))
+      .catch(() => setPopularSearches([]));
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      return;
+    }
+    api
+      .get<NotificationItem[]>('/auth/notifications')
+      .then((response) => setNotifications(response.data))
+      .catch(() => setNotifications([]));
+  }, [currentUser]);
 
   useEffect(() => {
     const value = query.trim();
@@ -89,7 +110,6 @@ export function Navbar() {
     const cleanQuery = nextQuery.trim();
     if (cleanQuery) {
       params.set('q', cleanQuery);
-      // Search by default global rakho; city user later listings page se narrow kar sakta hai.
       params.delete('city');
     } else {
       params.delete('q');
@@ -108,8 +128,9 @@ export function Navbar() {
 
   const predictionItems = useMemo<SearchSuggestion[]>(() => {
     if (query.trim().length >= 2) return suggestions;
-    return recentSearches.map((item) => ({ label: item, city: undefined }));
-  }, [query, suggestions, recentSearches]);
+    const recent = recentSearches.map((item) => ({ label: item }));
+    return [...recent, ...popularSearches].slice(0, 8);
+  }, [popularSearches, query, recentSearches, suggestions]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-white">
@@ -134,10 +155,10 @@ export function Navbar() {
             />
           </label>
 
-          {open && predictionItems.length > 0 ? (
+          {open ? (
             <div className="absolute left-0 right-0 top-[44px] z-50 rounded-2xl border border-border bg-white p-2 shadow-card md:top-[48px]">
               <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink3">
-                {query.trim().length >= 2 ? 'Predictions' : 'Recent Searches'}
+                {query.trim().length >= 2 ? 'Predictions' : 'Recent & Popular'}
               </div>
               {predictionItems.map((item, index) => (
                 <button
@@ -159,6 +180,11 @@ export function Navbar() {
                   </span>
                 </button>
               ))}
+              {!query.trim() && popularSearches.length ? (
+                <div className="px-2 pt-2 text-xs text-ink3">
+                  Popular: {popularSearches.slice(0, 4).map((item) => item.label).join(', ')}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </form>
@@ -182,6 +208,50 @@ export function Navbar() {
             ))}
           </select>
         </div>
+
+        {currentUser ? (
+          <div className="relative hidden lg:block">
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen((current) => !current)}
+              className="relative rounded-xl border border-border px-4 py-2 text-sm font-bold text-ink"
+            >
+              Bell
+              {notifications.length ? (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red px-1 text-[10px] text-white">
+                  {Math.min(notifications.length, 9)}
+                </span>
+              ) : null}
+            </button>
+            {notificationsOpen ? (
+              <div className="absolute right-0 top-12 z-50 w-[340px] rounded-3xl border border-border bg-white p-3 shadow-card">
+                <div className="px-2 pb-2 text-sm font-extrabold text-ink">Smart Notifications Center</div>
+                <div className="max-h-[360px] space-y-2 overflow-y-auto">
+                  {notifications.length ? (
+                    notifications.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          router.push(item.href);
+                        }}
+                        className="block w-full rounded-2xl border border-border p-3 text-left hover:bg-[#F8F9FB]"
+                      >
+                        <div className="text-sm font-bold text-ink">{item.title}</div>
+                        <div className="mt-1 text-xs text-ink2">{item.body}</div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl bg-[#F8F9FB] p-3 text-sm text-ink2">
+                      Abhi koi nayi notification nahi hai.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <Link
           href="/post"

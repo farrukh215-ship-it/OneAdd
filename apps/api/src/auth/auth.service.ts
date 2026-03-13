@@ -14,6 +14,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { OtpProviderService } from '../otp/otp.provider.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserDto } from './dto/user.dto';
+import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
@@ -62,6 +63,35 @@ export class AuthService {
     return {
       success: true,
       message: 'OTP bheji gayi hai',
+      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
+    };
+  }
+
+  async sendForgotPasswordOtp(phone: string) {
+    const existingUser = await this.prisma.user.findUnique({ where: { phone } });
+    if (!existingUser || !existingUser.passwordHash) {
+      throw new UnauthorizedException('Is phone number ke sath account nahi mila');
+    }
+
+    const key = `forgot_otp_limit:${phone}`;
+    const current = await this.redis.incr(key);
+    if (current === 1) {
+      await this.redis.expire(key, 3600);
+    }
+    if (current > 3) {
+      throw new HttpException(
+        'Forgot password OTP limit exceed ho gayi hai',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const otpCode = String(randomInt(100000, 999999));
+    await this.redis.set(`forgot_otp:${phone}`, otpCode, 'EX', 300);
+    await this.otpProviderService.sendOtp(phone);
+
+    return {
+      success: true,
+      message: 'Password reset OTP bheji gayi hai',
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
     };
   }
@@ -169,8 +199,146 @@ export class AuthService {
     };
   }
 
+  async resetForgottenPassword(payload: ForgotPasswordResetDto) {
+    if (payload.password !== payload.confirmPassword) {
+      throw new HttpException('Password match nahi kar raha', HttpStatus.BAD_REQUEST);
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { phone: payload.phone } });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Is phone number ke sath account nahi mila');
+    }
+
+    const code = await this.redis.get(`forgot_otp:${payload.phone}`);
+    if (!code || code !== payload.otpCode) {
+      throw new UnauthorizedException('OTP ghalat hai ya expire ho gaya');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: this.hashPassword(payload.password),
+      },
+    });
+
+    await this.redis.del(`forgot_otp:${payload.phone}`);
+
+    const accessToken = await this.jwtService.signAsync(
+      { sub: updatedUser.id, phone: updatedUser.phone },
+      { expiresIn: '30d' },
+    );
+
+    return {
+      accessToken,
+      user: UserDto.fromUser(updatedUser),
+      isNewUser: false,
+    };
+  }
+
   me(user: User) {
     return UserDto.fromUser(user);
+  }
+
+  async notifications(user: User) {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+    const [myListings, savedAds, recentContacts] = await Promise.all([
+      this.prisma.listing.findMany({
+        where: { userId: user.id },
+        select: {
+          id: true,
+          title: true,
+          categoryId: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.savedAd.findMany({
+        where: { userId: user.id },
+        include: {
+          listing: {
+            select: {
+              id: true,
+              title: true,
+              updatedAt: true,
+              categoryId: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      this.prisma.contactLog.groupBy({
+        by: ['listingId'],
+        where: {
+          listing: { userId: user.id },
+          createdAt: { gte: sevenDaysAgo },
+        },
+        _count: { listingId: true },
+        _max: { createdAt: true },
+      }),
+    ]);
+
+    const contactItems = recentContacts
+      .map((item) => {
+        const listing = myListings.find((entry) => entry.id === item.listingId);
+        if (!listing || !item._max.createdAt) return null;
+        return {
+          id: `contact-${listing.id}`,
+          title: 'Aapki listing pe contact hua',
+          body: `"${listing.title}" par ${item._count.listingId} logon ne rabta kiya`,
+          href: `/listings/${listing.id}`,
+          type: 'contact' as const,
+          createdAt: item._max.createdAt.toISOString(),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+    const savedUpdateItems = savedAds
+      .filter((entry) => entry.listing.updatedAt >= sevenDaysAgo)
+      .map((entry) => ({
+        id: `saved-${entry.listing.id}`,
+        title: 'Saved item update hui',
+        body: `"${entry.listing.title}" ki price ya details update hui hain`,
+        href: `/listings/${entry.listing.id}`,
+        type: 'saved_update' as const,
+        createdAt: entry.listing.updatedAt.toISOString(),
+      }));
+
+    const watchedCategoryIds = Array.from(
+      new Set([
+        ...savedAds.map((entry) => entry.listing.categoryId),
+        ...myListings.map((entry) => entry.categoryId),
+      ]),
+    );
+
+    const freshListings = watchedCategoryIds.length
+      ? await this.prisma.listing.findMany({
+          where: {
+            userId: { not: user.id },
+            categoryId: { in: watchedCategoryIds },
+            status: 'ACTIVE',
+            createdAt: { gte: threeDaysAgo },
+          },
+          select: { id: true, title: true, createdAt: true, category: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 6,
+        })
+      : [];
+
+    const freshItems = freshListings.map((listing) => ({
+      id: `fresh-${listing.id}`,
+      title: 'Aapki pasand ki category me naya ad aaya',
+      body: `"${listing.title}" ${listing.category.name} category me available hai`,
+      href: `/listings/${listing.id}`,
+      type: 'new_listing' as const,
+      createdAt: listing.createdAt.toISOString(),
+    }));
+
+    return [...contactItems, ...savedUpdateItems, ...freshItems]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 20);
   }
 
   private hashPassword(password: string) {

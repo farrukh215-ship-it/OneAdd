@@ -52,6 +52,7 @@ export interface ListingMessage {
   userId: string;
   user?: Pick<User, "id" | "name" | "city" | "verified">;
   message: string;
+  imageUrl?: string | null;
   offerAmount?: number | null;
   createdAt: string;
 }
@@ -78,6 +79,30 @@ export interface SearchSuggestion {
   categorySlug?: string;
   categoryName?: string;
   city?: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  href: string;
+  type: "contact" | "saved_update" | "new_listing";
+  createdAt: string;
+}
+
+export interface ListingDashboardPoint {
+  label: string;
+  contacts: number;
+  listings: number;
+}
+
+export interface ListingDashboard {
+  totalViews: number;
+  totalContacts: number;
+  activeListings: number;
+  soldListings: number;
+  inactiveListings: number;
+  points: ListingDashboardPoint[];
 }
 
 export interface ApiResponse<T> {

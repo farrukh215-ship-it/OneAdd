@@ -1,4 +1,5 @@
 import { CategorySectionCarousel } from '../components/home/CategorySectionCarousel';
+import { HomeFeedClient } from '../components/home/HomeFeedClient';
 import { CategoryTabs } from '../components/home/CategoryTabs';
 import { HeroBanner } from '../components/home/HeroBanner';
 import { QuickActions } from '../components/home/QuickActions';
@@ -48,7 +49,7 @@ export default async function HomePage({
   return (
     <>
       <CategoryTabs
-        categories={[{ id: 'all', name: 'Sab', slug: '', icon: 'Home' }, ...categories]}
+        categories={[{ id: 'all', name: 'Sab', slug: '', icon: 'All' }, ...categories]}
         activeSlug={activeCategory}
         city={city}
       />
@@ -67,6 +68,8 @@ export default async function HomePage({
           </div>
         </div>
       </section>
+
+      <HomeFeedClient featured={featured} fallbackCity={city} />
 
       <section className="page-wrap">
         <StripBanner />

@@ -33,6 +33,7 @@ export function ListingMediaCarousel({
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [heroFailed, setHeroFailed] = useState<Record<string, true>>({});
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const mediaItems = useMemo<MediaItem[]>(
     () =>
@@ -80,7 +81,8 @@ export function ListingMediaCarousel({
   const showControls = mediaItems.length > 1;
 
   return (
-    <div className="surface-premium overflow-hidden p-3 md:p-4">
+    <>
+      <div className="surface-premium overflow-hidden p-3 md:p-4">
       <div
         className="relative aspect-[5/4] overflow-hidden rounded-[22px] border border-black/5 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.98),_rgba(242,244,247,1)_72%)] md:aspect-[4/3] md:max-h-[560px]"
         onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
@@ -99,9 +101,10 @@ export function ListingMediaCarousel({
             key={activeItem.id}
             src={activeItem.src}
             alt={title}
-            className="h-full w-full object-contain p-4 md:p-6"
+            className="h-full w-full cursor-zoom-in object-contain p-4 md:p-6"
             loading="eager"
             onError={() => setHeroFailed((current) => ({ ...current, [activeItem.id]: true }))}
+            onClick={() => setIsFullscreen(true)}
           />
         ) : (
           <Placeholder title={title} />
@@ -160,6 +163,51 @@ export function ListingMediaCarousel({
           ))}
         </div>
       ) : null}
-    </div>
+      </div>
+
+      {isFullscreen && activeItem ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/88 p-4"
+          onClick={() => setIsFullscreen(false)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Close
+          </button>
+          {showControls ? (
+            <>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  goPrev();
+                }}
+                className="absolute left-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white"
+              >
+                <ArrowLeftIcon />
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  goNext();
+                }}
+                className="absolute right-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white"
+              >
+                <ArrowRightIcon />
+              </button>
+            </>
+          ) : null}
+          <img
+            src={activeItem.src}
+            alt={title}
+            className="max-h-[92vh] max-w-[92vw] object-contain"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }

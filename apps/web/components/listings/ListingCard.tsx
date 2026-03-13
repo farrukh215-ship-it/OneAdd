@@ -1,6 +1,8 @@
+'use client';
+
 import type { Listing } from '@tgmg/types';
-import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 import { distanceFromCity } from '../../lib/distance';
 import { toDisplayMediaUrl } from '../../lib/media';
 
@@ -17,6 +19,7 @@ export function ListingCard({
 }) {
   const image = listing.images[0];
   const displayImage = toDisplayMediaUrl(image);
+  const [imageFailed, setImageFailed] = useState(false);
   const location = [listing.city, listing.area].filter(Boolean).join(', ');
   const distance = distanceFromCity(
     referenceCity,
@@ -28,8 +31,15 @@ export function ListingCard({
       ? { lat: listing.lat, lng: listing.lng }
       : undefined,
   );
-  const effectiveDistance = typeof listing.distanceKm === 'number' ? Math.round(listing.distanceKm) : distance;
+  const effectiveDistance =
+    typeof listing.distanceKm === 'number' ? Math.round(listing.distanceKm) : distance;
   const nearby = listing.isNearby || (typeof effectiveDistance === 'number' && effectiveDistance <= 10);
+  const statusBadge =
+    listing.status === 'SOLD'
+      ? { label: 'Sold', className: 'bg-[#FDECEC] text-red' }
+      : listing.status === 'DELETED'
+        ? { label: 'Inactive', className: 'bg-[#EFF1F4] text-ink2' }
+        : { label: 'Available', className: 'bg-[rgba(46,125,50,0.1)] text-green' };
 
   return (
     <Link
@@ -37,31 +47,34 @@ export function ListingCard({
       className="surface block overflow-hidden transition-transform active:scale-[0.97]"
     >
       <div className="relative aspect-square bg-border">
-        {displayImage ? (
-          <Image
+        {displayImage && !imageFailed ? (
+          <img
             src={displayImage}
             alt={listing.title}
-            fill
-            unoptimized
-            className="object-cover"
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={() => setImageFailed(true)}
           />
         ) : null}
         <div className="absolute bottom-2 left-2">
-          <span className="badge-green">✓ Asli Malik</span>
+          <span className="badge-green">Asli Malik</span>
+        </div>
+        <div className="absolute left-2 top-2">
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ${statusBadge.className}`}>
+            {statusBadge.label}
+          </span>
         </div>
         <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-sm shadow-card">
-          ♡
+          Fav
         </span>
       </div>
       <div className="p-[10px]">
         <div className="text-base font-extrabold text-ink sm:text-lg">
           PKR {listing.price.toLocaleString()}
         </div>
-        <div className="mt-1 clamp-2 text-[12px] leading-5 text-ink2">
-          {listing.title}
-        </div>
+        <div className="mt-1 clamp-2 text-[12px] leading-5 text-ink2">{listing.title}</div>
         <div className="mt-2 text-[11px] text-ink3">
-          📍 {location || listing.city}
+          {location || listing.city}
           {effectiveDistance !== null ? ` • ${effectiveDistance} km door` : ''}
           {nearby ? ' • Near' : ''}
         </div>

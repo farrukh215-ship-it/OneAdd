@@ -1,15 +1,17 @@
 'use client';
 
 import type { ListingThreadResponse } from '@tgmg/types';
-import { useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../../lib/api';
 
 export function ListingPublicChat({ listingId, askingPrice }: { listingId: string; askingPrice: number }) {
   const [thread, setThread] = useState<ListingThreadResponse | null>(null);
   const [message, setMessage] = useState('');
   const [offerAmount, setOfferAmount] = useState('');
+  const [pendingImage, setPendingImage] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchThread = async () => {
     try {
@@ -35,12 +37,16 @@ export function ListingPublicChat({ listingId, askingPrice }: { listingId: strin
   }, [thread?.bestOffer]);
 
   const postMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() && !pendingImage) return;
     setLoading(true);
     setStatus(null);
     try {
-      await api.post(`/listings/${listingId}/chat/messages`, { message: message.trim() });
+      await api.post(`/listings/${listingId}/chat/messages`, {
+        message: message.trim() || undefined,
+        imageUrl: pendingImage || undefined,
+      });
       setMessage('');
+      setPendingImage('');
       await fetchThread();
     } catch (error: any) {
       const m = error?.response?.data?.message;
@@ -67,6 +73,29 @@ export function ListingPublicChat({ listingId, askingPrice }: { listingId: strin
       setStatus(Array.isArray(m) ? m[0] : m || 'Offer submit nahi hui');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const uploadChatImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setStatus(null);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      body.append('kind', 'chat');
+      const response = await api.post<{ url: string }>('/uploads/proxy', body, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setPendingImage(response.data.url);
+      setStatus('Chat image ready hai. Send dabao.');
+    } catch (error: any) {
+      const m = error?.response?.data?.message;
+      setStatus(Array.isArray(m) ? m[0] : m || 'Image upload nahi hui');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -101,6 +130,14 @@ export function ListingPublicChat({ listingId, askingPrice }: { listingId: strin
           placeholder="Offer amount"
         />
         <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn-white !px-4"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+          >
+            Add image
+          </button>
           <button type="button" className="btn-white !px-4" onClick={postMessage} disabled={loading}>
             Send
           </button>
@@ -109,6 +146,22 @@ export function ListingPublicChat({ listingId, askingPrice }: { listingId: strin
           </button>
         </div>
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={uploadChatImage}
+      />
+
+      {pendingImage ? (
+        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-[#F8F9FB] p-3">
+          <img src={pendingImage} alt="Chat upload preview" className="h-16 w-16 rounded-xl object-cover" />
+          <div className="text-sm text-ink2">
+            Image attach ho gayi. Message optional hai, send dabao.
+          </div>
+        </div>
+      ) : null}
 
       {status ? <div className="mt-3 text-sm text-ink2">{status}</div> : null}
 
@@ -120,7 +173,22 @@ export function ListingPublicChat({ listingId, askingPrice }: { listingId: strin
                 <span>{entry.user?.name || 'User'}</span>
                 <span>{new Date(entry.createdAt).toLocaleString()}</span>
               </div>
-              <div className="mt-1 text-sm text-ink2">{entry.message}</div>
+              {entry.message.startsWith('[image]') ? (
+                <div className="mt-2 space-y-2">
+                  <img
+                    src={entry.message.replace('[image]', '').split('\n')[0]}
+                    alt="Chat attachment"
+                    className="max-h-64 w-full rounded-2xl object-cover"
+                  />
+                  {entry.message.split('\n').slice(1).join('\n').trim() ? (
+                    <div className="text-sm text-ink2">
+                      {entry.message.split('\n').slice(1).join('\n').trim()}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-1 text-sm text-ink2">{entry.message}</div>
+              )}
               {typeof entry.offerAmount === 'number' ? (
                 <div className="mt-1 text-xs font-bold text-red">
                   Offer: PKR {entry.offerAmount.toLocaleString()}
@@ -135,4 +203,3 @@ export function ListingPublicChat({ listingId, askingPrice }: { listingId: strin
     </section>
   );
 }
-

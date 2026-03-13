@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { Listing, PaginatedResponse } from '@tgmg/types';
 import { ListingGrid } from '../../components/listings/ListingGrid';
 import { useCategories } from '../../hooks/useCategories';
-import { useListings } from '../../hooks/useListings';
+import { api } from '../../lib/api';
 
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
@@ -39,29 +41,70 @@ export function ListingsPageClient({
   initialParams: PageFilters;
 }) {
   const router = useRouter();
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const filters = useMemo(
     () => ({
       ...initialParams,
-      page: initialParams.page ?? 1,
-      limit: 20,
       sort: initialParams.sort ?? 'newest',
       radiusKm: initialParams.radiusKm ?? (initialParams.lat && initialParams.lng ? 10 : undefined),
+      limit: 20,
     }),
     [initialParams],
   );
+
   const { data: categories = [] } = useCategories();
-  const { data, isLoading } = useListings(filters);
+  const listings = useInfiniteQuery({
+    queryKey: ['listings-infinite', filters],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await api.get<PaginatedResponse<Listing>>('/listings', {
+        params: { ...filters, page: pageParam, limit: 20 },
+      });
+      return response.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
+  });
+
+  const mergedListings = useMemo(
+    () => listings.data?.pages.flatMap((page) => page.data) ?? [],
+    [listings.data?.pages],
+  );
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && listings.hasNextPage && !listings.isFetchingNextPage) {
+          void listings.fetchNextPage();
+        }
+      },
+      { rootMargin: '240px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [listings]);
 
   const navigateWith = (patch: Partial<PageFilters>) => {
     const next = {
       ...filters,
       ...patch,
-      page: 1,
     };
     const query = makeQuery(next);
     router.push(`/listings${query ? `?${query}` : ''}`);
+  };
+
+  const refreshListings = async () => {
+    setRefreshing(true);
+    try {
+      await listings.refetch();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const sidebar = (
@@ -128,16 +171,8 @@ export function ListingsPageClient({
           <button type="button" onClick={() => navigateWith({ condition: 'USED' })} className={`chip ${filters.condition === 'USED' ? 'active' : ''}`}>Used</button>
         </div>
       </div>
-      <div className="rounded-xl bg-green-light p-3 text-sm text-green">
-        Sirf Asli Malik on hai
-      </div>
-      {typeof filters.lat === 'number' && typeof filters.lng === 'number' ? (
-        <div className="rounded-xl border border-red/20 bg-red-light p-3 text-xs font-semibold text-red">
-          Rule active: Within {filters.radiusKm ?? 10} km listings pehle show hongi.
-        </div>
-      ) : null}
-      <button type="button" className="btn-white w-full" onClick={() => router.push(`/listings?${makeQuery({
-        ...filters,
+
+      <button type="button" className="btn-white w-full" onClick={() => navigateWith({
         category: undefined,
         city: undefined,
         store: undefined,
@@ -147,11 +182,13 @@ export function ListingsPageClient({
         radiusKm: undefined,
         condition: undefined,
         sort: 'newest',
-      })}`)}>
+      })}>
         Filters Reset
       </button>
     </div>
   );
+
+  const firstPage = listings.data?.pages[0];
 
   return (
     <div className="page-wrap grid gap-4 px-2 py-4 lg:grid-cols-[256px_minmax(0,1fr)] lg:px-5">
@@ -159,18 +196,15 @@ export function ListingsPageClient({
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-lg font-extrabold text-ink">{data?.total ?? 0} listings mile</div>
+            <div className="text-lg font-extrabold text-ink">{firstPage?.total ?? 0} listings mile</div>
             <div className="section-subtle">
-              {filters.q
-                ? `Search: "${filters.q}"`
-                : filters.store === 'online'
-                  ? 'Online Dukaan results'
-                  : filters.store === 'road'
-                    ? `Road Dukaan results${filters.city ? ` • ${filters.city}` : ''}`
-                    : 'Saaf results, simple browsing'}
+              {filters.q ? `Search: "${filters.q}"` : 'Pull to refresh aur infinite scroll active hai'}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button type="button" onClick={refreshListings} className="btn-white">
+              {refreshing ? 'Refreshing...' : 'Pull to Refresh'}
+            </button>
             <button
               type="button"
               onClick={() => setMobileFiltersOpen(true)}
@@ -190,58 +224,27 @@ export function ListingsPageClient({
           </div>
         </div>
 
-        {typeof filters.lat === 'number' && typeof filters.lng === 'number' ? (
-          <div className="mb-3 rounded-xl border border-red/20 bg-red-light px-3 py-2 text-sm font-semibold text-red">
-            Mere paas mode: sirf nearby (within {filters.radiusKm ?? 10} km) items pehle rank hongi.
-          </div>
-        ) : null}
-
         <ListingGrid
-          listings={data?.data ?? []}
-          loading={isLoading}
+          listings={mergedListings}
+          loading={listings.isLoading}
           referenceCity={filters.city}
           referenceLat={filters.lat}
           referenceLng={filters.lng}
         />
 
-        {!isLoading && (data?.total ?? 0) === 0 ? (
+        {!listings.isLoading && !mergedListings.length ? (
           <div className="mt-4 rounded-2xl border border-border bg-white p-4">
             <div className="text-base font-bold text-ink">Koi listing nahi mili</div>
-            <div className="mt-1 text-sm text-ink2">
-              Search broad karein ya quick reset use karein.
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" className="chip" onClick={() => navigateWith({ q: undefined, city: undefined, category: undefined })}>
-                Sab clear
-              </button>
-              <button type="button" className="chip" onClick={() => navigateWith({ q: filters.q, city: undefined })}>
-                City filter hatao
-              </button>
-              <button type="button" className="chip" onClick={() => navigateWith({ sort: 'newest' })}>
-                Newest dekho
-              </button>
-            </div>
+            <div className="mt-1 text-sm text-ink2">Search broad karein ya city filter hata dein.</div>
           </div>
         ) : null}
 
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button
-            type="button"
-            className="btn-white"
-            onClick={() => navigateWith({ page: Math.max(1, (filters.page ?? 1) - 1) })}
-            disabled={(filters.page ?? 1) <= 1}
-          >
-            Prev
-          </button>
-          <span className="chip active">Page {data?.page ?? 1}</span>
-          <button
-            type="button"
-            className="btn-white"
-            onClick={() => navigateWith({ page: (filters.page ?? 1) + 1 })}
-            disabled={(data?.page ?? 1) >= (data?.totalPages ?? 1)}
-          >
-            Next
-          </button>
+        <div ref={loadMoreRef} className="py-6 text-center text-sm text-ink2">
+          {listings.isFetchingNextPage
+            ? 'Aur listings load ho rahi hain...'
+            : listings.hasNextPage
+              ? 'Neeche scroll karo, aur listings aayengi'
+              : 'Abhi itni hi listings hain'}
         </div>
       </section>
 

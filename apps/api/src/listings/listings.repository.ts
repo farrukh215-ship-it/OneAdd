@@ -87,6 +87,13 @@ export class ListingsRepository {
     return this.prisma.category.findUnique({ where: { slug } });
   }
 
+  findCategoryManyBySlug(slugs: string[]) {
+    return this.prisma.category.findMany({
+      where: { slug: { in: slugs } },
+      select: { id: true, slug: true, name: true },
+    });
+  }
+
   findOrCreateThread(listingId: string): Promise<ListingThread> {
     return this.prisma.listingThread.upsert({
       where: { listingId },
@@ -172,6 +179,31 @@ export class ListingsRepository {
     }));
   }
 
+  async findPopularSuggestions(limit = 6): Promise<Array<{ label: string; categorySlug: string | null; categoryName: string | null; city: string | null }>> {
+    const rows = await this.prisma.$queryRaw<Array<{ label: string; category_slug: string | null; category_name: string | null; city: string | null }>>`
+      SELECT
+        c.name AS label,
+        c.slug AS category_slug,
+        c.name AS category_name,
+        NULL::text AS city
+      FROM "Category" c
+      JOIN "Listing" l ON l."categoryId" = c.id
+      WHERE l.status = 'ACTIVE'
+        AND l."isStore" = false
+        AND l."createdAt" >= NOW() - interval '30 days'
+      GROUP BY c.id, c.name, c.slug
+      ORDER BY COUNT(l.id) DESC, MAX(l."createdAt") DESC
+      LIMIT ${limit};
+    `;
+
+    return rows.map((row) => ({
+      label: row.label,
+      categorySlug: row.category_slug,
+      categoryName: row.category_name,
+      city: row.city,
+    }));
+  }
+
   async searchListingIds(params: {
     q: string;
     category?: string;
@@ -185,7 +217,10 @@ export class ListingsRepository {
     offset: number;
   }): Promise<string[]> {
     const values: Array<string | number> = [params.q];
-    const whereClauses: string[] = ["l.status = 'ACTIVE'"];
+    const whereClauses: string[] = [
+      "(l.status = 'ACTIVE' OR (l.status = 'SOLD' AND l.\"updatedAt\" >= NOW() - interval '1 day'))",
+      `l."createdAt" >= NOW() - interval '30 days'`,
+    ];
 
     values.push(params.isStore ? 1 : 0);
     whereClauses.push(`l."isStore" = ($${values.length} = 1)`);
@@ -197,7 +232,7 @@ export class ListingsRepository {
 
     if (params.city) {
       values.push(params.city);
-      whereClauses.push(`l.city = $${values.length}`);
+      whereClauses.push(`lower(l.city) = lower($${values.length})`);
     }
 
     if (params.condition) {

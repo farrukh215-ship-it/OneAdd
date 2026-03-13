@@ -86,11 +86,11 @@ export function CategoryTabs({
               type="button"
               onClick={() => onSelect(category)}
               aria-pressed={active}
-              className={`flex shrink-0 flex-col items-center gap-1 border-b-[3px] px-1 pb-2 text-center transition-all duration-200 ${
-                active ? 'scale-[1.02] border-red text-red' : 'border-transparent text-ink2'
-              }`}
+              className={`category-tab-card shrink-0 text-center ${active ? 'active' : 'text-ink2'}`}
+              style={{ animationDelay: `${categories.indexOf(category) * 40}ms` }}
             >
-              <span className="text-xl">{category.icon}</span>
+              <span className="category-count-badge">{category.count ?? 0}</span>
+              <span className="category-tab-icon text-xl">{category.icon}</span>
               <span className="text-[11px] font-semibold">{category.name}</span>
             </button>
           );
