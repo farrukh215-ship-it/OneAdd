@@ -42,7 +42,10 @@ export default async function ListingDetailPage({
 }) {
   const { id } = await params;
   const listing = await getListing(id);
-  const related = await getListings({ category: listing.category.slug, limit: 4 });
+  const images = Array.isArray(listing.images) ? listing.images : [];
+  const categorySlug = listing.category?.slug ?? '';
+  const categoryName = listing.category?.name ?? 'Category';
+  const related = categorySlug ? await getListings({ category: categorySlug, limit: 4 }) : { data: [], total: 0, page: 1, totalPages: 0 };
   const sellerName = listing.user?.name || 'Seller';
   const locationText = [listing.city, listing.area].filter(Boolean).join(', ');
   const sellerLocation = [listing.user?.area || listing.area, listing.user?.city || listing.city]
@@ -65,7 +68,7 @@ export default async function ListingDetailPage({
       <div className="page-wrap px-3 py-4 md:px-5 md:py-6">
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.18fr)_360px]">
           <section className="min-w-0">
-            <ListingMediaCarousel images={listing.images.slice(0, 6)} title={listing.title} />
+            <ListingMediaCarousel images={images.slice(0, 6)} title={listing.title} />
 
             <div className="surface-premium mt-5 p-5 md:p-6">
               <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
@@ -109,7 +112,7 @@ export default async function ListingDetailPage({
                     </div>
                     <div className="detail-stat">
                       <div className="detail-stat-label">Category</div>
-                      <div className="detail-stat-value">{listing.category.name}</div>
+                      <div className="detail-stat-value">{categoryName}</div>
                     </div>
                     <div className="detail-stat">
                       <div className="detail-stat-label">Store type</div>
@@ -156,7 +159,7 @@ export default async function ListingDetailPage({
               </div>
               <h2 className="mt-1 text-xl font-extrabold text-ink">Aur Dekho</h2>
             </div>
-            <Link href={`/listings?category=${listing.category.slug}`} className="text-sm font-semibold text-red">
+            <Link href={categorySlug ? `/listings?category=${categorySlug}` : '/listings'} className="text-sm font-semibold text-red">
               Same category
             </Link>
           </div>

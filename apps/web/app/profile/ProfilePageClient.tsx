@@ -31,17 +31,25 @@ export function ProfilePageClient() {
   }, [currentUser, isLoading, router]);
 
   const loadProfileData = async () => {
-    const [myResponse, savedResponse, dashboardResponse] = await Promise.all([
+    const [myResponse, savedResponse, dashboardResponse] = await Promise.allSettled([
       api.get<{ data?: Listing[] } | Listing[]>('/listings/my'),
       api.get<{ data?: Listing[] } | Listing[]>('/listings/saved'),
       api.get<ListingDashboard>('/listings/my/dashboard'),
     ]);
-    const myData = Array.isArray(myResponse.data)
-      ? myResponse.data
-      : (myResponse.data as { data?: Listing[] }).data ?? [];
-    const savedData = Array.isArray(savedResponse.data)
-      ? savedResponse.data
-      : (savedResponse.data as { data?: Listing[] }).data ?? [];
+
+    const myData =
+      myResponse.status === 'fulfilled'
+        ? Array.isArray(myResponse.value.data)
+          ? myResponse.value.data
+          : (myResponse.value.data as { data?: Listing[] }).data ?? []
+        : [];
+    const savedData =
+      savedResponse.status === 'fulfilled'
+        ? Array.isArray(savedResponse.value.data)
+          ? savedResponse.value.data
+          : (savedResponse.value.data as { data?: Listing[] }).data ?? []
+        : [];
+
     setMyListings(
       myData.map((listing) => ({
         ...listing,
@@ -51,7 +59,7 @@ export function ProfilePageClient() {
       })),
     );
     setSavedListings(savedData);
-    setDashboard(dashboardResponse.data);
+    setDashboard(dashboardResponse.status === 'fulfilled' ? dashboardResponse.value.data : null);
   };
 
   useEffect(() => {

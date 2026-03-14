@@ -14,10 +14,18 @@ export const dynamic = 'force-dynamic';
 
 async function getCategoryListings(slug: string, city: string) {
   const cityResult = await getListings({ category: slug, city, limit: 6 });
-  if (cityResult.data.length) return cityResult.data;
+  if (cityResult.data.length >= 6) return cityResult.data.slice(0, 6);
 
-  const globalResult = await getListings({ category: slug, limit: 6 });
-  return globalResult.data;
+  const globalResult = await getListings({ category: slug, limit: 12 });
+  const merged = [...cityResult.data];
+
+  for (const listing of globalResult.data) {
+    if (merged.some((item) => item.id === listing.id)) continue;
+    merged.push(listing);
+    if (merged.length >= 6) break;
+  }
+
+  return merged.slice(0, 6);
 }
 
 export default async function HomePage({
@@ -35,8 +43,15 @@ export default async function HomePage({
     ? await getCategoryListings(activeCategory, city)
     : await (async () => {
         const featuredListings = await getFeaturedListings(city);
-        if (featuredListings.length) return featuredListings;
-        return getFeaturedListings();
+        if (featuredListings.length >= 6) return featuredListings.slice(0, 6);
+        const globalListings = await getFeaturedListings();
+        const merged = [...featuredListings];
+        for (const listing of globalListings) {
+          if (merged.some((item) => item.id === listing.id)) continue;
+          merged.push(listing);
+          if (merged.length >= 6) break;
+        }
+        return merged.slice(0, 6);
       })();
 
   const categorySections = await Promise.all(
