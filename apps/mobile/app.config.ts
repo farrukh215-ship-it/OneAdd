@@ -13,6 +13,7 @@ export default {
     version,
     owner,
     orientation: 'portrait',
+    newArchEnabled: true,
     userInterfaceStyle: 'light',
     icon: './assets/icon.png',
     runtimeVersion: {
