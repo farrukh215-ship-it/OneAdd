@@ -7,6 +7,8 @@ const config = getDefaultConfig(projectRoot);
 const nativewindBabelPath = require.resolve('nativewind/babel');
 const nativewindDir = path.dirname(nativewindBabelPath);
 const cssInteropPath = path.resolve(nativewindDir, '../react-native-css-interop');
+const resolveFromProject = (moduleName) =>
+  path.dirname(require.resolve(`${moduleName}/package.json`, { paths: [projectRoot] }));
 
 config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [
@@ -16,9 +18,9 @@ config.resolver.nodeModulesPaths = [
 config.resolver.unstable_enableSymlinks = true;
 config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules || {}),
-  react: path.resolve(workspaceRoot, 'node_modules/react'),
-  'react-dom': path.resolve(workspaceRoot, 'node_modules/react-dom'),
-  'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
+  react: resolveFromProject('react'),
+  'react-dom': resolveFromProject('react-dom'),
+  'react-native': resolveFromProject('react-native'),
   'react-native-css-interop': cssInteropPath,
 };
 
