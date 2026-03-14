@@ -41,8 +41,8 @@ export default function RootLayout() {
         },
       }),
   );
-
-  if (!loaded) return null;
+  // Do not block initial render on font loading, otherwise startup can look like a white-screen hang.
+  void loaded;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
