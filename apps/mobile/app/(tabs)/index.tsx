@@ -6,6 +6,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { WideCard } from '../../components/WideCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
+import { useNotifications } from '../../hooks/useNotifications';
 
 const quickActions = [
   { label: '+ Ad Post Karo', active: true, href: '/post/category' },
@@ -53,14 +54,28 @@ export default function HomeScreen() {
   const router = useRouter();
   const { data: categories = [] } = useCategories();
   const { data: featured } = useListings({ limit: 8, sort: 'newest' });
+  const { data: notifications = [] } = useNotifications();
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
       <View className="flex-row items-center justify-between px-3 py-2">
         <Text className="text-[22px] font-extrabold text-red">TGMG.</Text>
-        <View className="flex-row items-center gap-2 rounded-full bg-[#F5F6F7] px-3 py-2">
-          <View className="h-2.5 w-2.5 rounded-full bg-green" />
-          <Text className="text-[12px] text-ink2">Lahore</Text>
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => router.push('/notifications')}
+            className="relative rounded-full bg-[#F5F6F7] px-3 py-2"
+          >
+            <Text className="text-[12px] text-ink2">Bell</Text>
+            {notifications.length ? (
+              <View className="absolute -right-1 -top-1 h-5 min-w-[20px] items-center justify-center rounded-full bg-red px-1">
+                <Text className="text-[10px] font-bold text-white">{Math.min(notifications.length, 9)}+</Text>
+              </View>
+            ) : null}
+          </Pressable>
+          <View className="flex-row items-center gap-2 rounded-full bg-[#F5F6F7] px-3 py-2">
+            <View className="h-2.5 w-2.5 rounded-full bg-green" />
+            <Text className="text-[12px] text-ink2">Lahore</Text>
+          </View>
         </View>
       </View>
 

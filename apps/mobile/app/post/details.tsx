@@ -60,8 +60,8 @@ export default function PostDetailsScreen() {
         <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Condition</Text>
         <View className="flex-row gap-3">
           {[
-            { value: 'NEW', label: 'Naya ✨' },
-            { value: 'USED', label: 'Purana 👍' },
+            { value: 'NEW', label: 'Naya' },
+            { value: 'USED', label: 'Purana' },
           ].map((item) => (
             <Pressable
               key={item.value}
@@ -87,7 +87,7 @@ export default function PostDetailsScreen() {
           }
           className={`mt-6 rounded-xl py-4 ${valid ? 'bg-red' : 'bg-border'}`}
         >
-          <Text className="text-center text-base font-bold text-white">Aage Barhein →</Text>
+          <Text className="text-center text-base font-bold text-white">Aage Barhein</Text>
         </Pressable>
       </ScrollView>
     </View>

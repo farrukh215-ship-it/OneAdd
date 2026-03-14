@@ -33,6 +33,9 @@ export default function ProfileScreen() {
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
       <Text className="text-[18px] font-extrabold text-ink">Mera Profile</Text>
+      <Pressable onPress={() => router.push('/notifications')} className="mt-3 self-start rounded-full bg-red/10 px-4 py-2">
+        <Text className="text-xs font-semibold text-red">Notifications Inbox</Text>
+      </Pressable>
 
       <View className="mt-4 rounded-xl bg-white p-4 shadow-sm">
         <Text className="text-base font-bold text-ink">{currentUser?.name || 'Guest User'}</Text>
@@ -120,6 +123,12 @@ export default function ProfileScreen() {
                       className="rounded-full bg-[#F5F6F7] px-3 py-2"
                     >
                       <Text className="text-[11px] font-semibold text-ink2">Open</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => router.push(`/listing/edit/${listing.id}`)}
+                      className="rounded-full bg-[#F5F6F7] px-3 py-2"
+                    >
+                      <Text className="text-[11px] font-semibold text-ink2">Edit</Text>
                     </Pressable>
                     <Pressable
                       onPress={() =>
