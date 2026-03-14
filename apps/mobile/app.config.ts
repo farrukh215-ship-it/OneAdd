@@ -29,7 +29,7 @@ export default {
           url: `https://u.expo.dev/${projectId}`,
         }
       : undefined,
-    plugins: ['expo-router', 'expo-location', 'expo-notifications'],
+    plugins: ['expo-router', 'expo-asset', 'expo-location', 'expo-notifications'],
     extra: {
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       environment,
