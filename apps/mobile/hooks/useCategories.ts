@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import type { Category } from '@tgmg/types';
-import { STANDARD_CATEGORIES } from '@tgmg/types';
 import { api, categoryKeys } from '../lib/api';
 import { readCachedQuery, writeCachedQuery } from '../lib/query-cache';
+import { STANDARD_CATEGORIES } from '../lib/standard-categories';
 
 export function useCategories() {
   return useQuery({
