@@ -27,7 +27,7 @@ export default {
           url: `https://u.expo.dev/${projectId}`,
         }
       : undefined,
-    plugins: ['expo-router', 'expo-location'],
+    plugins: ['expo-router', 'expo-location', 'expo-notifications'],
     extra: {
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       eas: projectId ? { projectId } : undefined,
@@ -39,7 +39,7 @@ export default {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#E53935',
       },
-      permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+      permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
     },
     platforms: ['android'],
   },

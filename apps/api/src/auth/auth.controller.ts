@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
+import { PushTokenDto } from './dto/push-token.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -47,5 +48,17 @@ export class AuthController {
   @Get('notifications')
   notifications(@CurrentUser() user: User) {
     return this.authService.notifications(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('push-token')
+  registerPushToken(@CurrentUser() user: User, @Body() body: PushTokenDto) {
+    return this.authService.registerPushToken(user, body.token, body.platform);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('push-token/remove')
+  unregisterPushToken(@CurrentUser() user: User, @Body() body: PushTokenDto) {
+    return this.authService.unregisterPushToken(user, body.token);
   }
 }

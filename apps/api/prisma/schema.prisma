@@ -26,6 +26,7 @@ model User {
   contacts  ContactLog[]
   messages  ListingMessage[]
   offers    Offer[]
+  pushTokens UserPushToken[]
 }
 
 model Listing {
@@ -135,6 +136,19 @@ model Offer {
   @@index([listingId, amount])
 }
 
+model UserPushToken {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  token      String       @unique
+  platform   PushPlatform @default(ANDROID)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  lastSeenAt DateTime     @default(now())
+
+  @@index([userId, platform])
+}
+
 enum Condition {
   NEW
   USED
@@ -151,4 +165,9 @@ enum ListingStatus {
 enum StoreType {
   ONLINE
   ROAD
+}
+
+enum PushPlatform {
+  ANDROID
+  IOS
 }

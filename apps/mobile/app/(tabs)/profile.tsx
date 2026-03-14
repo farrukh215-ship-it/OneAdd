@@ -8,6 +8,50 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { api } from '../../lib/api';
 import { getListingStatusMeta } from '../../lib/listing-ui';
 
+function DashboardBarChart({
+  points,
+}: {
+  points: Array<{ label: string; contacts: number; listings: number }>;
+}) {
+  const maxValue = Math.max(1, ...points.map((point) => Math.max(point.contacts, point.listings)));
+
+  return (
+    <View className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-[16px] font-extrabold text-ink">Performance Graph</Text>
+        <Text className="text-[11px] font-semibold text-ink3">7 days</Text>
+      </View>
+      <View className="mt-4 flex-row items-end justify-between gap-2">
+        {points.map((point) => (
+          <View key={point.label} className="flex-1 items-center">
+            <View className="h-28 w-full items-center justify-end gap-1">
+              <View
+                className="w-3 rounded-t-full bg-red"
+                style={{ height: `${Math.max((point.contacts / maxValue) * 100, point.contacts ? 12 : 4)}%` }}
+              />
+              <View
+                className="w-3 rounded-t-full bg-[#111827]"
+                style={{ height: `${Math.max((point.listings / maxValue) * 100, point.listings ? 12 : 4)}%` }}
+              />
+            </View>
+            <Text className="mt-2 text-[10px] font-semibold text-ink3">{point.label}</Text>
+          </View>
+        ))}
+      </View>
+      <View className="mt-4 flex-row gap-4">
+        <View className="flex-row items-center gap-2">
+          <View className="h-2.5 w-2.5 rounded-full bg-red" />
+          <Text className="text-[11px] text-ink2">Contacts</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <View className="h-2.5 w-2.5 rounded-full bg-[#111827]" />
+          <Text className="text-[11px] text-ink2">Listings</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,6 +104,28 @@ export default function ProfileScreen() {
                 <Text className="mt-2 text-xl font-extrabold text-ink">{item.value}</Text>
               </View>
             ))}
+          </View>
+          <View className="mt-3 flex-row flex-wrap gap-3">
+            {[
+              { label: 'Contact Rate', value: `${dashboard.contactRate}%` },
+              { label: 'Sell Through', value: `${dashboard.sellThroughRate}%` },
+              { label: 'Avg Views', value: dashboard.averageViewsPerListing },
+              { label: 'Recent Leads', value: dashboard.recentLeads },
+              { label: 'Featured', value: dashboard.featuredListings },
+              { label: 'Avg Contacts', value: dashboard.averageContactsPerListing },
+            ].map((item) => (
+              <View key={item.label} className="min-w-[47%] flex-1 rounded-xl border border-red/10 bg-[#FFF8F7] p-4">
+                <Text className="text-xs font-semibold text-ink2">{item.label}</Text>
+                <Text className="mt-2 text-xl font-extrabold text-red">{item.value}</Text>
+              </View>
+            ))}
+          </View>
+          <DashboardBarChart points={dashboard.points} />
+          <View className="mt-3 rounded-2xl bg-[#111827] p-4">
+            <Text className="text-sm font-extrabold text-white">Boost Karo</Text>
+            <Text className="mt-1 text-xs leading-5 text-white/75">
+              Featured placements aur promoted reach next billing phase ke liye wired hai.
+            </Text>
           </View>
         </View>
       ) : null}

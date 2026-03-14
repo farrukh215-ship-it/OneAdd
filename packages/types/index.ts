@@ -131,6 +131,12 @@ export interface ListingDashboard {
   activeListings: number;
   soldListings: number;
   inactiveListings: number;
+  featuredListings: number;
+  averageViewsPerListing: number;
+  averageContactsPerListing: number;
+  contactRate: number;
+  sellThroughRate: number;
+  recentLeads: number;
   points: ListingDashboardPoint[];
 }
 

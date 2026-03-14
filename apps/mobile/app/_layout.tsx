@@ -14,6 +14,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { ExperienceBoot } from '../components/ExperienceBoot';
+import { PushNotificationRegistrar } from '../components/PushNotificationRegistrar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -31,7 +32,9 @@ export default function RootLayout() {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
+            gcTime: 1000 * 60 * 60 * 12,
             refetchOnWindowFocus: false,
+            retry: 1,
           },
         },
       }),
@@ -47,6 +50,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }} />
             <ExperienceBoot />
+            <PushNotificationRegistrar />
           </BottomSheetModalProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

@@ -16,6 +16,7 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { CreateListingMessageDto } from './dto/create-listing-message.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
+import { PushNotificationsService } from '../notifications/push-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -34,6 +35,7 @@ export class ListingsService {
   constructor(
     private readonly listingsRepository: ListingsRepository,
     private readonly prisma: PrismaService,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {
     this.redis = new Redis(process.env.REDIS_URL ?? 'redis://127.0.0.1:6379', {
       maxRetriesPerRequest: 1,
@@ -58,7 +60,7 @@ export class ListingsService {
       throw new BadRequestException('Dukaan ad ke liye store type select karein.');
     }
 
-    return this.listingsRepository.create({
+    const listing = await this.listingsRepository.create({
       userId,
       title: dto.title,
       description: dto.description,
@@ -74,6 +76,9 @@ export class ListingsService {
       lat: dto.lat,
       lng: dto.lng,
     });
+
+    await this.notifyCategoryWatchers(listing);
+    return listing;
   }
 
   async findAll(
@@ -254,6 +259,14 @@ export class ListingsService {
       listingId: id,
     });
 
+    if (listing.userId !== currentUser.id) {
+      await this.pushNotificationsService.sendToUsers([listing.userId], {
+        title: 'Aapki listing pe contact hua',
+        body: `"${listing.title}" dekhne wale ne phone reveal kiya`,
+        data: { href: `/listings/${listing.id}`, type: 'contact' },
+      });
+    }
+
     return { phone: listing.user.phone };
   }
 
@@ -281,7 +294,8 @@ export class ListingsService {
       throw new BadRequestException('Dukaan ad ke liye store type select karein.');
     }
 
-    return this.listingsRepository.update({
+    const previousPrice = listing.price;
+    const updated = await this.listingsRepository.update({
       where: { id },
       data: {
         ...(dto.title !== undefined ? { title: dto.title } : {}),
@@ -310,6 +324,12 @@ export class ListingsService {
         },
       },
     });
+
+    if (previousPrice !== updated.price) {
+      await this.notifySavedUsersOfUpdate(updated.id, updated.title);
+    }
+
+    return updated;
   }
 
   async remove(id: string, currentUser: User) {
@@ -493,6 +513,7 @@ export class ListingsService {
         id: true,
         views: true,
         status: true,
+        isFeatured: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -539,6 +560,14 @@ export class ListingsService {
       activeListings: listings.filter((listing) => listing.status === 'ACTIVE').length,
       soldListings: listings.filter((listing) => listing.status === 'SOLD').length,
       inactiveListings: listings.filter((listing) => listing.status === 'INACTIVE' || listing.status === 'DELETED').length,
+      featuredListings: listings.filter((listing) => listing.status === 'ACTIVE' && listing.isFeatured).length,
+      averageViewsPerListing: listings.length ? Number((totalViews / listings.length).toFixed(1)) : 0,
+      averageContactsPerListing: listings.length ? Number((contactCount / listings.length).toFixed(1)) : 0,
+      contactRate: totalViews ? Number(((contactCount / totalViews) * 100).toFixed(1)) : 0,
+      sellThroughRate: listings.length
+        ? Number(((listings.filter((listing) => listing.status === 'SOLD').length / listings.length) * 100).toFixed(1))
+        : 0,
+      recentLeads: groupedContacts.length,
       points,
     };
   }
@@ -614,6 +643,56 @@ export class ListingsService {
     if (trimmedImage && trimmedMessage) return `[image]${trimmedImage}\n${trimmedMessage}`;
     if (trimmedImage) return `[image]${trimmedImage}`;
     return trimmedMessage;
+  }
+
+  private async notifySavedUsersOfUpdate(listingId: string, title: string) {
+    const savedUsers = await this.prisma.savedAd.findMany({
+      where: { listingId },
+      select: { userId: true },
+      take: 50,
+    });
+
+    await this.pushNotificationsService.sendToUsers(
+      savedUsers.map((entry) => entry.userId),
+      {
+        title: 'Saved item update hui',
+        body: `"${title}" ki price ya details update hui hain`,
+        data: { href: `/listings/${listingId}`, type: 'saved_update' },
+      },
+    );
+  }
+
+  private async notifyCategoryWatchers(listing: Listing & { category?: { name?: string } }) {
+    const watchers = await this.prisma.user.findMany({
+      where: {
+        id: { not: listing.userId },
+        OR: [
+          {
+            savedAds: {
+              some: {
+                listing: { categoryId: listing.categoryId },
+              },
+            },
+          },
+          {
+            listings: {
+              some: { categoryId: listing.categoryId },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+      take: 50,
+    });
+
+    await this.pushNotificationsService.sendToUsers(
+      watchers.map((entry) => entry.id),
+      {
+        title: 'Aapki pasand ki category me naya ad aaya',
+        body: `"${listing.title}" ab live hai`,
+        data: { href: `/listings/${listing.id}`, type: 'new_listing' },
+      },
+    );
   }
 
   private publicVisibilityWhere(): Prisma.ListingWhereInput {

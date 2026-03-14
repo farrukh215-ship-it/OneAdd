@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { NotificationItem } from '@tgmg/types';
 import { api } from '../lib/api';
 import { getUnreadNotifications, markNotificationRead, markNotificationsRead } from '../lib/mobile-notifications';
+import { readCachedQuery, writeCachedQuery } from '../lib/query-cache';
 import { useAuth } from './useAuth';
 
 export function useNotifications() {
@@ -11,8 +12,13 @@ export function useNotifications() {
     queryKey: ['notifications', currentUser?.id],
     enabled: Boolean(currentUser),
     staleTime: 30_000,
+    initialData: () =>
+      currentUser ? readCachedQuery<NotificationItem[]>(`notifications:${currentUser.id}`, 1000 * 60 * 10) : undefined,
     queryFn: async () => {
       const response = await api.get<NotificationItem[]>('/auth/notifications');
+      if (currentUser) {
+        writeCachedQuery(`notifications:${currentUser.id}`, response.data);
+      }
       return response.data;
     },
   });

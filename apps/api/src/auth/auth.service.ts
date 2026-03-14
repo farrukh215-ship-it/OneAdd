@@ -11,6 +11,7 @@ import { User } from '@prisma/client';
 import { randomInt, scryptSync, timingSafeEqual } from 'crypto';
 import Redis from 'ioredis';
 import { FirebaseService } from '../firebase/firebase.service';
+import { PushNotificationsService } from '../notifications/push-notifications.service';
 import { OtpProviderService } from '../otp/otp.provider.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserDto } from './dto/user.dto';
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly firebaseService: FirebaseService,
     private readonly otpProviderService: OtpProviderService,
     private readonly jwtService: JwtService,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {
     this.redis = new Redis(
       process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
@@ -339,6 +341,14 @@ export class AuthService {
     return [...contactItems, ...savedUpdateItems, ...freshItems]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, 20);
+  }
+
+  async registerPushToken(user: User, token: string, platform: 'ANDROID' | 'IOS') {
+    return this.pushNotificationsService.registerToken(user, token, platform);
+  }
+
+  async unregisterPushToken(user: User, token: string) {
+    return this.pushNotificationsService.unregisterToken(user, token);
   }
 
   private hashPassword(password: string) {
