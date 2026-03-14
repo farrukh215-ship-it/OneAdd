@@ -1,12 +1,15 @@
 import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, Text, View, Vibration } from 'react-native';
-import type { Listing } from '@tgmg/types';
+import type { Category, Listing } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { WideCard } from '../../components/WideCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
 import { useNotifications } from '../../hooks/useNotifications';
+import { getLocationPreference, getViewedCategorySlugs } from '../../lib/mobile-preferences';
+import { getRecentSearches } from '../../lib/search-history';
 
 const quickActions = [
   { label: '+ Ad Post Karo', active: true, href: '/post/category' },
@@ -20,12 +23,14 @@ const quickActions = [
 function CategoryShowcase({
   slug,
   title,
+  city,
 }: {
   slug: string;
   title: string;
+  city?: string;
 }) {
   const router = useRouter();
-  const { data } = useListings({ category: slug, limit: 3, sort: 'newest' });
+  const { data } = useListings({ category: slug, city, limit: 3, sort: 'newest' });
   const listings = data?.data ?? [];
 
   return (
@@ -33,7 +38,7 @@ function CategoryShowcase({
       <SectionHeader
         title={title}
         linkLabel="Aur Dekho"
-        onPress={() => router.push(`/(tabs)/browse?category=${slug}`)}
+        onPress={() => router.push(`/(tabs)/browse?category=${slug}${city ? `&city=${city}` : ''}`)}
       />
       <View className="mx-3">
         {listings.length ? (
@@ -53,8 +58,47 @@ function CategoryShowcase({
 export default function HomeScreen() {
   const router = useRouter();
   const { data: categories = [] } = useCategories();
-  const { data: featured } = useListings({ limit: 8, sort: 'newest' });
   const { data: notifications = [] } = useNotifications();
+  const [preferredCity, setPreferredCity] = useState('Lahore');
+  const [preferredLat, setPreferredLat] = useState<number | undefined>();
+  const [preferredLng, setPreferredLng] = useState<number | undefined>();
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [viewedCategorySlugs, setViewedCategorySlugs] = useState<string[]>([]);
+
+  useEffect(() => {
+    const locationPref = getLocationPreference();
+    setPreferredCity(locationPref.city || 'Lahore');
+    setPreferredLat(locationPref.lat);
+    setPreferredLng(locationPref.lng);
+    setRecentSearches(getRecentSearches());
+    setViewedCategorySlugs(getViewedCategorySlugs());
+  }, []);
+
+  const topSearch = recentSearches[0];
+  const featured = useListings({ city: preferredCity, limit: 8, sort: 'newest' });
+  const personalized = useListings({
+    q: topSearch,
+    city: preferredCity,
+    limit: 6,
+    sort: 'newest',
+  });
+  const nearby = useListings({
+    city: preferredCity,
+    lat: preferredLat,
+    lng: preferredLng,
+    radiusKm: 15,
+    limit: 6,
+    sort: 'newest',
+  });
+
+  const orderedCategories = useMemo(() => {
+    if (!categories.length) return [] as Category[];
+    const priority = viewedCategorySlugs
+      .map((slug) => categories.find((item) => item.slug === slug))
+      .filter((item): item is Category => Boolean(item));
+    const rest = categories.filter((item) => !viewedCategorySlugs.includes(item.slug));
+    return [...priority, ...rest];
+  }, [categories, viewedCategorySlugs]);
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -74,7 +118,7 @@ export default function HomeScreen() {
           </Pressable>
           <View className="flex-row items-center gap-2 rounded-full bg-[#F5F6F7] px-3 py-2">
             <View className="h-2.5 w-2.5 rounded-full bg-green" />
-            <Text className="text-[12px] text-ink2">Lahore</Text>
+            <Text className="text-[12px] text-ink2">{preferredCity}</Text>
           </View>
         </View>
       </View>
@@ -84,12 +128,14 @@ export default function HomeScreen() {
         className="mx-3 mb-2 h-10 flex-row items-center rounded-full bg-[#F5F6F7] px-4"
       >
         <Text className="mr-2 text-ink3">Search</Text>
-        <Text className="text-[13px] text-ink3">Kuch bhi dhundein...</Text>
+        <Text className="text-[13px] text-ink3">
+          {topSearch ? `"${topSearch}" se related cheezein` : 'Kuch bhi dhundein...'}
+        </Text>
       </Pressable>
 
       <FlatList
         horizontal
-        data={categories}
+        data={orderedCategories}
         keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
         className="mb-2"
@@ -98,7 +144,7 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => {
               Vibration.vibrate(12);
-              router.push(`/(tabs)/browse?category=${item.slug}`);
+              router.push(`/(tabs)/browse?category=${item.slug}&city=${preferredCity}`);
             }}
             className="mr-3 items-center px-3 py-2"
           >
@@ -114,12 +160,18 @@ export default function HomeScreen() {
       <View className="mx-3 rounded-xl bg-red p-4">
         <View className="flex-row items-center justify-between">
           <View className="max-w-[76%]">
-            <Text className="text-[18px] font-extrabold text-white">OLX se tang?</Text>
+            <Text className="text-[18px] font-extrabold text-white">Aapke liye curated feed</Text>
             <Text className="mt-1 text-[12px] text-white/80">
-              Sirf asli malik bechte hain - koi dealer nahi
+              {topSearch
+                ? `Recent search "${topSearch}" aur ${preferredCity} location ke mutabiq.`
+                : `${preferredCity} location aur aapki viewed categories ke mutabiq.`}
             </Text>
             <View className="mt-3 flex-row flex-wrap gap-2">
-              {['Verified Sellers', 'No Dealers', 'Free'].map((item) => (
+              {[
+                preferredCity,
+                topSearch || 'Fresh picks',
+                viewedCategorySlugs[0] || 'Nearby',
+              ].map((item) => (
                 <View key={item} className="rounded-full border border-white/30 bg-white/15 px-3 py-1">
                   <Text className="text-[11px] text-white">{item}</Text>
                 </View>
@@ -132,7 +184,7 @@ export default function HomeScreen() {
               <Text className="font-bold text-red">Abhi Dhundein</Text>
             </Pressable>
           </View>
-          <Text className="text-[40px] text-white">24H</Text>
+          <Text className="text-[40px] text-white">For You</Text>
         </View>
       </View>
 
@@ -157,42 +209,71 @@ export default function HomeScreen() {
         )}
       />
 
-      <View className="mx-3 mt-3 flex-row gap-2">
-        {[
-          { value: '12K+', label: 'Active Listings' },
-          { value: '0', label: 'Dealers Allowed' },
-          { value: 'Free', label: 'Ad Lagao' },
-        ].map((stat) => (
-          <View key={stat.label} className="flex-1 rounded-xl bg-white py-3 shadow-sm">
-            <Text className="text-center text-[20px] font-extrabold text-red">{stat.value}</Text>
-            <Text className="mt-1 text-center text-[11px] text-ink2">{stat.label}</Text>
-          </View>
-        ))}
-      </View>
+      {topSearch ? (
+        <>
+          <SectionHeader
+            title={`For You: ${topSearch}`}
+            linkLabel="Sab Dekho"
+            onPress={() => router.push(`/(tabs)/browse?q=${encodeURIComponent(topSearch)}&city=${preferredCity}`)}
+          />
+          <FlatList
+            data={personalized.data?.data ?? []}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingHorizontal: 8 }}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            renderItem={({ item }) => (
+              <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
+            )}
+          />
+        </>
+      ) : null}
+
+      {typeof preferredLat === 'number' && typeof preferredLng === 'number' ? (
+        <>
+          <SectionHeader
+            title={`Mere Paas • ${preferredCity}`}
+            linkLabel="Sab Dekho"
+            onPress={() =>
+              router.push(
+                `/(tabs)/browse?city=${preferredCity}&lat=${preferredLat}&lng=${preferredLng}&radiusKm=15`,
+              )
+            }
+          />
+          <FlatList
+            data={nearby.data?.data ?? []}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingHorizontal: 8 }}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            renderItem={({ item }) => (
+              <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
+            )}
+          />
+        </>
+      ) : null}
 
       <SectionHeader title="Aaj Ki Listings" linkLabel="Sab Dekho" onPress={() => router.push('/(tabs)/browse')} />
       <FlatList
-        data={featured?.data ?? []}
+        data={featured.data?.data ?? []}
         keyExtractor={(item) => item.id}
         numColumns={2}
         scrollEnabled={false}
         contentContainerStyle={{ paddingHorizontal: 8 }}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
         renderItem={({ item }) => (
-          <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} />
+          <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
         )}
       />
 
-      <View className="mx-3 my-4 rounded-xl bg-[#1F2937] px-4 py-3">
-        <Text className="text-sm font-bold text-white">Koi Dealer Allowed Nahi</Text>
-        <Text className="mt-1 text-xs text-white/80">Sirf asli ghar walay seller ko listing milti hai.</Text>
-      </View>
-
-      {categories.map((category) => (
+      {orderedCategories.slice(0, 6).map((category) => (
         <CategoryShowcase
           key={category.id}
           slug={category.slug}
           title={`${category.icon} ${category.name}`}
+          city={preferredCity}
         />
       ))}
 

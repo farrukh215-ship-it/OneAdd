@@ -11,6 +11,7 @@ import { useListing } from '../../hooks/useListing';
 import { useListings } from '../../hooks/useListings';
 import { api } from '../../lib/api';
 import { getListingStatusMeta } from '../../lib/listing-ui';
+import { trackViewedListing } from '../../lib/mobile-preferences';
 import { uploadPostMediaToR2 } from '../../lib/uploads';
 
 export default function ListingDetailScreen() {
@@ -142,6 +143,12 @@ export default function ListingDetailScreen() {
     };
     void loadThread();
   }, [id]);
+
+  useEffect(() => {
+    if (listing) {
+      trackViewedListing(listing);
+    }
+  }, [listing]);
 
   if (isLoading) {
     return (

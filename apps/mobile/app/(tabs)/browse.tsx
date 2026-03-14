@@ -7,6 +7,7 @@ import { ListingCard } from '../../components/ListingCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
 import { api } from '../../lib/api';
+import { getLocationPreference, setLocationPreference } from '../../lib/mobile-preferences';
 import { addRecentSearch, clearRecentSearches, getRecentSearches } from '../../lib/search-history';
 
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
@@ -72,6 +73,13 @@ export default function BrowseScreen() {
   }, []);
 
   useEffect(() => {
+    const savedLocation = getLocationPreference();
+    if (!params.city && savedLocation.city) {
+      setCity(savedLocation.city);
+    }
+  }, [params.city]);
+
+  useEffect(() => {
     setCategory(params.category);
     setCity(params.city);
     setSort(params.sort ?? 'newest');
@@ -122,6 +130,17 @@ export default function BrowseScreen() {
       setRecentSearches(getRecentSearches());
     }
   };
+
+  useEffect(() => {
+    if (city || typeof lat === 'number' || typeof lng === 'number') {
+      setLocationPreference({
+        ...getLocationPreference(),
+        city,
+        lat,
+        lng,
+      });
+    }
+  }, [city, lat, lng]);
 
   return (
     <View className="flex-1 bg-bg">
