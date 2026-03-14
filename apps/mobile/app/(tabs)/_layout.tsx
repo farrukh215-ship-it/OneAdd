@@ -27,14 +27,18 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>🏠</Text>,
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 13, fontWeight: '700' }}>H</Text>
+          ),
         }}
       />
       <Tabs.Screen
         name="browse"
         options={{
           title: 'Browse',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>🔎</Text>,
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 13, fontWeight: '700' }}>B</Text>
+          ),
         }}
       />
       <Tabs.Screen
@@ -57,14 +61,18 @@ export default function TabsLayout() {
         name="saved"
         options={{
           title: 'Saved',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>❤</Text>,
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 13, fontWeight: '700' }}>S</Text>
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>👤</Text>,
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 13, fontWeight: '700' }}>P</Text>
+          ),
         }}
       />
     </Tabs>
