@@ -3,10 +3,11 @@ const projectId = process.env.EXPO_EAS_PROJECT_ID;
 const version = process.env.EXPO_APP_VERSION || '1.0.0';
 const versionCode = Number(process.env.EXPO_ANDROID_VERSION_CODE || '1');
 const packageName = process.env.EXPO_ANDROID_PACKAGE || 'com.tgmg.app';
+const environment = process.env.EXPO_PUBLIC_ENV || 'development';
 
 export default {
   expo: {
-    name: 'TGMG',
+    name: environment === 'production' ? 'TGMG' : `TGMG ${environment.toUpperCase()}`,
     slug: 'tgmg',
     scheme: 'tgmg',
     version,
@@ -30,6 +31,7 @@ export default {
     plugins: ['expo-router', 'expo-location', 'expo-notifications'],
     extra: {
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
+      environment,
       eas: projectId ? { projectId } : undefined,
     },
     android: {

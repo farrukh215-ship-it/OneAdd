@@ -8,11 +8,13 @@ Set these before running EAS:
 
 ```bash
 EXPO_PUBLIC_API_URL=https://your-api.example.com
+EXPO_PUBLIC_ENV=production
 EXPO_OWNER=your-expo-owner
 EXPO_EAS_PROJECT_ID=your-eas-project-id
 EXPO_ANDROID_PACKAGE=com.tgmg.app
 EXPO_ANDROID_VERSION_CODE=1
 EXPO_APP_VERSION=1.0.0
+GOOGLE_SERVICE_ACCOUNT_JSON_BASE64=...
 ```
 
 ## One-time setup
@@ -26,6 +28,7 @@ pnpm mobile:eas:credentials
 Notes:
 - Let EAS manage the Android keystore unless you already have a production keystore.
 - Play Store service account JSON is required for `eas submit`; do not commit it.
+- Use EAS Secrets or CI variables for service account JSON and production API URL.
 
 ## Build profiles
 
@@ -48,4 +51,5 @@ pnpm mobile:eas:submit
 4. Run `pnpm --filter @tgmg/mobile build` for a local sanity check.
 5. Build production AAB with EAS.
 6. Submit to Play internal track first.
-
+7. Run the full checklist in `apps/mobile/MOBILE_QA_CHECKLIST.md`.
+8. Monitor API telemetry logs after rollout.

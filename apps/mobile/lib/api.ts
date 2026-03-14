@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
+import { captureApiFailure } from './telemetry';
 
 const apiUrl =
   Constants.expoConfig?.extra?.apiUrl ||
@@ -28,6 +29,15 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       storage.remove('tgmg_token');
       router.replace('/auth/phone');
+    }
+
+    if (!String(error.config?.url || '').includes('/telemetry/mobile')) {
+      void captureApiFailure({
+        method: error.config?.method?.toUpperCase(),
+        url: error.config?.url,
+        status: error.response?.status,
+        message: error.message,
+      });
     }
 
     return Promise.reject(error);

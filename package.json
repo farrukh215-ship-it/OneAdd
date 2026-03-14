@@ -8,10 +8,12 @@
     "lint": "turbo run lint",
     "mobile:eas:init": "npx eas project:init",
     "mobile:eas:configure": "npx eas build:configure",
+    "mobile:eas:whoami": "npx eas whoami",
     "mobile:eas:credentials": "npx eas credentials",
     "mobile:eas:preview": "npx eas build --platform android --profile preview --non-interactive",
     "mobile:eas:production": "npx eas build --platform android --profile production --non-interactive",
     "mobile:eas:submit": "npx eas submit --platform android --profile production",
+    "mobile:qa:checklist": "node -e \"console.log('Open apps/mobile/MOBILE_QA_CHECKLIST.md and execute the manual release sweep.')\"",
     "prisma:seed": "pnpm --filter @tgmg/api run prisma:seed",
     "categories:seed": "pnpm run prisma:seed",
     "categories:health": "node -e \"const url=(process.env.API_URL||process.env.NEXT_PUBLIC_API_URL||'http://localhost:3001')+'/categories/health';fetch(url).then(async r=>{if(!r.ok) throw new Error('HTTP '+r.status); console.log(JSON.stringify(await r.json(),null,2));}).catch(err=>{console.error(err);process.exit(1);})\""

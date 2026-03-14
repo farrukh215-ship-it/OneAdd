@@ -8,6 +8,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { OtpModule } from './otp/otp.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SearchModule } from './search/search.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { UploadsModule } from './uploads/uploads.module';
     ListingsModule,
     CategoriesModule,
     SearchModule,
+    TelemetryModule,
     UploadsModule,
   ],
   controllers: [HealthController],
