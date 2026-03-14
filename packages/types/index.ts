@@ -117,12 +117,22 @@ export interface NotificationItem {
   href: string;
   type: "contact" | "saved_update" | "new_listing";
   createdAt: string;
+  readAt?: string | null;
 }
 
 export interface ListingDashboardPoint {
   label: string;
+  views: number;
   contacts: number;
+  saves: number;
   listings: number;
+}
+
+export interface ListingDashboardFunnel {
+  views: number;
+  contacts: number;
+  saves: number;
+  sold: number;
 }
 
 export interface ListingDashboard {
@@ -137,6 +147,7 @@ export interface ListingDashboard {
   contactRate: number;
   sellThroughRate: number;
   recentLeads: number;
+  funnel: ListingDashboardFunnel;
   points: ListingDashboardPoint[];
 }
 

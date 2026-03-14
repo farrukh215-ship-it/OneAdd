@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PushPlatform, User } from '@prisma/client';
+import { NotificationType, PushPlatform, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type PushPayload = {
   title: string;
   body: string;
+  href?: string;
+  type?: NotificationType;
   data?: Record<string, unknown>;
 };
 
@@ -45,6 +47,72 @@ export class PushNotificationsService {
       },
     });
     return { ok: true };
+  }
+
+  async listNotifications(user: User) {
+    const rows = await this.prisma.notification.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      href: row.href,
+      type: this.toClientType(row.type),
+      createdAt: row.createdAt.toISOString(),
+      readAt: row.readAt?.toISOString() ?? null,
+    }));
+  }
+
+  async markRead(user: User, notificationId: string) {
+    await this.prisma.notification.updateMany({
+      where: {
+        id: notificationId,
+        userId: user.id,
+        readAt: null,
+      },
+      data: {
+        readAt: new Date(),
+      },
+    });
+
+    return { ok: true };
+  }
+
+  async markAllRead(user: User) {
+    await this.prisma.notification.updateMany({
+      where: {
+        userId: user.id,
+        readAt: null,
+      },
+      data: {
+        readAt: new Date(),
+      },
+    });
+
+    return { ok: true };
+  }
+
+  async notifyUsers(userIds: string[], payload: PushPayload) {
+    const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
+    if (!uniqueUserIds.length) return;
+
+    if (payload.href && payload.type) {
+      await this.prisma.notification.createMany({
+        data: uniqueUserIds.map((userId) => ({
+          userId,
+          title: payload.title,
+          body: payload.body,
+          href: payload.href!,
+          type: payload.type!,
+        })),
+      });
+    }
+
+    await this.sendToUsers(uniqueUserIds, payload);
   }
 
   async sendToUsers(userIds: string[], payload: PushPayload) {
@@ -95,8 +163,13 @@ export class PushNotificationsService {
     }
   }
 
+  private toClientType(type: NotificationType) {
+    if (type === 'CONTACT') return 'contact';
+    if (type === 'SAVED_UPDATE') return 'saved_update';
+    return 'new_listing';
+  }
+
   private isExpoPushToken(token: string) {
     return /^ExponentPushToken\[.+\]$|^ExpoPushToken\[.+\]$/i.test(token);
   }
 }
-

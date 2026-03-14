@@ -11,9 +11,12 @@ import { getListingStatusMeta } from '../../lib/listing-ui';
 function DashboardBarChart({
   points,
 }: {
-  points: Array<{ label: string; contacts: number; listings: number }>;
+  points: Array<{ label: string; views: number; contacts: number; saves: number; listings: number }>;
 }) {
-  const maxValue = Math.max(1, ...points.map((point) => Math.max(point.contacts, point.listings)));
+  const maxValue = Math.max(
+    1,
+    ...points.map((point) => Math.max(point.views, point.contacts, point.saves, point.listings)),
+  );
 
   return (
     <View className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
@@ -26,8 +29,16 @@ function DashboardBarChart({
           <View key={point.label} className="flex-1 items-center">
             <View className="h-28 w-full items-center justify-end gap-1">
               <View
+                className="w-2 rounded-t-full bg-[#0EA5E9]"
+                style={{ height: `${Math.max((point.views / maxValue) * 100, point.views ? 12 : 4)}%` }}
+              />
+              <View
                 className="w-3 rounded-t-full bg-red"
                 style={{ height: `${Math.max((point.contacts / maxValue) * 100, point.contacts ? 12 : 4)}%` }}
+              />
+              <View
+                className="w-2 rounded-t-full bg-[#22C55E]"
+                style={{ height: `${Math.max((point.saves / maxValue) * 100, point.saves ? 12 : 4)}%` }}
               />
               <View
                 className="w-3 rounded-t-full bg-[#111827]"
@@ -40,13 +51,60 @@ function DashboardBarChart({
       </View>
       <View className="mt-4 flex-row gap-4">
         <View className="flex-row items-center gap-2">
+          <View className="h-2.5 w-2.5 rounded-full bg-[#0EA5E9]" />
+          <Text className="text-[11px] text-ink2">Views</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
           <View className="h-2.5 w-2.5 rounded-full bg-red" />
           <Text className="text-[11px] text-ink2">Contacts</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <View className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" />
+          <Text className="text-[11px] text-ink2">Saves</Text>
         </View>
         <View className="flex-row items-center gap-2">
           <View className="h-2.5 w-2.5 rounded-full bg-[#111827]" />
           <Text className="text-[11px] text-ink2">Listings</Text>
         </View>
+      </View>
+    </View>
+  );
+}
+
+function ConversionFunnel({
+  funnel,
+}: {
+  funnel: { views: number; contacts: number; saves: number; sold: number };
+}) {
+  const top = Math.max(1, funnel.views);
+  const items = [
+    { label: 'Views', value: funnel.views, color: '#0EA5E9' },
+    { label: 'Contacts', value: funnel.contacts, color: '#E53935' },
+    { label: 'Saves', value: funnel.saves, color: '#22C55E' },
+    { label: 'Sold', value: funnel.sold, color: '#111827' },
+  ];
+
+  return (
+    <View className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-[16px] font-extrabold text-ink">Contact Funnel</Text>
+        <Text className="text-[11px] font-semibold text-ink3">Real activity</Text>
+      </View>
+      <View className="mt-4 gap-3">
+        {items.map((item) => (
+          <View key={item.label}>
+            <View className="mb-1 flex-row items-center justify-between">
+              <Text className="text-[12px] font-semibold text-ink2">{item.label}</Text>
+              <Text className="text-[12px] font-bold text-ink">{item.value}</Text>
+            </View>
+            <View className="h-3 overflow-hidden rounded-full bg-[#EEF1F4]">
+              <View
+                style={{ width: `${Math.max((item.value / top) * 100, item.value ? 8 : 0)}%`, backgroundColor: item.color }}
+                className="h-full rounded-full"
+              />
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -121,6 +179,7 @@ export default function ProfileScreen() {
             ))}
           </View>
           <DashboardBarChart points={dashboard.points} />
+          <ConversionFunnel funnel={dashboard.funnel} />
           <View className="mt-3 rounded-2xl bg-[#111827] p-4">
             <Text className="text-sm font-extrabold text-white">Boost Karo</Text>
             <Text className="mt-1 text-xs leading-5 text-white/75">

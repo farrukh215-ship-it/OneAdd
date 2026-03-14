@@ -57,6 +57,12 @@ export class ListingsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('my/analytics')
+  analytics(@CurrentUser() user: User) {
+    return this.listingsService.analytics(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('saved')
   saved(@CurrentUser() user: User) {
     return this.listingsService.saved(user);

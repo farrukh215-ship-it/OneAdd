@@ -13,6 +13,7 @@ import {
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
+import { BackgroundSyncManager } from '../components/BackgroundSyncManager';
 import { ExperienceBoot } from '../components/ExperienceBoot';
 import { PushNotificationRegistrar } from '../components/PushNotificationRegistrar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -50,6 +51,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }} />
             <ExperienceBoot />
+            <BackgroundSyncManager />
             <PushNotificationRegistrar />
           </BottomSheetModalProvider>
         </QueryClientProvider>

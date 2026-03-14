@@ -5,7 +5,8 @@ import { useNotifications } from '../hooks/useNotifications';
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { notifications, unread, unreadCount, isLoading, isRefetching, refetch, markRead, markAllRead } = useNotifications();
+  const { notifications, unread, unreadCount, isLoading, isRefetching, refetch, markRead, markAllRead } =
+    useNotifications();
   const [filter, setFilter] = useState<'all' | 'contact' | 'saved_update' | 'new_listing'>('all');
   const toMobileHref = (href: string) => href.replace('/listings/', '/listing/');
 
@@ -33,10 +34,12 @@ export default function NotificationsScreen() {
               <Pressable
                 key={item.id}
                 onPress={() => {
-                  markRead(item.id);
+                  void markRead(item.id);
                   router.push(toMobileHref(item.href) as never);
                 }}
-                className={`rounded-2xl border p-4 shadow-sm ${isUnread ? 'border-red/20 bg-[#FFF5F4]' : 'border-border bg-white'}`}
+                className={`rounded-2xl border p-4 shadow-sm ${
+                  isUnread ? 'border-red/20 bg-[#FFF5F4]' : 'border-border bg-white'
+                }`}
               >
                 <View className="flex-row items-start justify-between gap-3">
                   <View className="flex-1">
@@ -78,7 +81,7 @@ export default function NotificationsScreen() {
             <Text className="text-[16px] font-extrabold text-ink">Smart Notifications</Text>
             <Text className="mt-1 text-xs text-ink2">Unread: {unreadCount} • Total: {notifications.length}</Text>
           </View>
-          <Pressable onPress={markAllRead} className="rounded-full bg-red/10 px-3 py-2">
+          <Pressable onPress={() => void markAllRead()} className="rounded-full bg-red/10 px-3 py-2">
             <Text className="text-[11px] font-bold text-red">Mark all read</Text>
           </Pressable>
         </View>

@@ -7,7 +7,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Condition, Listing, Prisma, StoreType, User } from '@prisma/client';
+import { Condition, Listing, NotificationType, Prisma, StoreType, User } from '@prisma/client';
 import Redis from 'ioredis';
 import { PaginatedResponse } from '@tgmg/types';
 import { ListingsRepository } from './listings.repository';
@@ -233,6 +233,9 @@ export class ListingsService {
     }
 
     const count = await this.redis.incr(`views:${id}`);
+    await this.prisma.listingViewLog.create({
+      data: { listingId: id },
+    });
 
     if (count % 100 === 0) {
       await this.listingsRepository.update({
@@ -260,9 +263,11 @@ export class ListingsService {
     });
 
     if (listing.userId !== currentUser.id) {
-      await this.pushNotificationsService.sendToUsers([listing.userId], {
+      await this.pushNotificationsService.notifyUsers([listing.userId], {
         title: 'Aapki listing pe contact hua',
         body: `"${listing.title}" dekhne wale ne phone reveal kiya`,
+        href: `/listings/${listing.id}`,
+        type: NotificationType.CONTACT,
         data: { href: `/listings/${listing.id}`, type: 'contact' },
       });
     }
@@ -520,7 +525,7 @@ export class ListingsService {
     });
 
     const listingIds = listings.map((listing) => listing.id);
-    const [contactCount, groupedContacts] = listingIds.length
+    const [contactCount, groupedContacts, groupedViews, savedCount, groupedSaves] = listingIds.length
       ? await Promise.all([
           this.prisma.contactLog.count({
             where: { listingId: { in: listingIds } },
@@ -532,10 +537,31 @@ export class ListingsService {
             },
             select: { createdAt: true },
           }),
+          this.prisma.listingViewLog.findMany({
+            where: {
+              listingId: { in: listingIds },
+              createdAt: { gte: sevenDaysAgo },
+            },
+            select: { createdAt: true },
+          }),
+          this.prisma.savedAd.count({
+            where: { listingId: { in: listingIds } },
+          }),
+          this.prisma.savedAd.findMany({
+            where: {
+              listingId: { in: listingIds },
+              createdAt: { gte: sevenDaysAgo },
+            },
+            select: { createdAt: true },
+          }),
         ])
-      : [0, []];
+      : [0, [], [], 0, []];
 
-    const totalViews = listings.reduce((sum, listing) => sum + listing.views, 0);
+    const totalViews = await this.prisma.listingViewLog.count({
+      where: {
+        listingId: { in: listingIds },
+      },
+    });
     const points = Array.from({ length: 7 }, (_, index) => {
       const date = new Date();
       date.setHours(0, 0, 0, 0);
@@ -545,7 +571,13 @@ export class ListingsService {
 
       return {
         label: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        views: groupedViews.filter(
+          (entry) => entry.createdAt >= date && entry.createdAt < nextDate,
+        ).length,
         contacts: groupedContacts.filter(
+          (entry) => entry.createdAt >= date && entry.createdAt < nextDate,
+        ).length,
+        saves: groupedSaves.filter(
           (entry) => entry.createdAt >= date && entry.createdAt < nextDate,
         ).length,
         listings: listings.filter(
@@ -568,8 +600,18 @@ export class ListingsService {
         ? Number(((listings.filter((listing) => listing.status === 'SOLD').length / listings.length) * 100).toFixed(1))
         : 0,
       recentLeads: groupedContacts.length,
+      funnel: {
+        views: totalViews,
+        contacts: contactCount,
+        saves: savedCount,
+        sold: listings.filter((listing) => listing.status === 'SOLD').length,
+      },
       points,
     };
+  }
+
+  async analytics(currentUser: User) {
+    return this.dashboard(currentUser);
   }
 
   private applyDistanceSorting(
@@ -652,11 +694,13 @@ export class ListingsService {
       take: 50,
     });
 
-    await this.pushNotificationsService.sendToUsers(
+    await this.pushNotificationsService.notifyUsers(
       savedUsers.map((entry) => entry.userId),
       {
         title: 'Saved item update hui',
         body: `"${title}" ki price ya details update hui hain`,
+        href: `/listings/${listingId}`,
+        type: NotificationType.SAVED_UPDATE,
         data: { href: `/listings/${listingId}`, type: 'saved_update' },
       },
     );
@@ -685,11 +729,13 @@ export class ListingsService {
       take: 50,
     });
 
-    await this.pushNotificationsService.sendToUsers(
+    await this.pushNotificationsService.notifyUsers(
       watchers.map((entry) => entry.id),
       {
         title: 'Aapki pasand ki category me naya ad aaya',
         body: `"${listing.title}" ab live hai`,
+        href: `/listings/${listing.id}`,
+        type: NotificationType.NEW_LISTING,
         data: { href: `/listings/${listing.id}`, type: 'new_listing' },
       },
     );

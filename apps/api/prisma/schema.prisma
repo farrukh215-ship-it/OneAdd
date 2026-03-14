@@ -27,6 +27,7 @@ model User {
   messages  ListingMessage[]
   offers    Offer[]
   pushTokens UserPushToken[]
+  notifications Notification[]
 }
 
 model Listing {
@@ -56,6 +57,7 @@ model Listing {
   contacts    ContactLog[]
   thread      ListingThread?
   offers      Offer[]
+  viewLogs    ListingViewLog[]
 
   @@index([city])
   @@index([storeType])
@@ -136,6 +138,30 @@ model Offer {
   @@index([listingId, amount])
 }
 
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  href      String
+  type      NotificationType
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model ListingViewLog {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([listingId, createdAt])
+}
+
 model UserPushToken {
   id         String       @id @default(cuid())
   userId     String
@@ -170,4 +196,10 @@ enum StoreType {
 enum PushPlatform {
   ANDROID
   IOS
+}
+
+enum NotificationType {
+  CONTACT
+  SAVED_UPDATE
+  NEW_LISTING
 }

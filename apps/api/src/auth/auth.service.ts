@@ -242,105 +242,15 @@ export class AuthService {
   }
 
   async notifications(user: User) {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    return this.pushNotificationsService.listNotifications(user);
+  }
 
-    const [myListings, savedAds, recentContacts] = await Promise.all([
-      this.prisma.listing.findMany({
-        where: { userId: user.id },
-        select: {
-          id: true,
-          title: true,
-          categoryId: true,
-          createdAt: true,
-        },
-      }),
-      this.prisma.savedAd.findMany({
-        where: { userId: user.id },
-        include: {
-          listing: {
-            select: {
-              id: true,
-              title: true,
-              updatedAt: true,
-              categoryId: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      }),
-      this.prisma.contactLog.groupBy({
-        by: ['listingId'],
-        where: {
-          listing: { userId: user.id },
-          createdAt: { gte: sevenDaysAgo },
-        },
-        _count: { listingId: true },
-        _max: { createdAt: true },
-      }),
-    ]);
+  async markNotificationRead(user: User, notificationId: string) {
+    return this.pushNotificationsService.markRead(user, notificationId);
+  }
 
-    const contactItems = recentContacts
-      .map((item) => {
-        const listing = myListings.find((entry) => entry.id === item.listingId);
-        if (!listing || !item._max.createdAt) return null;
-        return {
-          id: `contact-${listing.id}`,
-          title: 'Aapki listing pe contact hua',
-          body: `"${listing.title}" par ${item._count.listingId} logon ne rabta kiya`,
-          href: `/listings/${listing.id}`,
-          type: 'contact' as const,
-          createdAt: item._max.createdAt.toISOString(),
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
-
-    const savedUpdateItems = savedAds
-      .filter((entry) => entry.listing.updatedAt >= sevenDaysAgo)
-      .map((entry) => ({
-        id: `saved-${entry.listing.id}`,
-        title: 'Saved item update hui',
-        body: `"${entry.listing.title}" ki price ya details update hui hain`,
-        href: `/listings/${entry.listing.id}`,
-        type: 'saved_update' as const,
-        createdAt: entry.listing.updatedAt.toISOString(),
-      }));
-
-    const watchedCategoryIds = Array.from(
-      new Set([
-        ...savedAds.map((entry) => entry.listing.categoryId),
-        ...myListings.map((entry) => entry.categoryId),
-      ]),
-    );
-
-    const freshListings = watchedCategoryIds.length
-      ? await this.prisma.listing.findMany({
-          where: {
-            userId: { not: user.id },
-            categoryId: { in: watchedCategoryIds },
-            status: 'ACTIVE',
-            createdAt: { gte: threeDaysAgo },
-          },
-          select: { id: true, title: true, createdAt: true, category: { select: { name: true } } },
-          orderBy: { createdAt: 'desc' },
-          take: 6,
-        })
-      : [];
-
-    const freshItems = freshListings.map((listing) => ({
-      id: `fresh-${listing.id}`,
-      title: 'Aapki pasand ki category me naya ad aaya',
-      body: `"${listing.title}" ${listing.category.name} category me available hai`,
-      href: `/listings/${listing.id}`,
-      type: 'new_listing' as const,
-      createdAt: listing.createdAt.toISOString(),
-    }));
-
-    return [...contactItems, ...savedUpdateItems, ...freshItems]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 20);
+  async markAllNotificationsRead(user: User) {
+    return this.pushNotificationsService.markAllRead(user);
   }
 
   async registerPushToken(user: User, token: string, platform: 'ANDROID' | 'IOS') {

@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
+import { MarkNotificationReadDto } from './dto/mark-notification-read.dto';
 import { PushTokenDto } from './dto/push-token.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { SignInDto } from './dto/sign-in.dto';
@@ -48,6 +49,18 @@ export class AuthController {
   @Get('notifications')
   notifications(@CurrentUser() user: User) {
     return this.authService.notifications(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('notifications/read')
+  markNotificationRead(@CurrentUser() user: User, @Body() body: MarkNotificationReadDto) {
+    return this.authService.markNotificationRead(user, body.notificationId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('notifications/read-all')
+  markAllNotificationsRead(@CurrentUser() user: User) {
+    return this.authService.markAllNotificationsRead(user);
   }
 
   @UseGuards(JwtAuthGuard)
