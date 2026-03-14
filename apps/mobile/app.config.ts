@@ -1,7 +1,7 @@
 const owner = process.env.EXPO_OWNER || 'farrukh3035';
 const projectId = process.env.EXPO_EAS_PROJECT_ID || '8c9be2ab-853b-4c1a-b4f3-e49d269bbd02';
-const version = process.env.EXPO_APP_VERSION || '1.0.0';
-const versionCode = Number(process.env.EXPO_ANDROID_VERSION_CODE || '1');
+const version = process.env.EXPO_APP_VERSION || '1.0.1';
+const versionCode = Number(process.env.EXPO_ANDROID_VERSION_CODE || '2');
 const packageName = process.env.EXPO_ANDROID_PACKAGE || 'com.tgmg.app';
 const environment = process.env.EXPO_PUBLIC_ENV || 'development';
 
