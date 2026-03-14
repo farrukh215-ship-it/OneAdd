@@ -13,7 +13,7 @@ export default function ProfileScreen() {
   const queryClient = useQueryClient();
   const { currentUser, logout } = useAuth();
   const { data: dashboard } = useListingDashboard();
-  const { data: notifications } = useNotifications();
+  const { notifications, unreadCount } = useNotifications();
   const { data: myListings } = useMyListings();
 
   const updateListingStatus = useMutation({
@@ -34,7 +34,7 @@ export default function ProfileScreen() {
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
       <Text className="text-[18px] font-extrabold text-ink">Mera Profile</Text>
       <Pressable onPress={() => router.push('/notifications')} className="mt-3 self-start rounded-full bg-red/10 px-4 py-2">
-        <Text className="text-xs font-semibold text-red">Notifications Inbox</Text>
+        <Text className="text-xs font-semibold text-red">Notifications Inbox {unreadCount ? `(${unreadCount})` : ''}</Text>
       </Pressable>
 
       <View className="mt-4 rounded-xl bg-white p-4 shadow-sm">

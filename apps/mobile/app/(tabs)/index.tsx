@@ -8,7 +8,8 @@ import { WideCard } from '../../components/WideCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
 import { useNotifications } from '../../hooks/useNotifications';
-import { getLocationPreference, getViewedCategorySlugs } from '../../lib/mobile-preferences';
+import { buildRecommendedFeed } from '../../lib/mobile-recommendations';
+import { getLocationPreference, getViewedCategorySlugs, getViewedListingIds } from '../../lib/mobile-preferences';
 import { getRecentSearches } from '../../lib/search-history';
 
 const quickActions = [
@@ -58,12 +59,13 @@ function CategoryShowcase({
 export default function HomeScreen() {
   const router = useRouter();
   const { data: categories = [] } = useCategories();
-  const { data: notifications = [] } = useNotifications();
+  const { unreadCount } = useNotifications();
   const [preferredCity, setPreferredCity] = useState('Lahore');
   const [preferredLat, setPreferredLat] = useState<number | undefined>();
   const [preferredLng, setPreferredLng] = useState<number | undefined>();
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [viewedCategorySlugs, setViewedCategorySlugs] = useState<string[]>([]);
+  const [viewedListingIds, setViewedListingIds] = useState<string[]>([]);
 
   useEffect(() => {
     const locationPref = getLocationPreference();
@@ -72,6 +74,7 @@ export default function HomeScreen() {
     setPreferredLng(locationPref.lng);
     setRecentSearches(getRecentSearches());
     setViewedCategorySlugs(getViewedCategorySlugs());
+    setViewedListingIds(getViewedListingIds());
   }, []);
 
   const topSearch = recentSearches[0];
@@ -90,6 +93,11 @@ export default function HomeScreen() {
     limit: 6,
     sort: 'newest',
   });
+  const cityPool = useListings({
+    city: preferredCity,
+    limit: 24,
+    sort: 'newest',
+  });
 
   const orderedCategories = useMemo(() => {
     if (!categories.length) return [] as Category[];
@@ -99,6 +107,37 @@ export default function HomeScreen() {
     const rest = categories.filter((item) => !viewedCategorySlugs.includes(item.slug));
     return [...priority, ...rest];
   }, [categories, viewedCategorySlugs]);
+
+  const recommended = useMemo(() => {
+    const merged = [
+      ...(cityPool.data?.data ?? []),
+      ...(personalized.data?.data ?? []),
+      ...(nearby.data?.data ?? []),
+      ...(featured.data?.data ?? []),
+    ];
+
+    return buildRecommendedFeed(merged, {
+      preferredCity,
+      recentSearches,
+      viewedCategorySlugs,
+      viewedListingIds,
+      nearbyListingIds: (nearby.data?.data ?? []).map((item) => item.id),
+    }).slice(0, 8);
+  }, [
+    cityPool.data?.data,
+    featured.data?.data,
+    nearby.data?.data,
+    personalized.data?.data,
+    preferredCity,
+    recentSearches,
+    viewedCategorySlugs,
+    viewedListingIds,
+  ]);
+
+  const continueWatching = useMemo(() => {
+    const byViewed = new Set(viewedListingIds);
+    return recommended.filter((item) => !byViewed.has(item.id)).slice(0, 4);
+  }, [recommended, viewedListingIds]);
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -110,9 +149,9 @@ export default function HomeScreen() {
             className="relative rounded-full bg-[#F5F6F7] px-3 py-2"
           >
             <Text className="text-[12px] text-ink2">Bell</Text>
-            {notifications.length ? (
+            {unreadCount ? (
               <View className="absolute -right-1 -top-1 h-5 min-w-[20px] items-center justify-center rounded-full bg-red px-1">
-                <Text className="text-[10px] font-bold text-white">{Math.min(notifications.length, 9)}+</Text>
+                <Text className="text-[10px] font-bold text-white">{Math.min(unreadCount, 9)}+</Text>
               </View>
             ) : null}
           </Pressable>
@@ -188,6 +227,27 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {recommended.length ? (
+        <>
+          <SectionHeader
+            title="Recommended For You"
+            linkLabel="Sab Dekho"
+            onPress={() => router.push(`/(tabs)/browse?city=${preferredCity}`)}
+          />
+          <FlatList
+            data={recommended}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingHorizontal: 8 }}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            renderItem={({ item }) => (
+              <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
+            )}
+          />
+        </>
+      ) : null}
+
       <FlatList
         horizontal
         data={quickActions}
@@ -243,6 +303,27 @@ export default function HomeScreen() {
           />
           <FlatList
             data={nearby.data?.data ?? []}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingHorizontal: 8 }}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            renderItem={({ item }) => (
+              <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
+            )}
+          />
+        </>
+      ) : null}
+
+      {continueWatching.length ? (
+        <>
+          <SectionHeader
+            title="Aapki Activity Se"
+            linkLabel="Browse"
+            onPress={() => router.push('/(tabs)/browse')}
+          />
+          <FlatList
+            data={continueWatching}
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}

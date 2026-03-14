@@ -1,20 +1,40 @@
+const owner = process.env.EXPO_OWNER;
+const projectId = process.env.EXPO_EAS_PROJECT_ID;
+const version = process.env.EXPO_APP_VERSION || '1.0.0';
+const versionCode = Number(process.env.EXPO_ANDROID_VERSION_CODE || '1');
+const packageName = process.env.EXPO_ANDROID_PACKAGE || 'com.tgmg.app';
+
 export default {
   expo: {
     name: 'TGMG',
     slug: 'tgmg',
     scheme: 'tgmg',
-    version: '1.0.0',
+    version,
+    owner,
     orientation: 'portrait',
     userInterfaceStyle: 'light',
     icon: './assets/icon.png',
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#FFF4F2',
     },
-    extra: { apiUrl: process.env.EXPO_PUBLIC_API_URL },
+    updates: projectId
+      ? {
+          url: `https://u.expo.dev/${projectId}`,
+        }
+      : undefined,
+    plugins: ['expo-router', 'expo-location'],
+    extra: {
+      apiUrl: process.env.EXPO_PUBLIC_API_URL,
+      eas: projectId ? { projectId } : undefined,
+    },
     android: {
-      package: 'com.tgmg.app',
+      package: packageName,
+      versionCode,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#E53935',
