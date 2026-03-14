@@ -34,7 +34,7 @@ export default function TabsLayout() {
         name="browse"
         options={{
           title: 'Browse',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>🔍</Text>,
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>🔎</Text>,
         }}
       />
       <Tabs.Screen
@@ -57,7 +57,7 @@ export default function TabsLayout() {
         name="saved"
         options={{
           title: 'Saved',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>❤️</Text>,
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>❤</Text>,
         }}
       />
       <Tabs.Screen
