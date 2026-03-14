@@ -67,6 +67,42 @@ export class PushNotificationsService {
     }));
   }
 
+  async getPreferences(user: User) {
+    const prefs = await this.prisma.userNotificationPreference.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    });
+
+    return {
+      contacts: prefs.contacts,
+      savedUpdates: prefs.savedUpdates,
+      newListings: prefs.newListings,
+      pushEnabled: prefs.pushEnabled,
+    };
+  }
+
+  async updatePreferences(
+    user: User,
+    updates: Partial<{ contacts: boolean; savedUpdates: boolean; newListings: boolean; pushEnabled: boolean }>,
+  ) {
+    const prefs = await this.prisma.userNotificationPreference.upsert({
+      where: { userId: user.id },
+      update: updates,
+      create: {
+        userId: user.id,
+        ...updates,
+      },
+    });
+
+    return {
+      contacts: prefs.contacts,
+      savedUpdates: prefs.savedUpdates,
+      newListings: prefs.newListings,
+      pushEnabled: prefs.pushEnabled,
+    };
+  }
+
   async markRead(user: User, notificationId: string) {
     await this.prisma.notification.updateMany({
       where: {
@@ -100,9 +136,32 @@ export class PushNotificationsService {
     const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
     if (!uniqueUserIds.length) return;
 
+    const preferences = await this.prisma.userNotificationPreference.findMany({
+      where: { userId: { in: uniqueUserIds } },
+      select: {
+        userId: true,
+        contacts: true,
+        savedUpdates: true,
+        newListings: true,
+        pushEnabled: true,
+      },
+    });
+    const preferenceMap = new Map(preferences.map((item) => [item.userId, item]));
+    const filteredUserIds = uniqueUserIds.filter((userId) => {
+      const pref = preferenceMap.get(userId);
+      if (!pref) return true;
+      if (!pref.pushEnabled) return false;
+      if (payload.type === 'CONTACT') return pref.contacts;
+      if (payload.type === 'SAVED_UPDATE') return pref.savedUpdates;
+      if (payload.type === 'NEW_LISTING') return pref.newListings;
+      return true;
+    });
+
+    if (!filteredUserIds.length) return;
+
     if (payload.href && payload.type) {
       await this.prisma.notification.createMany({
-        data: uniqueUserIds.map((userId) => ({
+        data: filteredUserIds.map((userId) => ({
           userId,
           title: payload.title,
           body: payload.body,
@@ -112,7 +171,7 @@ export class PushNotificationsService {
       });
     }
 
-    await this.sendToUsers(uniqueUserIds, payload);
+    await this.sendToUsers(filteredUserIds, payload);
   }
 
   async sendToUsers(userIds: string[], payload: PushPayload) {

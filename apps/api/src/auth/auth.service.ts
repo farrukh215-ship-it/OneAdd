@@ -16,6 +16,7 @@ import { OtpProviderService } from '../otp/otp.provider.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserDto } from './dto/user.dto';
 import { ForgotPasswordResetDto } from './dto/forgot-password-reset.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
@@ -251,6 +252,14 @@ export class AuthService {
 
   async markAllNotificationsRead(user: User) {
     return this.pushNotificationsService.markAllRead(user);
+  }
+
+  async notificationPreferences(user: User) {
+    return this.pushNotificationsService.getPreferences(user);
+  }
+
+  async updateNotificationPreferences(user: User, body: UpdateNotificationPreferencesDto) {
+    return this.pushNotificationsService.updatePreferences(user, body);
   }
 
   async registerPushToken(user: User, token: string, platform: 'ANDROID' | 'IOS') {

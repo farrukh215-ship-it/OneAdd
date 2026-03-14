@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { AppState, Image } from 'react-native';
+import { AppState } from 'react-native';
 import type { Listing, PaginatedResponse } from '@tgmg/types';
+import { warmListingImages } from '../hooks/useWarmListingImages';
 import { readCachedQuery } from '../lib/query-cache';
 
 function collectCachedListings() {
@@ -27,12 +28,7 @@ export function BackgroundSyncManager() {
   useEffect(() => {
     const preload = () => {
       const listings = collectCachedListings().slice(0, 20);
-      for (const listing of listings) {
-        const image = listing.images?.[0];
-        if (image) {
-          void Image.prefetch(image);
-        }
-      }
+      warmListingImages(listings, 20);
     };
 
     preload();
@@ -53,4 +49,3 @@ export function BackgroundSyncManager() {
 
   return null;
 }
-

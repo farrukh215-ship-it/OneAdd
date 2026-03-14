@@ -6,6 +6,7 @@ import type { Listing, SearchSuggestion } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
+import { useWarmListingImages } from '../../hooks/useWarmListingImages';
 import { api } from '../../lib/api';
 import { getLocationPreference, setLocationPreference } from '../../lib/mobile-preferences';
 import { addRecentSearch, clearRecentSearches, getRecentSearches } from '../../lib/search-history';
@@ -120,6 +121,8 @@ export default function BrowseScreen() {
       return merged.filter((item, index, array) => array.findIndex((entry) => entry.id === item.id) === index);
     });
   }, [listingsQuery.data]);
+
+  useWarmListingImages(items, 18);
 
   const submitSearch = (value: string) => {
     const term = value.trim();

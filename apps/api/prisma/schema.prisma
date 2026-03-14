@@ -28,6 +28,7 @@ model User {
   offers    Offer[]
   pushTokens UserPushToken[]
   notifications Notification[]
+  notificationPreference UserNotificationPreference?
 }
 
 model Listing {
@@ -173,6 +174,18 @@ model UserPushToken {
   lastSeenAt DateTime     @default(now())
 
   @@index([userId, platform])
+}
+
+model UserNotificationPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  contacts        Boolean  @default(true)
+  savedUpdates    Boolean  @default(true)
+  newListings     Boolean  @default(true)
+  pushEnabled     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 enum Condition {

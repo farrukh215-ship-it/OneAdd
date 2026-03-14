@@ -186,6 +186,12 @@ export default function ProfileScreen() {
               Featured placements aur promoted reach next billing phase ke liye wired hai.
             </Text>
           </View>
+          <Pressable onPress={() => router.push('/analytics')} className="mt-3 rounded-2xl bg-white px-4 py-4 shadow-sm">
+            <Text className="text-sm font-extrabold text-ink">Full Analytics Screen</Text>
+            <Text className="mt-1 text-xs leading-5 text-ink2">
+              Views over time, contact funnel aur seller conversion history detail mein dekho.
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 

@@ -120,6 +120,13 @@ export interface NotificationItem {
   readAt?: string | null;
 }
 
+export interface NotificationPreferences {
+  contacts: boolean;
+  savedUpdates: boolean;
+  newListings: boolean;
+  pushEnabled: boolean;
+}
+
 export interface ListingDashboardPoint {
   label: string;
   views: number;

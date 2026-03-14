@@ -8,6 +8,7 @@ import { WideCard } from '../../components/WideCard';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useWarmListingImages } from '../../hooks/useWarmListingImages';
 import { buildRecommendedFeed } from '../../lib/mobile-recommendations';
 import { getLocationPreference, getViewedCategorySlugs, getViewedListingIds } from '../../lib/mobile-preferences';
 import { getRecentSearches } from '../../lib/search-history';
@@ -138,6 +139,11 @@ export default function HomeScreen() {
     const byViewed = new Set(viewedListingIds);
     return recommended.filter((item) => !byViewed.has(item.id)).slice(0, 4);
   }, [recommended, viewedListingIds]);
+
+  useWarmListingImages(recommended, 12);
+  useWarmListingImages(personalized.data?.data ?? [], 8);
+  useWarmListingImages(nearby.data?.data ?? [], 8);
+  useWarmListingImages(featured.data?.data ?? [], 12);
 
   return (
     <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -293,7 +299,7 @@ export default function HomeScreen() {
       {typeof preferredLat === 'number' && typeof preferredLng === 'number' ? (
         <>
           <SectionHeader
-            title={`Mere Paas • ${preferredCity}`}
+            title={`Mere Paas | ${preferredCity}`}
             linkLabel="Sab Dekho"
             onPress={() =>
               router.push(

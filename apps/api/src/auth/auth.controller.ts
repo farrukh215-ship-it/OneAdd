@@ -7,6 +7,7 @@ import { MarkNotificationReadDto } from './dto/mark-notification-read.dto';
 import { PushTokenDto } from './dto/push-token.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { SignInDto } from './dto/sign-in.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -61,6 +62,21 @@ export class AuthController {
   @Post('notifications/read-all')
   markAllNotificationsRead(@CurrentUser() user: User) {
     return this.authService.markAllNotificationsRead(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('notification-preferences')
+  notificationPreferences(@CurrentUser() user: User) {
+    return this.authService.notificationPreferences(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('notification-preferences')
+  updateNotificationPreferences(
+    @CurrentUser() user: User,
+    @Body() body: UpdateNotificationPreferencesDto,
+  ) {
+    return this.authService.updateNotificationPreferences(user, body);
   }
 
   @UseGuards(JwtAuthGuard)
