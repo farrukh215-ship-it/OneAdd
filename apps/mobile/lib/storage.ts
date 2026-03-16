@@ -27,8 +27,24 @@ function createStorage(): StorageAdapter {
   try {
     // Expo Go does not ship react-native-mmkv. Keep MMKV for dev/prod builds,
     // but fall back to in-memory storage so Expo Go can boot for manual testing.
-    const { createMMKV } = require('react-native-mmkv') as typeof import('react-native-mmkv');
-    const mmkv = createMMKV({ id: 'tgmg-storage' });
+    const mmkvPackage = require('react-native-mmkv') as {
+      createMMKV?: (options?: { id?: string }) => {
+        getString: (key: string) => string | undefined;
+        getBoolean: (key: string) => boolean | undefined;
+        set: (key: string, value: string | boolean | number) => void;
+        delete: (key: string) => void;
+      };
+      MMKV?: new (options?: { id?: string }) => {
+        getString: (key: string) => string | undefined;
+        getBoolean: (key: string) => boolean | undefined;
+        set: (key: string, value: string | boolean | number) => void;
+        delete: (key: string) => void;
+      };
+    };
+    const mmkv =
+      mmkvPackage.createMMKV?.({ id: 'tgmg-storage' }) ??
+      (mmkvPackage.MMKV ? new mmkvPackage.MMKV({ id: 'tgmg-storage' }) : null);
+    if (!mmkv) return fallbackStorage;
     return {
       getString: (key) => mmkv.getString(key),
       getBoolean: (key) => mmkv.getBoolean(key),
