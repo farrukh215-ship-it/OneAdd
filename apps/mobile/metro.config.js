@@ -15,14 +15,13 @@ config.resolver.extraNodeModules = {
   'react/jsx-dev-runtime': path.join(mobileNodeModules, 'react/jsx-dev-runtime'),
   'react-native': path.join(mobileNodeModules, 'react-native'),
   'react-dom': path.join(mobileNodeModules, 'react-dom'),
+  'expo-modules-core': path.join(mobileNodeModules, 'expo-modules-core'),
   'react-native-css-interop': path.resolve(nativewindDir, '../react-native-css-interop'),
 };
 config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
 config.resolver.nodeModulesPaths = Array.from(
   new Set([...(config.resolver.nodeModulesPaths || []), mobileNodeModules, workspaceNodeModules]),
 );
-// Force Metro to resolve packages only from explicit node_modules roots.
-// This avoids pulling a second React copy from other workspaces in the monorepo.
-config.resolver.disableHierarchicalLookup = true;
+config.resolver.disableHierarchicalLookup = false;
 
 module.exports = config;
