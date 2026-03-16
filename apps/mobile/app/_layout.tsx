@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import '../global.css';
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
