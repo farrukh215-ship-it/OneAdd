@@ -1,27 +1,15 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
-const config = getDefaultConfig(__dirname);
-const nativewindBabelPath = require.resolve('nativewind/babel');
-const nativewindDir = path.dirname(nativewindBabelPath);
-const mobileNodeModules = path.resolve(__dirname, 'node_modules');
-const workspaceRoot = path.resolve(__dirname, '../..');
-const workspaceNodeModules = path.join(workspaceRoot, 'node_modules');
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
 
-config.resolver.extraNodeModules = {
-  ...(config.resolver.extraNodeModules || {}),
-  react: path.join(mobileNodeModules, 'react'),
-  'react/jsx-runtime': path.join(mobileNodeModules, 'react/jsx-runtime'),
-  'react/jsx-dev-runtime': path.join(mobileNodeModules, 'react/jsx-dev-runtime'),
-  'react-native': path.join(mobileNodeModules, 'react-native'),
-  'react-dom': path.join(mobileNodeModules, 'react-dom'),
-  'expo-modules-core': path.join(mobileNodeModules, 'expo-modules-core'),
-  'react-native-css-interop': path.resolve(nativewindDir, '../react-native-css-interop'),
-};
-config.watchFolders = Array.from(new Set([...(config.watchFolders || []), workspaceRoot]));
-config.resolver.nodeModulesPaths = Array.from(
-  new Set([...(config.resolver.nodeModulesPaths || []), mobileNodeModules, workspaceNodeModules]),
-);
-config.resolver.disableHierarchicalLookup = false;
+const config = getDefaultConfig(projectRoot);
+
+config.watchFolders = [workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
 
 module.exports = config;
