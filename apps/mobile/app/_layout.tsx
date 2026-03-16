@@ -13,10 +13,6 @@ import {
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { AppTelemetry } from '../components/AppTelemetry';
-import { BackgroundSyncManager } from '../components/BackgroundSyncManager';
-import { ExperienceBoot } from '../components/ExperienceBoot';
-import { PushNotificationRegistrar } from '../components/PushNotificationRegistrar';
 import { RootErrorBoundary } from '../components/RootErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -53,10 +49,6 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
               <StatusBar style="dark" />
               <Stack screenOptions={{ headerShown: false }} />
-              <AppTelemetry />
-              <ExperienceBoot />
-              <BackgroundSyncManager />
-              <PushNotificationRegistrar />
             </BottomSheetModalProvider>
           </QueryClientProvider>
         </SafeAreaProvider>
