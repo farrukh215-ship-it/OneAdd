@@ -2,6 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  getCategoryDefinitionBySlug,
+  getMinimumPriceForListing,
+  getSubcategoryDefinition,
+  type ListingAttributes,
+  type ListingFeatureDefinition,
+} from '@tgmg/types';
 import { useCategories } from '../../hooks/useCategories';
 import { api } from '../../lib/api';
 import { uploadMediaToR2 } from '../../lib/uploads';
@@ -16,6 +23,26 @@ type MediaItem = {
   name: string;
 };
 
+function normalizeFeatureValue(
+  feature: ListingFeatureDefinition,
+  value: string | boolean | undefined,
+): string | number | boolean | undefined {
+  if (feature.type === 'boolean') {
+    return typeof value === 'boolean' ? value : undefined;
+  }
+
+  const text = String(value ?? '').trim();
+  if (!text) return undefined;
+
+  if (feature.type === 'number') {
+    const numeric = Number(text);
+    if (!Number.isFinite(numeric)) return undefined;
+    return numeric;
+  }
+
+  return text;
+}
+
 export default function PostPage() {
   const router = useRouter();
   const { data: apiCategories = [] } = useCategories();
@@ -24,9 +51,11 @@ export default function PostPage() {
 
   const [step, setStep] = useState(1);
   const [categoryId, setCategoryId] = useState('');
+  const [subcategorySlug, setSubcategorySlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
   const [condition, setCondition] = useState<'NEW' | 'USED'>('USED');
   const [storeType, setStoreType] = useState<'ONLINE' | 'ROAD'>('ROAD');
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -87,6 +116,9 @@ export default function PostPage() {
   const imageItems = media.filter((item) => item.type === 'image');
   const videoItems = media.filter((item) => item.type === 'video');
   const selectedCategory = categories.find((category) => category.id === categoryId);
+  const selectedCategoryDefinition = getCategoryDefinitionBySlug(selectedCategory?.slug);
+  const selectedSubcategory = getSubcategoryDefinition(selectedCategory?.slug, subcategorySlug);
+  const minimumPrice = getMinimumPriceForListing(selectedCategory?.slug, subcategorySlug);
 
   const onImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -201,12 +233,33 @@ export default function PostPage() {
     );
   };
 
+  const normalizedAttributes = useMemo<ListingAttributes>(() => {
+    if (!selectedSubcategory) return {};
+    return selectedSubcategory.features.reduce<ListingAttributes>((acc, feature) => {
+      const value = normalizeFeatureValue(feature, attributes[feature.key]);
+      if (value !== undefined) {
+        acc[feature.key] = value;
+      }
+      return acc;
+    }, {});
+  }, [attributes, selectedSubcategory]);
+
   const canProceed = () => {
     if (step === 1 && !categoryId) return 'Pehle category select karein';
     if (step === 2) {
+      if (!subcategorySlug) return 'Sub-category select karein';
       if (title.trim().length < 10) return 'Title minimum 10 characters ka ho';
       if (description.trim().length < 20) return 'Description minimum 20 characters ka ho';
-      if (!price || Number(price) < 100) return 'Price minimum 100 rakhein';
+      if (!price || Number(price) < minimumPrice) {
+        return `Price minimum PKR ${minimumPrice.toLocaleString()} rakhein`;
+      }
+      if (selectedSubcategory) {
+        for (const feature of selectedSubcategory.features) {
+          if (feature.required && normalizedAttributes[feature.key] === undefined) {
+            return `${feature.label} fill karein`;
+          }
+        }
+      }
     }
     if (step === 3) {
       if (imageItems.length < 1) return 'Kam az kam 1 image required hai';
@@ -274,6 +327,9 @@ export default function PostPage() {
         description: description.trim(),
         price: Number(price),
         categoryId,
+        subcategorySlug,
+        subcategoryName: selectedSubcategory?.name,
+        attributes: normalizedAttributes,
         images: orderedImages,
         videos: uploadedVideos,
         condition,
@@ -338,7 +394,11 @@ export default function PostPage() {
                 <button
                   key={category.id}
                   type="button"
-                  onClick={() => setCategoryId(category.id)}
+                  onClick={() => {
+                    setCategoryId(category.id);
+                    setSubcategorySlug('');
+                    setAttributes({});
+                  }}
                   className={`surface p-4 text-left ${categoryId === category.id ? '!border-red !bg-red-light' : ''}`}
                 >
                   <div className="text-3xl">{category.icon}</div>
@@ -352,6 +412,34 @@ export default function PostPage() {
         {step === 2 ? (
           <div className="space-y-4">
             <h1 className="section-title">Details</h1>
+            {selectedCategoryDefinition ? (
+              <div>
+                <div className="mb-2 text-sm font-bold text-ink">Sub-category</div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {selectedCategoryDefinition.subcategories.map((subcategory) => (
+                    <button
+                      key={subcategory.slug}
+                      type="button"
+                      onClick={() => {
+                        setSubcategorySlug(subcategory.slug);
+                        setAttributes({});
+                        if (price && Number(price) < subcategory.minPrice) {
+                          setPrice(String(subcategory.minPrice));
+                        }
+                      }}
+                      className={`surface p-4 text-left ${
+                        subcategorySlug === subcategory.slug ? '!border-red !bg-red-light' : ''
+                      }`}
+                    >
+                      <div className="text-sm font-bold text-ink">{subcategory.name}</div>
+                      <div className="mt-2 text-xs text-ink2">
+                        Min price: PKR {subcategory.minPrice.toLocaleString()}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div>
               <input value={title} onChange={(event) => setTitle(event.target.value)} className="field-input" placeholder="Title" />
               <div className="mt-1 text-right text-xs text-ink3">{title.length}/100</div>
@@ -364,10 +452,66 @@ export default function PostPage() {
               <span className="font-bold text-red">PKR</span>
               <input value={price} onChange={(event) => setPrice(event.target.value.replace(/\D/g, ''))} className="min-w-0 flex-1 border-0 bg-transparent outline-none" placeholder="Price" />
             </div>
+            <div className="text-xs font-semibold text-ink2">
+              Minimum allowed: PKR {minimumPrice.toLocaleString()}
+            </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setCondition('NEW')} className={`chip ${condition === 'NEW' ? 'active' : ''}`}>Naya</button>
               <button type="button" onClick={() => setCondition('USED')} className={`chip ${condition === 'USED' ? 'active' : ''}`}>Purana</button>
             </div>
+            {selectedSubcategory ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {selectedSubcategory.features.map((feature) => (
+                  <div key={feature.key}>
+                    <div className="mb-2 text-sm font-semibold text-ink">{feature.label}</div>
+                    {feature.type === 'select' ? (
+                      <select
+                        value={String(attributes[feature.key] ?? '')}
+                        onChange={(event) =>
+                          setAttributes((current) => ({ ...current, [feature.key]: event.target.value }))
+                        }
+                        className="field-select"
+                      >
+                        <option value="">Select karein</option>
+                        {feature.options?.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : feature.type === 'boolean' ? (
+                      <div className="flex gap-2">
+                        {[true, false].map((value) => {
+                          const active = attributes[feature.key] === value;
+                          return (
+                            <button
+                              key={String(value)}
+                              type="button"
+                              onClick={() =>
+                                setAttributes((current) => ({ ...current, [feature.key]: value }))
+                              }
+                              className={`chip ${active ? 'active' : ''}`}
+                            >
+                              {value ? 'Yes' : 'No'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <input
+                        value={String(attributes[feature.key] ?? '')}
+                        onChange={(event) =>
+                          setAttributes((current) => ({ ...current, [feature.key]: event.target.value }))
+                        }
+                        className="field-input"
+                        placeholder={feature.placeholder || feature.label}
+                        inputMode={feature.type === 'number' ? 'numeric' : 'text'}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -483,6 +627,7 @@ export default function PostPage() {
             <div className="surface p-4 text-sm text-ink2">
               <div className="font-bold text-ink">Final Review</div>
               <div className="mt-2">Category: {selectedCategory?.name || 'N/A'}</div>
+              <div>Sub-category: {selectedSubcategory?.name || 'N/A'}</div>
               <div>Price: PKR {price || '0'}</div>
               <div>Condition: {condition}</div>
               <div>Images: {imageItems.length} / 6</div>

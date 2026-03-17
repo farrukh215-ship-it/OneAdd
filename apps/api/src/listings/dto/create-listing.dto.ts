@@ -6,6 +6,7 @@ import {
   IsArray,
   IsEnum,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -32,6 +33,18 @@ export class CreateListingDto {
 
   @IsString()
   categoryId!: string;
+
+  @IsOptional()
+  @IsString()
+  subcategorySlug?: string;
+
+  @IsOptional()
+  @IsString()
+  subcategoryName?: string;
+
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, string | number | boolean>;
 
   @IsArray()
   @ArrayMinSize(1)

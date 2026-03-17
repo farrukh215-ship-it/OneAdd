@@ -9,7 +9,14 @@ import {
 } from '@nestjs/common';
 import { Condition, Listing, NotificationType, Prisma, StoreType, User } from '@prisma/client';
 import Redis from 'ioredis';
-import { PaginatedResponse } from '@tgmg/types';
+import {
+  getCategoryDefinitionBySlug,
+  getMinimumPriceForListing,
+  getSubcategoryDefinition,
+  PaginatedResponse,
+  type ListingAttributes,
+  type ListingFeatureDefinition,
+} from '@tgmg/types';
 import { ListingsRepository } from './listings.repository';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
@@ -43,7 +50,15 @@ export class ListingsService {
   }
 
   async create(userId: string, dto: CreateListingDto) {
-    const resolvedCategoryId = await this.resolveCategoryId(dto.categoryId);
+    const resolvedCategory = await this.resolveCategory(dto.categoryId);
+    const resolvedCategoryId = resolvedCategory.id;
+    const structuredInput = this.validateStructuredListingInput({
+      categorySlug: resolvedCategory.slug,
+      price: dto.price,
+      subcategorySlug: dto.subcategorySlug,
+      attributes: dto.attributes,
+      requireSubcategory: true,
+    });
     const activeCount = await this.listingsRepository.countActiveByUserAndCategory(
       userId,
       resolvedCategoryId,
@@ -60,12 +75,15 @@ export class ListingsService {
       throw new BadRequestException('Dukaan ad ke liye store type select karein.');
     }
 
-    const listing = await this.listingsRepository.create({
+    const createData = {
       userId,
       title: dto.title,
       description: dto.description,
       price: dto.price,
       categoryId: resolvedCategoryId,
+      subcategorySlug: structuredInput.subcategory?.slug,
+      subcategoryName: structuredInput.subcategory?.name,
+      attributes: structuredInput.attributes ?? Prisma.JsonNull,
       images: dto.images,
       videos: dto.videos ?? [],
       condition: dto.condition,
@@ -75,7 +93,9 @@ export class ListingsService {
       area: dto.area,
       lat: dto.lat,
       lng: dto.lng,
-    });
+    } as Prisma.ListingUncheckedCreateInput;
+
+    const listing = await this.listingsRepository.create(createData);
 
     await this.notifyCategoryWatchers(listing);
     return listing;
@@ -278,6 +298,7 @@ export class ListingsService {
   async updateListing(id: string, currentUser: User, dto: UpdateListingDto) {
     const listing = await this.listingsRepository.findUnique({
       where: { id },
+      include: { category: true },
     });
 
     if (!listing) {
@@ -292,36 +313,60 @@ export class ListingsService {
     const nextStoreType = nextIsStore
       ? dto.storeType ?? listing.storeType
       : null;
-    const resolvedCategoryId = dto.categoryId
-      ? await this.resolveCategoryId(dto.categoryId)
+    const resolvedCategory = dto.categoryId
+      ? await this.resolveCategory(dto.categoryId)
       : undefined;
+    const resolvedCategoryId = resolvedCategory?.id;
     if (nextIsStore && !nextStoreType) {
       throw new BadRequestException('Dukaan ad ke liye store type select karein.');
     }
 
+    const nextSubcategorySlug = resolvedCategory
+      ? dto.subcategorySlug
+      : dto.subcategorySlug ?? ((listing as any).subcategorySlug as string | undefined) ?? undefined;
+
+    const structuredInput = this.validateStructuredListingInput({
+      categorySlug: resolvedCategory?.slug ?? listing.category.slug,
+      price: dto.price ?? listing.price,
+      subcategorySlug: nextSubcategorySlug,
+      attributes: dto.attributes ?? this.toListingAttributes((listing as any).attributes),
+      requireSubcategory: false,
+    });
+
     const previousPrice = listing.price;
+    const updateData = {
+      ...(dto.title !== undefined ? { title: dto.title } : {}),
+      ...(dto.description !== undefined ? { description: dto.description } : {}),
+      ...(dto.price !== undefined ? { price: dto.price } : {}),
+      ...(dto.images !== undefined ? { images: dto.images } : {}),
+      ...(dto.videos !== undefined ? { videos: dto.videos } : {}),
+      ...(dto.condition !== undefined ? { condition: dto.condition } : {}),
+      ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
+      ...((dto.isStore !== undefined || dto.storeType !== undefined)
+        ? { isStore: nextIsStore, storeType: nextStoreType }
+        : {}),
+      ...(resolvedCategoryId !== undefined
+        ? { category: { connect: { id: resolvedCategoryId } } }
+        : {}),
+      ...(dto.subcategorySlug !== undefined || resolvedCategoryId !== undefined
+        ? {
+            subcategorySlug: structuredInput.subcategory?.slug ?? null,
+            subcategoryName: structuredInput.subcategory?.name ?? null,
+          }
+        : {}),
+      ...(dto.attributes !== undefined || dto.subcategorySlug !== undefined || resolvedCategoryId !== undefined
+        ? { attributes: structuredInput.attributes ?? Prisma.JsonNull }
+        : {}),
+      ...(dto.city !== undefined ? { city: dto.city } : {}),
+      ...(dto.area !== undefined ? { area: dto.area } : {}),
+      ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
+      ...(dto.lng !== undefined ? { lng: dto.lng } : {}),
+      ...(dto.status !== undefined ? { status: dto.status } : {}),
+    } as Prisma.ListingUpdateInput;
+
     const updated = await this.listingsRepository.update({
       where: { id },
-      data: {
-        ...(dto.title !== undefined ? { title: dto.title } : {}),
-        ...(dto.description !== undefined ? { description: dto.description } : {}),
-        ...(dto.price !== undefined ? { price: dto.price } : {}),
-        ...(dto.images !== undefined ? { images: dto.images } : {}),
-        ...(dto.videos !== undefined ? { videos: dto.videos } : {}),
-        ...(dto.condition !== undefined ? { condition: dto.condition } : {}),
-        ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
-        ...((dto.isStore !== undefined || dto.storeType !== undefined)
-          ? { isStore: nextIsStore, storeType: nextStoreType }
-          : {}),
-        ...(resolvedCategoryId !== undefined
-          ? { category: { connect: { id: resolvedCategoryId } } }
-          : {}),
-        ...(dto.city !== undefined ? { city: dto.city } : {}),
-        ...(dto.area !== undefined ? { area: dto.area } : {}),
-        ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
-        ...(dto.lng !== undefined ? { lng: dto.lng } : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-      },
+      data: updateData,
       include: {
         category: true,
         user: {
@@ -668,14 +713,104 @@ export class ListingsService {
     return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  private async resolveCategoryId(input: string) {
+  private async resolveCategory(input: string) {
     const direct = await this.listingsRepository.findCategoryById(input);
-    if (direct) return direct.id;
+    if (direct) return direct;
 
     const bySlug = await this.listingsRepository.findCategoryBySlug(input);
-    if (bySlug) return bySlug.id;
+    if (bySlug) return bySlug;
 
     throw new BadRequestException('Selected category valid nahi hai. Dobara category choose karein.');
+  }
+
+  private validateStructuredListingInput(params: {
+    categorySlug: string;
+    price: number;
+    subcategorySlug?: string;
+    attributes?: ListingAttributes;
+    requireSubcategory: boolean;
+  }) {
+    const categoryDefinition = getCategoryDefinitionBySlug(params.categorySlug);
+    const subcategory = getSubcategoryDefinition(params.categorySlug, params.subcategorySlug);
+
+    if (params.requireSubcategory && !subcategory) {
+      throw new BadRequestException('Is category ke liye sub-category select karna zaroori hai.');
+    }
+
+    const minimumPrice = getMinimumPriceForListing(params.categorySlug, subcategory?.slug);
+    if (params.price < minimumPrice) {
+      throw new BadRequestException(
+        `${subcategory?.name ?? categoryDefinition?.name ?? 'Is item'} ke liye minimum price PKR ${minimumPrice.toLocaleString()} hai.`,
+      );
+    }
+
+    if (!subcategory) {
+      return {
+        subcategory: null,
+        attributes: params.attributes,
+      };
+    }
+
+    const normalized: ListingAttributes = {};
+    for (const feature of subcategory.features) {
+      const rawValue = params.attributes?.[feature.key];
+      const normalizedValue = this.normalizeFeatureValue(feature, rawValue);
+      if (feature.required && normalizedValue === undefined) {
+        throw new BadRequestException(`${feature.label} fill karna zaroori hai.`);
+      }
+      if (normalizedValue !== undefined) {
+        normalized[feature.key] = normalizedValue;
+      }
+    }
+
+    return {
+      subcategory,
+      attributes: normalized,
+    };
+  }
+
+  private normalizeFeatureValue(
+    feature: ListingFeatureDefinition,
+    rawValue: ListingAttributes[string] | undefined,
+  ) {
+    if (rawValue === undefined || rawValue === null || rawValue === '') {
+      return undefined;
+    }
+
+    if (feature.type === 'boolean') {
+      if (typeof rawValue === 'boolean') return rawValue;
+      if (rawValue === 'true') return true;
+      if (rawValue === 'false') return false;
+      throw new BadRequestException(`${feature.label} ka format sahi nahi hai.`);
+    }
+
+    if (feature.type === 'number') {
+      const numeric = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+      if (!Number.isFinite(numeric)) {
+        throw new BadRequestException(`${feature.label} numeric honi chahiye.`);
+      }
+      if (feature.min !== undefined && numeric < feature.min) {
+        throw new BadRequestException(`${feature.label} minimum ${feature.min} honi chahiye.`);
+      }
+      if (feature.max !== undefined && numeric > feature.max) {
+        throw new BadRequestException(`${feature.label} maximum ${feature.max} honi chahiye.`);
+      }
+      return numeric;
+    }
+
+    const text = String(rawValue).trim();
+    if (!text) return undefined;
+    if (feature.type === 'select' && feature.options && !feature.options.includes(text)) {
+      throw new BadRequestException(`${feature.label} valid option se select karein.`);
+    }
+    return text;
+  }
+
+  private toListingAttributes(input: Prisma.JsonValue | null | undefined): ListingAttributes | undefined {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return undefined;
+    }
+    return input as ListingAttributes;
   }
 
   private buildChatMessagePayload(message?: string, imageUrl?: string) {

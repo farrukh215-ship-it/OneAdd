@@ -60,6 +60,9 @@ export default function PostLocationScreen() {
         description: params.description,
         price: Number(params.price),
         categoryId: params.categoryId,
+        subcategorySlug: params.subcategorySlug,
+        subcategoryName: params.subcategoryName,
+        attributes: params.attributes ? JSON.parse(params.attributes) : undefined,
         images: imageUrls,
         videos: videoUrls,
         condition: params.condition,
@@ -125,6 +128,11 @@ export default function PostLocationScreen() {
         <View className="mb-3 self-start rounded-full bg-red/10 px-3 py-1.5">
           <Text className="text-xs font-bold text-red">Selected: {params.categoryName || 'Category'}</Text>
         </View>
+        {params.subcategoryName ? (
+          <View className="mb-2 self-start rounded-full bg-[#FFF4E5] px-3 py-1.5">
+            <Text className="text-xs font-bold text-[#A55B00]">Sub-category: {params.subcategoryName}</Text>
+          </View>
+        ) : null}
 
         <Text className="mb-2 text-sm font-semibold text-ink">City</Text>
         <View className="flex-row flex-wrap gap-2">

@@ -1,3 +1,7 @@
+export * from './listing-taxonomy';
+
+import { STANDARD_CATEGORY_SEEDS, type ListingAttributes } from './listing-taxonomy';
+
 export interface User {
   id: string;
   phone: string;
@@ -20,26 +24,6 @@ export interface Category {
   count?: number;
 }
 
-export type StandardCategorySeed = {
-  name: string;
-  slug: string;
-  icon: string;
-  order: number;
-};
-
-export const STANDARD_CATEGORY_SEEDS: StandardCategorySeed[] = [
-  { name: 'Mobile Phones', slug: 'mobiles', icon: '📱', order: 1 },
-  { name: 'Cars', slug: 'cars', icon: '🚗', order: 2 },
-  { name: 'Property', slug: 'property', icon: '🏠', order: 3 },
-  { name: 'Electronics', slug: 'electronics', icon: '💻', order: 4 },
-  { name: 'Furniture', slug: 'furniture', icon: '🛋️', order: 5 },
-  { name: 'Cycles & Bikes', slug: 'cycles', icon: '🚲', order: 6 },
-  { name: 'Fashion', slug: 'fashion', icon: '👕', order: 7 },
-  { name: 'Books', slug: 'books', icon: '📚', order: 8 },
-  { name: 'Pets', slug: 'pets', icon: '🐾', order: 9 },
-  { name: 'Services', slug: 'services', icon: '⚙️', order: 10 },
-];
-
 export const STANDARD_CATEGORIES: Category[] = STANDARD_CATEGORY_SEEDS.map((category) => ({
   id: category.slug,
   name: category.name,
@@ -51,16 +35,19 @@ export const STANDARD_CATEGORIES: Category[] = STANDARD_CATEGORY_SEEDS.map((cate
 export interface Listing {
   id: string;
   userId: string;
-  user?: Pick<User, "id" | "name" | "city" | "area" | "verified" | "createdAt" | "updatedAt">;
+  user?: Pick<User, 'id' | 'name' | 'city' | 'area' | 'verified' | 'createdAt' | 'updatedAt'>;
   title: string;
   description: string;
   price: number;
   category: Category;
   categoryId: string;
+  subcategorySlug?: string;
+  subcategoryName?: string;
+  attributes?: ListingAttributes;
   images: string[];
   videos?: string[];
-  condition: "NEW" | "USED";
-  storeType?: "ONLINE" | "ROAD";
+  condition: 'NEW' | 'USED';
+  storeType?: 'ONLINE' | 'ROAD';
   isStore?: boolean;
   isFeatured?: boolean;
   city: string;
@@ -69,7 +56,7 @@ export interface Listing {
   lng?: number;
   distanceKm?: number;
   isNearby?: boolean;
-  status: "ACTIVE" | "PENDING" | "INACTIVE" | "SOLD" | "DELETED";
+  status: 'ACTIVE' | 'PENDING' | 'INACTIVE' | 'SOLD' | 'DELETED';
   views: number;
   createdAt: string;
   updatedAt: string;
@@ -79,7 +66,7 @@ export interface ListingMessage {
   id: string;
   threadId: string;
   userId: string;
-  user?: Pick<User, "id" | "name" | "city" | "verified">;
+  user?: Pick<User, 'id' | 'name' | 'city' | 'verified'>;
   message: string;
   imageUrl?: string | null;
   offerAmount?: number | null;
@@ -92,7 +79,7 @@ export interface ListingOffer {
   userId: string;
   amount: number;
   createdAt: string;
-  user?: Pick<User, "id" | "name" | "city" | "verified">;
+  user?: Pick<User, 'id' | 'name' | 'city' | 'verified'>;
 }
 
 export interface ListingThreadResponse {
@@ -115,7 +102,7 @@ export interface NotificationItem {
   title: string;
   body: string;
   href: string;
-  type: "contact" | "saved_update" | "new_listing";
+  type: 'contact' | 'saved_update' | 'new_listing';
   createdAt: string;
   readAt?: string | null;
 }

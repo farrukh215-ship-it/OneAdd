@@ -1,7 +1,7 @@
 {
   "name": "@tgmg/mobile",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.js",
   "scripts": {
     "dev": "expo start",
     "build": "expo export --platform android",

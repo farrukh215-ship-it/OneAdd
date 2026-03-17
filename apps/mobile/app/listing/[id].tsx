@@ -51,6 +51,11 @@ export default function ListingDetailScreen() {
       .toUpperCase();
   }, [listing?.user?.name]);
 
+  const attributeEntries = useMemo(() => {
+    if (!listing?.attributes) return [] as Array<[string, string | number | boolean]>;
+    return Object.entries(listing.attributes as Record<string, string | number | boolean>);
+  }, [listing?.attributes]);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!listing) return;
@@ -253,6 +258,22 @@ export default function ListingDetailScreen() {
             <Text className="text-[13px] font-bold text-ink2">Tafseel</Text>
             <Text className="mt-2 text-sm leading-6 text-ink">{listing.description}</Text>
           </View>
+
+          {attributeEntries.length ? (
+            <View className="mt-3 rounded-xl bg-white p-4">
+              <Text className="text-[13px] font-bold text-ink2">Auto Features</Text>
+              <View className="mt-3 flex-row flex-wrap gap-2">
+                {attributeEntries.map(([key, value]) => (
+                  <View key={key} className="rounded-xl bg-[#F5F6F7] px-3 py-2">
+                    <Text className="text-[11px] font-semibold text-ink3">
+                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, (ch) => ch.toUpperCase())}
+                    </Text>
+                    <Text className="mt-1 text-[13px] font-bold text-ink">{String(value)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           <View className="mt-3 h-px bg-border" />
 

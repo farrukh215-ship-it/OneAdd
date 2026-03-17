@@ -75,6 +75,13 @@ export default function PostPhotosScreen() {
             Selected: {params.categoryName || 'Category'}
           </Text>
         </View>
+        {params.subcategoryName ? (
+          <View className="mb-3 self-start rounded-full bg-[#FFF4E5] px-3 py-1.5">
+            <Text className="text-xs font-bold text-[#A55B00]">
+              Sub-category: {params.subcategoryName}
+            </Text>
+          </View>
+        ) : null}
 
         <View className="flex-row flex-wrap gap-3">
           {images.map((uri) => (

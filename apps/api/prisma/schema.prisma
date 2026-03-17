@@ -40,6 +40,9 @@ model Listing {
   price       Int
   categoryId  String
   category    Category      @relation(fields: [categoryId], references: [id])
+  subcategorySlug String?
+  subcategoryName String?
+  attributes  Json?
   images      String[]
   videos      String[]      @default([])
   condition   Condition     @default(USED)

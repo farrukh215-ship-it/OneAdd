@@ -6,6 +6,7 @@ import {
   IsArray,
   IsEnum,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Max,
@@ -68,6 +69,18 @@ export class UpdateListingDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  subcategorySlug?: string;
+
+  @IsOptional()
+  @IsString()
+  subcategoryName?: string;
+
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, string | number | boolean>;
 
   @IsOptional()
   @IsString()

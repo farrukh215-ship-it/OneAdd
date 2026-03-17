@@ -26,7 +26,7 @@ export default function PostCategoryScreen() {
               Vibration.vibrate(12);
               router.push({
                 pathname: '/post/details',
-                params: { categoryId: item.id, categoryName: item.name },
+                params: { categoryId: item.id, categoryName: item.name, categorySlug: item.slug },
               });
             }}
             className={`mb-3 flex-1 items-center rounded-xl bg-white p-4 shadow-sm ${selectedCategory === item.id ? 'border border-red' : ''}`}

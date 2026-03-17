@@ -1,114 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useListingDashboard } from '../../hooks/useListingDashboard';
 import { useMyListings } from '../../hooks/useMyListings';
 import { useNotifications } from '../../hooks/useNotifications';
 import { api } from '../../lib/api';
 import { getListingStatusMeta } from '../../lib/listing-ui';
-
-function DashboardBarChart({
-  points,
-}: {
-  points: Array<{ label: string; views: number; contacts: number; saves: number; listings: number }>;
-}) {
-  const maxValue = Math.max(
-    1,
-    ...points.map((point) => Math.max(point.views, point.contacts, point.saves, point.listings)),
-  );
-
-  return (
-    <View className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[16px] font-extrabold text-ink">Performance Graph</Text>
-        <Text className="text-[11px] font-semibold text-ink3">7 days</Text>
-      </View>
-      <View className="mt-4 flex-row items-end justify-between gap-2">
-        {points.map((point) => (
-          <View key={point.label} className="flex-1 items-center">
-            <View className="h-28 w-full items-center justify-end gap-1">
-              <View
-                className="w-2 rounded-t-full bg-[#0EA5E9]"
-                style={{ height: `${Math.max((point.views / maxValue) * 100, point.views ? 12 : 4)}%` }}
-              />
-              <View
-                className="w-3 rounded-t-full bg-red"
-                style={{ height: `${Math.max((point.contacts / maxValue) * 100, point.contacts ? 12 : 4)}%` }}
-              />
-              <View
-                className="w-2 rounded-t-full bg-[#22C55E]"
-                style={{ height: `${Math.max((point.saves / maxValue) * 100, point.saves ? 12 : 4)}%` }}
-              />
-              <View
-                className="w-3 rounded-t-full bg-[#111827]"
-                style={{ height: `${Math.max((point.listings / maxValue) * 100, point.listings ? 12 : 4)}%` }}
-              />
-            </View>
-            <Text className="mt-2 text-[10px] font-semibold text-ink3">{point.label}</Text>
-          </View>
-        ))}
-      </View>
-      <View className="mt-4 flex-row gap-4">
-        <View className="flex-row items-center gap-2">
-          <View className="h-2.5 w-2.5 rounded-full bg-[#0EA5E9]" />
-          <Text className="text-[11px] text-ink2">Views</Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <View className="h-2.5 w-2.5 rounded-full bg-red" />
-          <Text className="text-[11px] text-ink2">Contacts</Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <View className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" />
-          <Text className="text-[11px] text-ink2">Saves</Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <View className="h-2.5 w-2.5 rounded-full bg-[#111827]" />
-          <Text className="text-[11px] text-ink2">Listings</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function ConversionFunnel({
-  funnel,
-}: {
-  funnel: { views: number; contacts: number; saves: number; sold: number };
-}) {
-  const top = Math.max(1, funnel.views);
-  const items = [
-    { label: 'Views', value: funnel.views, color: '#0EA5E9' },
-    { label: 'Contacts', value: funnel.contacts, color: '#E53935' },
-    { label: 'Saves', value: funnel.saves, color: '#22C55E' },
-    { label: 'Sold', value: funnel.sold, color: '#111827' },
-  ];
-
-  return (
-    <View className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[16px] font-extrabold text-ink">Contact Funnel</Text>
-        <Text className="text-[11px] font-semibold text-ink3">Real activity</Text>
-      </View>
-      <View className="mt-4 gap-3">
-        {items.map((item) => (
-          <View key={item.label}>
-            <View className="mb-1 flex-row items-center justify-between">
-              <Text className="text-[12px] font-semibold text-ink2">{item.label}</Text>
-              <Text className="text-[12px] font-bold text-ink">{item.value}</Text>
-            </View>
-            <View className="h-3 overflow-hidden rounded-full bg-[#EEF1F4]">
-              <View
-                style={{ width: `${Math.max((item.value / top) * 100, item.value ? 8 : 0)}%`, backgroundColor: item.color }}
-                className="h-full rounded-full"
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -130,169 +28,327 @@ export default function ProfileScreen() {
     },
   });
 
-  const toMobileHref = (href: string) => href.replace('/listings/', '/listing/');
-
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-      <Text className="text-[18px] font-extrabold text-ink">Mera Profile</Text>
-      <Pressable onPress={() => router.push('/notifications')} className="mt-3 self-start rounded-full bg-red/10 px-4 py-2">
-        <Text className="text-xs font-semibold text-red">Notifications Inbox {unreadCount ? `(${unreadCount})` : ''}</Text>
-      </Pressable>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Mera Profile</Text>
 
-      <View className="mt-4 rounded-xl bg-white p-4 shadow-sm">
-        <Text className="text-base font-bold text-ink">{currentUser?.name || 'Guest User'}</Text>
-        <Text className="mt-1 text-sm text-ink2">{currentUser?.phone || '+92**********'}</Text>
-        <Text className="mt-1 text-sm text-ink2">
+      <View style={styles.profileCard}>
+        <Text style={styles.profileName}>{currentUser?.name || 'Guest User'}</Text>
+        <Text style={styles.profileMeta}>{currentUser?.phone || '+92**********'}</Text>
+        <Text style={styles.profileMeta}>
           {[currentUser?.city, currentUser?.area].filter(Boolean).join(', ') || 'Shehar abhi set nahi'}
         </Text>
       </View>
 
+      <View style={styles.actionsRow}>
+        <Pressable onPress={() => router.push('/notifications')} style={styles.softAction}>
+          <Text style={styles.softActionText}>Notifications {unreadCount ? `(${unreadCount})` : ''}</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/(tabs)/saved')} style={styles.softAction}>
+          <Text style={styles.softActionText}>Saved Ads</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.actionsStack}>
+        <Pressable onPress={() => router.push('/post/category')} style={styles.primaryAction}>
+          <Text style={styles.primaryActionText}>+ Ad Post Karo</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/auth/phone')} style={styles.secondaryAction}>
+          <Text style={styles.secondaryActionText}>{currentUser ? 'Switch Account' : 'Login / Sign Up'}</Text>
+        </Pressable>
+        {currentUser ? (
+          <Pressable onPress={logout} style={styles.secondaryAction}>
+            <Text style={styles.secondaryActionText}>Logout</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
       {currentUser && dashboard ? (
-        <View className="mt-4">
-          <Text className="text-[16px] font-extrabold text-ink">Seller Dashboard</Text>
-          <View className="mt-3 flex-row flex-wrap gap-3">
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Seller Dashboard</Text>
+          <View style={styles.statsGrid}>
             {[
               { label: 'Views', value: dashboard.totalViews },
               { label: 'Contacts', value: dashboard.totalContacts },
               { label: 'Active', value: dashboard.activeListings },
               { label: 'Sold', value: dashboard.soldListings },
             ].map((item) => (
-              <View key={item.label} className="min-w-[47%] flex-1 rounded-xl bg-white p-4 shadow-sm">
-                <Text className="text-xs font-semibold text-ink2">{item.label}</Text>
-                <Text className="mt-2 text-xl font-extrabold text-ink">{item.value}</Text>
+              <View key={item.label} style={styles.statCard}>
+                <Text style={styles.statLabel}>{item.label}</Text>
+                <Text style={styles.statValue}>{item.value}</Text>
               </View>
-            ))}
-          </View>
-          <View className="mt-3 flex-row flex-wrap gap-3">
-            {[
-              { label: 'Contact Rate', value: `${dashboard.contactRate}%` },
-              { label: 'Sell Through', value: `${dashboard.sellThroughRate}%` },
-              { label: 'Avg Views', value: dashboard.averageViewsPerListing },
-              { label: 'Recent Leads', value: dashboard.recentLeads },
-              { label: 'Featured', value: dashboard.featuredListings },
-              { label: 'Avg Contacts', value: dashboard.averageContactsPerListing },
-            ].map((item) => (
-              <View key={item.label} className="min-w-[47%] flex-1 rounded-xl border border-red/10 bg-[#FFF8F7] p-4">
-                <Text className="text-xs font-semibold text-ink2">{item.label}</Text>
-                <Text className="mt-2 text-xl font-extrabold text-red">{item.value}</Text>
-              </View>
-            ))}
-          </View>
-          <DashboardBarChart points={dashboard.points} />
-          <ConversionFunnel funnel={dashboard.funnel} />
-          <View className="mt-3 rounded-2xl bg-[#111827] p-4">
-            <Text className="text-sm font-extrabold text-white">Boost Karo</Text>
-            <Text className="mt-1 text-xs leading-5 text-white/75">
-              Featured placements aur promoted reach next billing phase ke liye wired hai.
-            </Text>
-          </View>
-          <Pressable onPress={() => router.push('/analytics')} className="mt-3 rounded-2xl bg-white px-4 py-4 shadow-sm">
-            <Text className="text-sm font-extrabold text-ink">Full Analytics Screen</Text>
-            <Text className="mt-1 text-xs leading-5 text-ink2">
-              Views over time, contact funnel aur seller conversion history detail mein dekho.
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {currentUser && notifications?.length ? (
-        <View className="mt-4 rounded-xl bg-white p-4 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-[16px] font-extrabold text-ink">Notifications</Text>
-            <Text className="text-xs font-semibold text-red">{notifications.length}</Text>
-          </View>
-          <View className="mt-3 gap-3">
-            {notifications.slice(0, 4).map((item) => (
-              <Pressable key={item.id} onPress={() => router.push(toMobileHref(item.href) as never)}>
-                <Text className="text-sm font-semibold text-ink">{item.title}</Text>
-                <Text className="mt-1 text-xs text-ink2">{item.body}</Text>
-              </Pressable>
             ))}
           </View>
         </View>
       ) : null}
 
-      <View className="mt-4 gap-3">
-        <Pressable onPress={() => router.push('/post/category')} className="rounded-xl bg-red px-4 py-3">
-          <Text className="text-center font-bold text-white">+ Ad Post Karo</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/(tabs)/saved')} className="rounded-xl bg-white px-4 py-3">
-          <Text className="text-center font-bold text-ink">Saved Ads</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/auth/phone')} className="rounded-xl bg-white px-4 py-3">
-          <Text className="text-center font-bold text-ink">
-            {currentUser ? 'Switch Account' : 'Login / Sign Up'}
-          </Text>
-        </Pressable>
-        {currentUser ? (
-          <Pressable onPress={logout} className="rounded-xl border border-border bg-white px-4 py-3">
-            <Text className="text-center font-bold text-ink2">Logout</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {currentUser && notifications?.length ? (
+        <View style={styles.notificationsCard}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          {notifications.slice(0, 4).map((item) => (
+            <View key={item.id} style={styles.notificationItem}>
+              <Text style={styles.notificationTitle}>{item.title}</Text>
+              <Text style={styles.notificationBody}>{item.body}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {currentUser ? (
-        <View className="mt-5">
-          <Text className="text-[16px] font-extrabold text-ink">Meri Listings</Text>
-          <View className="mt-3 gap-3">
-            {(myListings?.data ?? []).slice(0, 8).map((listing) => {
-              const statusMeta = getListingStatusMeta(listing);
-              return (
-                <View key={listing.id} className="rounded-xl bg-white p-4 shadow-sm">
-                  <View className="flex-row items-start justify-between">
-                    <View className="flex-1 pr-3">
-                      <Text className="text-sm font-bold text-ink">{listing.title}</Text>
-                      <Text className="mt-1 text-xs text-ink2">PKR {listing.price.toLocaleString()}</Text>
-                    </View>
-                    <View className={`rounded-full px-2 py-1 ${statusMeta.badgeClassName}`}>
-                      <Text className={`text-[10px] font-bold ${statusMeta.textClassName}`}>{statusMeta.label}</Text>
-                    </View>
+        <View style={styles.listingsSection}>
+          <Text style={styles.sectionTitle}>Meri Listings</Text>
+          {(myListings?.data ?? []).slice(0, 8).map((listing) => {
+            const statusMeta = getListingStatusMeta(listing);
+            return (
+              <View key={listing.id} style={styles.listingCard}>
+                <View style={styles.listingHeader}>
+                  <View style={styles.listingTitleWrap}>
+                    <Text style={styles.listingTitle}>{listing.title}</Text>
+                    <Text style={styles.listingPrice}>PKR {listing.price.toLocaleString()}</Text>
                   </View>
-                  <View className="mt-3 flex-row flex-wrap gap-2">
-                    <Pressable
-                      onPress={() => router.push(`/listing/${listing.id}`)}
-                      className="rounded-full bg-[#F5F6F7] px-3 py-2"
-                    >
-                      <Text className="text-[11px] font-semibold text-ink2">Open</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => router.push(`/listing/edit/${listing.id}`)}
-                      className="rounded-full bg-[#F5F6F7] px-3 py-2"
-                    >
-                      <Text className="text-[11px] font-semibold text-ink2">Edit</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() =>
-                        updateListingStatus.mutate({
-                          id: listing.id,
-                          status: listing.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE',
-                        })
-                      }
-                      className="rounded-full bg-[#F5F6F7] px-3 py-2"
-                    >
-                      <Text className="text-[11px] font-semibold text-ink2">
-                        {listing.status === 'INACTIVE' ? 'Activate' : 'Deactivate'}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => updateListingStatus.mutate({ id: listing.id, status: 'PENDING' })}
-                      className="rounded-full bg-[#F5F6F7] px-3 py-2"
-                    >
-                      <Text className="text-[11px] font-semibold text-ink2">Pending</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => updateListingStatus.mutate({ id: listing.id, status: 'SOLD' })}
-                      className="rounded-full bg-red/10 px-3 py-2"
-                    >
-                      <Text className="text-[11px] font-semibold text-red">Sold</Text>
-                    </Pressable>
+                  <View style={[styles.statusPill, statusMeta.textClassName === 'text-white' ? styles.statusPillGreen : styles.statusPillSoft]}>
+                    <Text style={[styles.statusPillText, statusMeta.textClassName === 'text-white' ? styles.statusPillTextWhite : statusMeta.textClassName === 'text-red' ? styles.statusPillTextRed : styles.statusPillTextMuted]}>
+                      {statusMeta.label}
+                    </Text>
                   </View>
                 </View>
-              );
-            })}
-          </View>
+                <View style={styles.listingActions}>
+                  <Pressable onPress={() => router.push(`/listing/${listing.id}`)} style={styles.listingAction}>
+                    <Text style={styles.listingActionText}>Open</Text>
+                  </Pressable>
+                  <Pressable onPress={() => router.push(`/listing/edit/${listing.id}`)} style={styles.listingAction}>
+                    <Text style={styles.listingActionText}>Edit</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() =>
+                      updateListingStatus.mutate({
+                        id: listing.id,
+                        status: listing.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE',
+                      })
+                    }
+                    style={styles.listingAction}
+                  >
+                    <Text style={styles.listingActionText}>{listing.status === 'INACTIVE' ? 'Activate' : 'Deactivate'}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => updateListingStatus.mutate({ id: listing.id, status: 'SOLD' })} style={styles.listingActionRed}>
+                    <Text style={styles.listingActionRedText}>Sold</Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
         </View>
       ) : null}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: '#F0F2F5',
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+  title: {
+    color: '#1C1E21',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginTop: 14,
+    padding: 18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  profileName: {
+    color: '#1C1E21',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  profileMeta: {
+    color: '#65676B',
+    fontSize: 14,
+    marginTop: 6,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  softAction: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    flex: 1,
+    paddingVertical: 14,
+  },
+  softActionText: {
+    color: '#E53935',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  actionsStack: {
+    gap: 10,
+    marginTop: 14,
+  },
+  primaryAction: {
+    backgroundColor: '#E53935',
+    borderRadius: 16,
+    paddingVertical: 15,
+  },
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  secondaryAction: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 15,
+  },
+  secondaryActionText: {
+    color: '#1C1E21',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statsSection: {
+    marginTop: 18,
+  },
+  sectionTitle: {
+    color: '#1C1E21',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    flexBasis: '48%',
+    flexGrow: 1,
+    padding: 16,
+  },
+  statLabel: {
+    color: '#65676B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statValue: {
+    color: '#1C1E21',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  notificationsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginTop: 18,
+    padding: 18,
+  },
+  notificationItem: {
+    marginTop: 10,
+  },
+  notificationTitle: {
+    color: '#1C1E21',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  notificationBody: {
+    color: '#65676B',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  listingsSection: {
+    marginTop: 18,
+  },
+  listingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginTop: 10,
+    padding: 16,
+  },
+  listingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  listingTitleWrap: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  listingTitle: {
+    color: '#1C1E21',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  listingPrice: {
+    color: '#65676B',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  statusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  statusPillSoft: {
+    backgroundColor: '#F5F6F7',
+  },
+  statusPillGreen: {
+    backgroundColor: '#2E7D32',
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  statusPillTextWhite: {
+    color: '#FFFFFF',
+  },
+  statusPillTextRed: {
+    color: '#E53935',
+  },
+  statusPillTextMuted: {
+    color: '#65676B',
+  },
+  listingActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  listingAction: {
+    backgroundColor: '#F5F6F7',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  listingActionText: {
+    color: '#65676B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  listingActionRed: {
+    backgroundColor: '#FDECEC',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  listingActionRedText: {
+    color: '#E53935',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+});

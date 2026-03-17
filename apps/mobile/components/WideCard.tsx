@@ -1,6 +1,18 @@
 import type { Listing } from '@tgmg/types';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getListingLocationLabel, getListingStatusMeta } from '../lib/listing-ui';
+
+function getStatusStyles(meta: ReturnType<typeof getListingStatusMeta>) {
+  if (meta.textClassName === 'text-white') {
+    return { badge: styles.greenBadge, text: styles.whiteBadgeText };
+  }
+
+  if (meta.textClassName === 'text-red') {
+    return { badge: styles.grayBadge, text: styles.redBadgeText };
+  }
+
+  return { badge: styles.grayBadge, text: styles.mutedBadgeText };
+}
 
 export function WideCard({
   listing,
@@ -10,33 +22,116 @@ export function WideCard({
   onPress?: () => void;
 }) {
   const statusMeta = getListingStatusMeta(listing);
+  const statusStyles = getStatusStyles(statusMeta);
 
   return (
-    <Pressable onPress={onPress} className="mb-3 flex-row rounded-xl bg-white p-3 shadow-sm">
-      <View className="h-[90px] w-[90px] items-center justify-center overflow-hidden rounded-xl bg-border">
+    <Pressable onPress={onPress} style={styles.card}>
+      <View style={styles.imageWrap}>
         {listing.images[0] ? (
-          <Image source={{ uri: listing.images[0] }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+          <Image source={{ uri: listing.images[0] }} resizeMode="cover" style={styles.image} />
         ) : (
-          <Text className="text-xs font-semibold text-ink3">No Image</Text>
+          <Text style={styles.emptyImageText}>No Image</Text>
         )}
       </View>
-      <View className="flex-1 px-3">
-        <Text className="text-[18px] font-extrabold text-ink">PKR {listing.price.toLocaleString()}</Text>
-        <Text className="mt-1 text-[13px] font-medium text-ink2" numberOfLines={1}>
+      <View style={styles.content}>
+        <Text style={styles.price}>PKR {listing.price.toLocaleString()}</Text>
+        <Text style={styles.title} numberOfLines={1}>
           {listing.title}
         </Text>
-        <View className="mt-2 flex-row gap-2">
-          <View className={`rounded-full px-2 py-1 ${statusMeta.badgeClassName}`}>
-            <Text className={`text-[11px] font-bold ${statusMeta.textClassName}`}>{statusMeta.label}</Text>
+        <View style={styles.badges}>
+          <View style={[styles.badge, statusStyles.badge]}>
+            <Text style={[styles.badgeText, statusStyles.text]}>{statusMeta.label}</Text>
           </View>
-          <View className="rounded-full bg-[#F5F6F7] px-2 py-1">
-            <Text className="text-[11px] font-bold text-ink2">
+          <View style={[styles.badge, styles.grayBadge]}>
+            <Text style={[styles.badgeText, styles.mutedBadgeText]}>
               {listing.condition === 'NEW' ? 'New' : 'Used'}
             </Text>
           </View>
         </View>
-        <Text className="mt-2 text-[11px] text-ink3">{getListingLocationLabel(listing)}</Text>
+        <Text style={styles.location}>{getListingLocationLabel(listing)}</Text>
       </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    flexDirection: 'row',
+    marginBottom: 12,
+    padding: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  imageWrap: {
+    alignItems: 'center',
+    backgroundColor: '#E4E6EB',
+    borderRadius: 16,
+    height: 96,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 96,
+  },
+  image: {
+    height: '100%',
+    width: '100%',
+  },
+  emptyImageText: {
+    color: '#BEC3C9',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    paddingLeft: 12,
+  },
+  price: {
+    color: '#1C1E21',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  title: {
+    color: '#65676B',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  grayBadge: {
+    backgroundColor: '#F5F6F7',
+  },
+  greenBadge: {
+    backgroundColor: '#2E7D32',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  whiteBadgeText: {
+    color: '#FFFFFF',
+  },
+  redBadgeText: {
+    color: '#E53935',
+  },
+  mutedBadgeText: {
+    color: '#65676B',
+  },
+  location: {
+    color: '#65676B',
+    fontSize: 11,
+    marginTop: 10,
+  },
+});

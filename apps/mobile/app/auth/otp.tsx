@@ -7,14 +7,22 @@ import { api } from '../../lib/api';
 
 export default function OtpScreen() {
   const router = useRouter();
-  const { phone, mode } = useLocalSearchParams<{ phone: string; mode?: 'signup' | 'forgot' }>();
+  const { phone, mode, name: initialName, email: initialEmail, password: initialPassword, confirmPassword: initialConfirmPassword } =
+    useLocalSearchParams<{
+      phone: string;
+      mode?: 'signup' | 'forgot';
+      name?: string;
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    }>();
   const { setToken } = useAuth();
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(30);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState(initialName ?? '');
+  const [email, setEmail] = useState(initialEmail ?? '');
+  const [password, setPassword] = useState(initialPassword ?? '');
+  const [confirmPassword, setConfirmPassword] = useState(initialConfirmPassword ?? '');
   const inputs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {

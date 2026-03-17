@@ -45,6 +45,7 @@ export default async function ListingDetailPage({
   const images = Array.isArray(listing.images) ? listing.images : [];
   const categorySlug = listing.category?.slug ?? '';
   const categoryName = listing.category?.name ?? 'Category';
+  const attributeEntries = Object.entries((listing.attributes ?? {}) as Record<string, string | number | boolean>);
   const related = categorySlug ? await getListings({ category: categorySlug, limit: 4 }) : { data: [], total: 0, page: 1, totalPages: 0 };
   const sellerName = listing.user?.name || 'Seller';
   const locationText = [listing.city, listing.area].filter(Boolean).join(', ');
@@ -115,6 +116,10 @@ export default async function ListingDetailPage({
                       <div className="detail-stat-value">{categoryName}</div>
                     </div>
                     <div className="detail-stat">
+                      <div className="detail-stat-label">Sub-category</div>
+                      <div className="detail-stat-value">{listing.subcategoryName || 'General'}</div>
+                    </div>
+                    <div className="detail-stat">
                       <div className="detail-stat-label">Store type</div>
                       <div className="detail-stat-value">
                         {listing.storeType ? listing.storeType : 'Normal ad'}
@@ -130,6 +135,22 @@ export default async function ListingDetailPage({
             </div>
 
             <ListingDescriptionClient description={listing.description} />
+
+            {attributeEntries.length ? (
+              <div className="surface-premium mt-5 p-5 md:p-6">
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-ink3">
+                  Auto features
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {attributeEntries.map(([key, value]) => (
+                    <div key={key} className="detail-stat">
+                      <div className="detail-stat-label">{key.replace(/([A-Z])/g, ' $1').replace(/^./, (ch) => ch.toUpperCase())}</div>
+                      <div className="detail-stat-value">{String(value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <aside className="min-w-0">

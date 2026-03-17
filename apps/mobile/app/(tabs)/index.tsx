@@ -1,6 +1,17 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Text, View, Vibration } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Easing,
+  StyleSheet,
+  Text,
+  View,
+  Vibration,
+} from 'react-native';
 import type { Category, Listing } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { SectionHeader } from '../../components/SectionHeader';
@@ -14,12 +25,12 @@ import { getLocationPreference, getViewedCategorySlugs, getViewedListingIds } fr
 import { getRecentSearches } from '../../lib/search-history';
 
 const quickActions = [
-  { label: '+ Ad Post Karo', active: true, href: '/post/category' },
-  { label: 'Taaza Listings', href: '/(tabs)/browse?sort=newest' },
-  { label: 'Mere Paas', href: '/(tabs)/browse?city=Lahore&lat=31.5204&lng=74.3587&radiusKm=10' },
-  { label: 'Top Deals', href: '/(tabs)/browse?sort=price_asc' },
-  { label: 'Naye Items', href: '/(tabs)/browse?condition=NEW' },
-  { label: 'Dukaan', href: '/(tabs)/browse?store=road&city=Lahore' },
+  { icon: '\u2795', label: 'Ad Post Karo', active: true, href: '/post/category' },
+  { icon: '\u26A1', label: 'Taaza Listings', href: '/(tabs)/browse?sort=newest' },
+  { icon: '\u{1F4CD}', label: 'Mere Paas', href: '/(tabs)/browse?city=Lahore&lat=31.5204&lng=74.3587&radiusKm=10' },
+  { icon: '\u{1F525}', label: 'Top Deals', href: '/(tabs)/browse?sort=price_asc' },
+  { icon: '\u{1F381}', label: 'Naye Items', href: '/(tabs)/browse?condition=NEW' },
+  { icon: '\u{1F6D2}', label: 'Dukaan', href: '/(tabs)/browse?store=road&city=Lahore' },
 ];
 
 function CategoryShowcase({
@@ -36,20 +47,20 @@ function CategoryShowcase({
   const listings = data?.data ?? [];
 
   return (
-    <View className="mt-4">
+    <View style={styles.categorySection}>
       <SectionHeader
         title={title}
         linkLabel="Aur Dekho"
         onPress={() => router.push(`/(tabs)/browse?category=${slug}${city ? `&city=${city}` : ''}`)}
       />
-      <View className="mx-3">
+      <View style={styles.sectionInset}>
         {listings.length ? (
           listings.map((listing: Listing) => (
             <WideCard key={listing.id} listing={listing} onPress={() => router.push(`/listing/${listing.id}`)} />
           ))
         ) : (
-          <View className="rounded-xl bg-white px-4 py-4 shadow-sm">
-            <Text className="text-sm text-ink2">Is category mein abhi real listing nahi mili.</Text>
+          <View style={styles.emptyStateCard}>
+            <Text style={styles.emptyStateText}>Is category mein abhi real listing nahi mili.</Text>
           </View>
         )}
       </View>
@@ -67,6 +78,11 @@ export default function HomeScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [viewedCategorySlugs, setViewedCategorySlugs] = useState<string[]>([]);
   const [viewedListingIds, setViewedListingIds] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const heroEntrance = useRef(new Animated.Value(0)).current;
+  const heroOffset = useRef(new Animated.Value(18)).current;
+  const chipsEntrance = useRef(new Animated.Value(0)).current;
+  const actionsEntrance = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const locationPref = getLocationPreference();
@@ -77,6 +93,37 @@ export default function HomeScreen() {
     setViewedCategorySlugs(getViewedCategorySlugs());
     setViewedListingIds(getViewedListingIds());
   }, []);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(heroEntrance, {
+        toValue: 1,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(heroOffset, {
+        toValue: 0,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(chipsEntrance, {
+        toValue: 1,
+        delay: 90,
+        duration: 360,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(actionsEntrance, {
+        toValue: 1,
+        delay: 160,
+        duration: 360,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [actionsEntrance, chipsEntrance, heroEntrance, heroOffset]);
 
   const topSearch = recentSearches[0];
   const featured = useListings({ city: preferredCity, limit: 8, sort: 'newest' });
@@ -145,93 +192,151 @@ export default function HomeScreen() {
   useWarmListingImages(nearby.data?.data ?? [], 8);
   useWarmListingImages(featured.data?.data ?? [], 12);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      featured.refetch(),
+      personalized.refetch(),
+      nearby.refetch(),
+      cityPool.refetch(),
+    ]);
+    setRefreshing(false);
+  };
+
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
-      <View className="flex-row items-center justify-between px-3 py-2">
-        <Text className="text-[22px] font-extrabold text-red">TGMG.</Text>
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            onPress={() => router.push('/notifications')}
-            className="relative rounded-full bg-[#F5F6F7] px-3 py-2"
-          >
-            <Text className="text-[12px] text-ink2">Bell</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <View style={styles.topBar}>
+        <View>
+          <Text style={styles.brand}>TGMG.</Text>
+          <Text style={styles.tagline}>Asli log, asli cheezein</Text>
+        </View>
+        <View style={styles.topBarRight}>
+          <Pressable onPress={() => router.push('/notifications')} style={styles.pillButton}>
+            <Text style={styles.pillButtonText}>Inbox</Text>
             {unreadCount ? (
-              <View className="absolute -right-1 -top-1 h-5 min-w-[20px] items-center justify-center rounded-full bg-red px-1">
-                <Text className="text-[10px] font-bold text-white">{Math.min(unreadCount, 9)}+</Text>
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{Math.min(unreadCount, 9)}+</Text>
               </View>
             ) : null}
           </Pressable>
-          <View className="flex-row items-center gap-2 rounded-full bg-[#F5F6F7] px-3 py-2">
-            <View className="h-2.5 w-2.5 rounded-full bg-green" />
-            <Text className="text-[12px] text-ink2">{preferredCity}</Text>
+          <View style={styles.locationPill}>
+            <View style={styles.locationDot} />
+            <Text style={styles.locationPillText}>{preferredCity}</Text>
           </View>
         </View>
       </View>
 
-      <Pressable
-        onPress={() => router.push('/(tabs)/browse')}
-        className="mx-3 mb-2 h-10 flex-row items-center rounded-full bg-[#F5F6F7] px-4"
-      >
-        <Text className="mr-2 text-ink3">Search</Text>
-        <Text className="text-[13px] text-ink3">
+      <Pressable onPress={() => router.push('/(tabs)/browse')} style={styles.searchBar}>
+        <Text style={styles.searchLabel}>Search</Text>
+        <Text style={styles.searchHint}>
           {topSearch ? `"${topSearch}" se related cheezein` : 'Kuch bhi dhundein...'}
         </Text>
       </Pressable>
 
+      <Animated.View
+        style={{
+          opacity: chipsEntrance,
+          transform: [
+            {
+              translateY: chipsEntrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [10, 0],
+              }),
+            },
+          ],
+        }}
+      >
       <FlatList
         horizontal
         data={orderedCategories}
         keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
-        className="mb-2"
-        contentContainerStyle={{ paddingHorizontal: 12 }}
+        contentContainerStyle={styles.categoriesRow}
         renderItem={({ item, index }) => (
           <Pressable
             onPress={() => {
               Vibration.vibrate(12);
               router.push(`/(tabs)/browse?category=${item.slug}&city=${preferredCity}`);
             }}
-            className="mr-3 items-center px-3 py-2"
+            style={[styles.categoryChip, index === 0 && styles.categoryChipActive]}
           >
-            <Text className="text-[22px]">{item.icon}</Text>
-            <Text className={`mt-1 text-[10px] font-semibold ${index === 0 ? 'text-red' : 'text-ink2'}`}>
-              {item.name}
-            </Text>
-            <View className={`mt-1 h-0.5 w-full ${index === 0 ? 'bg-red' : 'bg-transparent'}`} />
+            <Text style={styles.categoryIcon}>{item.icon || '\u{1F4E6}'}</Text>
+            <Text style={[styles.categoryName, index === 0 && styles.categoryNameActive]}>{item.name}</Text>
           </Pressable>
         )}
       />
+      </Animated.View>
 
-      <View className="mx-3 rounded-xl bg-red p-4">
-        <View className="flex-row items-center justify-between">
-          <View className="max-w-[76%]">
-            <Text className="text-[18px] font-extrabold text-white">Aapke liye curated feed</Text>
-            <Text className="mt-1 text-[12px] text-white/80">
-              {topSearch
-                ? `Recent search "${topSearch}" aur ${preferredCity} location ke mutabiq.`
-                : `${preferredCity} location aur aapki viewed categories ke mutabiq.`}
-            </Text>
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              {[
-                preferredCity,
-                topSearch || 'Fresh picks',
-                viewedCategorySlugs[0] || 'Nearby',
-              ].map((item) => (
-                <View key={item} className="rounded-full border border-white/30 bg-white/15 px-3 py-1">
-                  <Text className="text-[11px] text-white">{item}</Text>
-                </View>
-              ))}
-            </View>
-            <Pressable
-              onPress={() => router.push('/(tabs)/browse')}
-              className="mt-4 self-start rounded-lg bg-white px-4 py-2"
-            >
-              <Text className="font-bold text-red">Abhi Dhundein</Text>
-            </Pressable>
+      <Animated.View
+        style={{
+          opacity: heroEntrance,
+          transform: [{ translateY: heroOffset }],
+        }}
+      >
+      <View style={styles.heroCard}>
+        <View style={styles.heroBody}>
+          <Text style={styles.heroEyebrow}>Curated Feed</Text>
+          <Text style={styles.heroTitle}>Aap ke liye behtar listings</Text>
+          <Text style={styles.heroText}>
+            {topSearch
+              ? `Recent search "${topSearch}" aur ${preferredCity} location ke mutabiq.`
+              : `${preferredCity} location aur aapki viewed categories ke mutabiq.`}
+          </Text>
+          <View style={styles.heroTags}>
+            {[preferredCity, topSearch || 'Fresh picks', viewedCategorySlugs[0] || 'Nearby'].map((item) => (
+              <View key={item} style={styles.heroTag}>
+                <Text style={styles.heroTagText}>{item}</Text>
+              </View>
+            ))}
           </View>
-          <Text className="text-[40px] text-white">For You</Text>
+          <Pressable onPress={() => router.push('/(tabs)/browse')} style={styles.heroButton}>
+            <Text style={styles.heroButtonText}>Abhi Dhundein</Text>
+          </Pressable>
+        </View>
+        <View style={styles.heroAccent}>
+          <Text style={styles.heroAccentText}>{'\u26A1'} For You</Text>
         </View>
       </View>
+      </Animated.View>
+
+      <Animated.View
+        style={{
+          opacity: actionsEntrance,
+          transform: [
+            {
+              translateY: actionsEntrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [12, 0],
+              }),
+            },
+          ],
+        }}
+      >
+      <FlatList
+        horizontal
+        data={quickActions}
+        keyExtractor={(item) => item.label}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.quickActionsRow}
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() => router.push(item.href as never)}
+            style={[styles.quickAction, item.active ? styles.quickActionPrimary : styles.quickActionSecondary]}
+          >
+            <Text style={[styles.quickActionIcon, item.active ? styles.quickActionIconPrimary : styles.quickActionIconSecondary]}>
+              {item.icon}
+            </Text>
+            <Text style={[styles.quickActionText, item.active ? styles.quickActionTextPrimary : styles.quickActionTextSecondary]}>
+              {item.label}
+            </Text>
+          </Pressable>
+        )}
+      />
+      </Animated.View>
 
       {recommended.length ? (
         <>
@@ -245,35 +350,14 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}
-            contentContainerStyle={{ paddingHorizontal: 8 }}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            contentContainerStyle={styles.grid}
+            columnWrapperStyle={styles.gridRow}
             renderItem={({ item }) => (
               <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
             )}
           />
         </>
       ) : null}
-
-      <FlatList
-        horizontal
-        data={quickActions}
-        keyExtractor={(item) => item.label}
-        showsHorizontalScrollIndicator={false}
-        className="mt-3"
-        contentContainerStyle={{ paddingHorizontal: 12 }}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(item.href as never)}
-            className={`mr-2 flex-row items-center rounded-full px-4 py-2 shadow-sm ${
-              item.active ? 'bg-red' : 'border border-border bg-white'
-            }`}
-          >
-            <Text className={`text-xs font-semibold ${item.active ? 'text-white' : 'text-ink2'}`}>
-              {item.label}
-            </Text>
-          </Pressable>
-        )}
-      />
 
       {topSearch ? (
         <>
@@ -287,8 +371,8 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}
-            contentContainerStyle={{ paddingHorizontal: 8 }}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            contentContainerStyle={styles.grid}
+            columnWrapperStyle={styles.gridRow}
             renderItem={({ item }) => (
               <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
             )}
@@ -312,8 +396,8 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}
-            contentContainerStyle={{ paddingHorizontal: 8 }}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            contentContainerStyle={styles.grid}
+            columnWrapperStyle={styles.gridRow}
             renderItem={({ item }) => (
               <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
             )}
@@ -333,8 +417,8 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}
-            contentContainerStyle={{ paddingHorizontal: 8 }}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            contentContainerStyle={styles.grid}
+            columnWrapperStyle={styles.gridRow}
             renderItem={({ item }) => (
               <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
             )}
@@ -348,8 +432,8 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id}
         numColumns={2}
         scrollEnabled={false}
-        contentContainerStyle={{ paddingHorizontal: 8 }}
-        columnWrapperStyle={{ justifyContent: 'space-between' }}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.gridRow}
         renderItem={({ item }) => (
           <ListingCard listing={item} onPress={() => router.push(`/listing/${item.id}`)} referenceCity={preferredCity} />
         )}
@@ -364,15 +448,330 @@ export default function HomeScreen() {
         />
       ))}
 
-      <View className="mx-3 mt-2 rounded-xl bg-red p-4">
-        <Text className="mt-2 text-center text-lg font-extrabold text-white">Apna saman bechna hai?</Text>
-        <Text className="mt-1 text-center text-sm text-white/80">
-          Free mein ad lagao aur buyer tak seedha pohancho.
-        </Text>
-        <Pressable onPress={() => router.push('/post/category')} className="mt-4 rounded-xl bg-white px-4 py-3">
-          <Text className="text-center font-bold text-red">+ Ad Post Karo</Text>
+      <View style={styles.sellCard}>
+        <Text style={styles.sellTitle}>Apna saman bechna hai?</Text>
+        <Text style={styles.sellText}>Free mein ad lagao aur buyer tak seedha pohancho.</Text>
+        <Pressable onPress={() => router.push('/post/category')} style={styles.sellButton}>
+          <Text style={styles.sellButtonText}>+ Ad Post Karo</Text>
         </Pressable>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: '#F0F2F5',
+    flex: 1,
+  },
+  content: {
+    paddingBottom: 32,
+    paddingTop: 8,
+  },
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  topBarRight: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  brand: {
+    color: '#E53935',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  tagline: {
+    color: '#65676B',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  pillButton: {
+    backgroundColor: '#F5F6F7',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    position: 'relative',
+  },
+  pillButtonText: {
+    color: '#65676B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  notificationBadge: {
+    alignItems: 'center',
+    backgroundColor: '#E53935',
+    borderRadius: 999,
+    justifyContent: 'center',
+    minWidth: 20,
+    paddingHorizontal: 6,
+    position: 'absolute',
+    right: -4,
+    top: -4,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  locationPill: {
+    alignItems: 'center',
+    backgroundColor: '#F5F6F7',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  locationDot: {
+    backgroundColor: '#2E7D32',
+    borderRadius: 999,
+    height: 9,
+    width: 9,
+  },
+  locationPillText: {
+    color: '#65676B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  searchBar: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    flexDirection: 'row',
+    marginHorizontal: 12,
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  searchLabel: {
+    color: '#1C1E21',
+    fontSize: 13,
+    fontWeight: '700',
+    marginRight: 10,
+  },
+  searchHint: {
+    color: '#65676B',
+    flex: 1,
+    fontSize: 13,
+  },
+  categoriesRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  categoryChip: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    marginRight: 10,
+    minWidth: 78,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 1,
+  },
+  categoryChipActive: {
+    backgroundColor: '#FFF1F0',
+    borderWidth: 1,
+    borderColor: '#F7C3C0',
+  },
+  categoryIcon: {
+    fontSize: 22,
+  },
+  categoryName: {
+    color: '#65676B',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  categoryNameActive: {
+    color: '#E53935',
+  },
+  heroCard: {
+    backgroundColor: '#E53935',
+    borderRadius: 24,
+    flexDirection: 'row',
+    marginHorizontal: 12,
+    marginTop: 2,
+    overflow: 'hidden',
+  },
+  heroBody: {
+    flex: 1,
+    padding: 18,
+  },
+  heroEyebrow: {
+    color: '#FFD6D2',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  heroText: {
+    color: '#FFF4F3',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  heroTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  heroTag: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.32)',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  heroTagText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  heroButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  heroButtonText: {
+    color: '#E53935',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  heroAccent: {
+    alignItems: 'center',
+    backgroundColor: '#C62828',
+    justifyContent: 'center',
+    minWidth: 90,
+    paddingHorizontal: 10,
+  },
+  heroAccentText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    transform: [{ rotate: '-90deg' }],
+  },
+  quickActionsRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+  },
+  quickAction: {
+    alignItems: 'center',
+    borderRadius: 999,
+    flexDirection: 'row',
+    marginRight: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  quickActionPrimary: {
+    backgroundColor: '#E53935',
+  },
+  quickActionSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E4E6EB',
+    borderWidth: 1,
+  },
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  quickActionIcon: {
+    fontSize: 13,
+    marginRight: 6,
+  },
+  quickActionIconPrimary: {
+    color: '#FFFFFF',
+  },
+  quickActionIconSecondary: {
+    color: '#65676B',
+  },
+  quickActionTextPrimary: {
+    color: '#FFFFFF',
+  },
+  quickActionTextSecondary: {
+    color: '#65676B',
+  },
+  grid: {
+    paddingHorizontal: 12,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+  },
+  categorySection: {
+    marginTop: 4,
+  },
+  sectionInset: {
+    paddingHorizontal: 12,
+  },
+  emptyStateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 2,
+  },
+  emptyStateText: {
+    color: '#65676B',
+    fontSize: 13,
+  },
+  sellCard: {
+    backgroundColor: '#E53935',
+    borderRadius: 24,
+    marginHorizontal: 12,
+    marginTop: 12,
+    padding: 20,
+  },
+  sellTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  sellText: {
+    color: '#FFF4F3',
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  sellButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  sellButtonText: {
+    color: '#E53935',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+});
