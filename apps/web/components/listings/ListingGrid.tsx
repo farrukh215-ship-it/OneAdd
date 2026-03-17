@@ -14,6 +14,8 @@ export function ListingGrid({
   referenceLat?: number;
   referenceLng?: number;
 }) {
+  const safeListings = listings.filter((listing) => Array.isArray(listing.images) && listing.images.length > 0);
+
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-2 px-2 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-4 lg:px-10">
@@ -33,7 +35,7 @@ export function ListingGrid({
 
   return (
     <div className="grid grid-cols-2 gap-2 px-2 sm:grid-cols-3 sm:gap-3 sm:px-3 lg:grid-cols-4 lg:px-10">
-      {listings.map((listing) => (
+      {safeListings.map((listing) => (
         <ListingCard
           key={listing.id}
           listing={listing}

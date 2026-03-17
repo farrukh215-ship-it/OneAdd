@@ -158,6 +158,7 @@ export class ListingsRepository {
       LEFT JOIN "Category" c ON c.id = l."categoryId"
       WHERE l.status = 'ACTIVE'
         AND l."isStore" = false
+        AND cardinality(l.images) > 0
         AND (
           similarity(lower(l.title), lower(${q})) > 0.15
           OR lower(l.title) ILIKE ${`%${q.toLowerCase()}%`}
@@ -190,6 +191,7 @@ export class ListingsRepository {
       JOIN "Listing" l ON l."categoryId" = c.id
       WHERE l.status = 'ACTIVE'
         AND l."isStore" = false
+        AND cardinality(l.images) > 0
         AND l."createdAt" >= NOW() - interval '30 days'
       GROUP BY c.id, c.name, c.slug
       ORDER BY COUNT(l.id) DESC, MAX(l."createdAt") DESC
@@ -220,6 +222,7 @@ export class ListingsRepository {
     const whereClauses: string[] = [
       "((l.status = 'ACTIVE' OR l.status = 'PENDING') OR (l.status = 'SOLD' AND l.\"updatedAt\" >= NOW() - interval '1 day'))",
       `l."createdAt" >= NOW() - interval '30 days'`,
+      `cardinality(l.images) > 0`,
     ];
 
     values.push(params.isStore ? 1 : 0);

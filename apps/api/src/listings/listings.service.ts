@@ -883,6 +883,7 @@ export class ListingsService {
 
     return {
       createdAt: { gte: expiryCutoff },
+      images: { isEmpty: false },
       OR: [
         { status: 'ACTIVE' },
         { status: 'PENDING' },

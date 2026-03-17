@@ -3,7 +3,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Listing, PaginatedResponse } from '@tgmg/types';
+import type { Listing, PaginatedResponse, SearchSuggestion } from '@tgmg/types';
 import { ListingGrid } from '../../components/listings/ListingGrid';
 import { useCategories } from '../../hooks/useCategories';
 import { api } from '../../lib/api';
@@ -47,6 +47,9 @@ export function ListingsPageClient({
   const [pullStartY, setPullStartY] = useState<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [q, setQ] = useState(initialParams.q ?? '');
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [popularSearches, setPopularSearches] = useState<SearchSuggestion[]>([]);
 
   const filters = useMemo(
     () => ({
@@ -89,6 +92,38 @@ export function ListingsPageClient({
   }, []);
 
   useEffect(() => {
+    void (async () => {
+      try {
+        const response = await api.get<SearchSuggestion[]>('/search/popular');
+        setPopularSearches(response.data);
+      } catch {
+        setPopularSearches([]);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    setQ(initialParams.q ?? '');
+  }, [initialParams.q]);
+
+  useEffect(() => {
+    const value = q.trim();
+    if (value.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await api.get<SearchSuggestion[]>('/search/suggestions', { params: { q: value } });
+        setSuggestions(response.data);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [q]);
+
+  useEffect(() => {
     if (!filters.q || typeof window === 'undefined') return;
     setRecentSearches((current) => {
       const next = [filters.q!, ...current.filter((item) => item !== filters.q)].slice(0, 6);
@@ -119,6 +154,12 @@ export function ListingsPageClient({
     };
     const query = makeQuery(next);
     router.push(`/listings${query ? `?${query}` : ''}`);
+  };
+
+  const submitSearch = (value: string) => {
+    const term = value.trim();
+    setSuggestions([]);
+    navigateWith({ q: term || undefined, page: undefined });
   };
 
   const refreshListings = async () => {
@@ -156,18 +197,6 @@ export function ListingsPageClient({
               {category.icon} {category.name}
             </button>
           ))}
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-2 text-sm font-bold">Dukaan type</div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => navigateWith({ store: 'online' })} className={`chip ${filters.store === 'online' ? 'active' : ''}`}>
-            Online
-          </button>
-          <button type="button" onClick={() => navigateWith({ store: 'road' })} className={`chip ${filters.store === 'road' ? 'active' : ''}`}>
-            Road
-          </button>
         </div>
       </div>
 
@@ -263,6 +292,64 @@ export function ListingsPageClient({
             style={{ maxHeight: pullDistance ? `${pullDistance}px` : '0px', opacity: pullDistance ? 1 : 0 }}
           >
             {refreshing ? 'Refreshing listings...' : pullDistance > 80 ? 'Release to refresh' : 'Pull down to refresh'}
+          </div>
+          <div className="mb-3 rounded-2xl border border-border bg-white p-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <input
+                value={q}
+                onChange={(event) => setQ(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') submitSearch(q);
+                }}
+                className="search-input flex-1"
+                placeholder="Search titles, category, city..."
+              />
+              <div className="flex gap-2">
+                <button type="button" className="btn-red" onClick={() => submitSearch(q)}>
+                  Search
+                </button>
+                {q.trim() ? (
+                  <button
+                    type="button"
+                    className="btn-white"
+                    onClick={() => {
+                      setQ('');
+                      submitSearch('');
+                    }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            {suggestions.length ? (
+              <div className="mt-3 rounded-2xl border border-border bg-[#FCFCFD]">
+                {suggestions.slice(0, 6).map((item, index) => (
+                  <button
+                    key={`${item.label}-${index}`}
+                    type="button"
+                    onClick={() => submitSearch(item.label)}
+                    className="flex w-full items-start justify-between border-b border-border px-4 py-3 text-left last:border-b-0"
+                  >
+                    <div>
+                      <div className="text-sm font-bold text-ink">{item.label}</div>
+                      <div className="mt-1 text-xs text-ink2">
+                        {[item.categoryName, item.city].filter(Boolean).join(' | ') || 'Suggestion'}
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-red">Open</span>
+                  </button>
+                ))}
+              </div>
+            ) : !q.trim() && popularSearches.length ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {popularSearches.slice(0, 8).map((item, index) => (
+                  <button key={`${item.label}-${index}`} type="button" className="chip" onClick={() => submitSearch(item.label)}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="mb-3 flex items-center justify-between gap-3">
           <div>

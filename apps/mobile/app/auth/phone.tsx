@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Alert,
+  Linking,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -216,8 +217,12 @@ export default function PhoneAuthScreen() {
                 </Text>
               </Pressable>
 
-              <Pressable disabled={signUpDisabled} onPress={() => sendSignupOtp.mutate()} style={[styles.primaryButton, signUpDisabled && styles.disabledButton]}>
-                <Text style={styles.primaryButtonText}>Account Create Karo</Text>
+              <Text style={styles.helperText}>
+                OTP verify screen par account create complete hoga.
+              </Text>
+
+              <Pressable onPress={() => void Linking.openURL('https://teragharmeraghar.com/auth')} style={styles.linkButton}>
+                <Text style={styles.linkButtonText}>Agar OTP issue ho to website par account banao</Text>
               </Pressable>
             </>
           ) : null}
@@ -411,5 +416,22 @@ const styles = StyleSheet.create({
   disabledOutlineButton: {
     backgroundColor: '#F5F6F7',
     borderColor: '#E4E6EB',
+  },
+  linkButton: {
+    marginTop: 14,
+    paddingVertical: 10,
+  },
+  helperText: {
+    color: '#65676B',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  linkButtonText: {
+    color: '#E53935',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

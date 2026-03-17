@@ -1,3 +1,4 @@
+import { tgmgContact } from '../../lib/contact';
 import Link from 'next/link';
 
 export function Footer() {
@@ -10,9 +11,9 @@ export function Footer() {
             Pakistan ka premium marketplace. Asli malik, saaf browsing, fast deals.
           </p>
           <div className="mt-3 text-sm text-ink2">
-            <div>Office: Arfa Kareem Technology Park, Lahore</div>
-            <a className="text-red underline" href="mailto:info@teragharmeraghar.com">
-              info@teragharmeraghar.com
+            <div>Office: {tgmgContact.office}</div>
+            <a className="text-red underline" href={`mailto:${tgmgContact.email}`}>
+              {tgmgContact.email}
             </a>
           </div>
         </div>
@@ -22,7 +23,7 @@ export function Footer() {
             <Link href="/listings">Saari Listings</Link>
             <Link href="/listings?category=mobiles">Mobiles</Link>
             <Link href="/listings?category=cars">Gaadiyaan</Link>
-            <Link href="/dukaan">Dukaan</Link>
+            <Link href="/contact">Contact</Link>
           </div>
         </div>
         <div>
@@ -37,20 +38,22 @@ export function Footer() {
         <div>
           <div className="font-bold text-ink">Connect</div>
           <div className="mt-3 space-y-2 text-sm text-ink2">
-            <a href="https://www.teragharmeraghar.com" target="_blank" rel="noreferrer">
+            <a href={tgmgContact.website} target="_blank" rel="noreferrer">
               www.teragharmeraghar.com
             </a>
-            <a href="https://www.facebook.com/teragharmeraghar" target="_blank" rel="noreferrer">
+            <a href={tgmgContact.facebook} target="_blank" rel="noreferrer">
               Facebook
             </a>
-            <a href="https://www.instagram.com/teragharmeraghar" target="_blank" rel="noreferrer">
+            <a href={tgmgContact.instagram} target="_blank" rel="noreferrer">
               Instagram
             </a>
-            <a href="tel:+923001234567">+92 300 1234567</a>
+            <a href={tgmgContact.whatsapp} target="_blank" rel="noreferrer">
+              WhatsApp
+            </a>
+            <a href={`tel:${tgmgContact.phone.replace(/\s+/g, '')}`}>{tgmgContact.phone}</a>
           </div>
         </div>
       </div>
     </footer>
   );
 }
-

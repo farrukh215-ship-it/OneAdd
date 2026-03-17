@@ -145,6 +145,7 @@ export default function BrowseScreen() {
   const submitSearch = (value: string) => {
     const term = value.trim();
     setQ(term);
+    setSuggestions([]);
     setPage(1);
     if (term) {
       addRecentSearch(term);
@@ -198,15 +199,36 @@ export default function BrowseScreen() {
           onChangeText={setQ}
           onSubmitEditing={() => submitSearch(q)}
           style={styles.searchInput}
-          placeholder="Search with prediction..."
+          placeholder="Search titles, category, city..."
           placeholderTextColor="#9AA1A9"
         />
+
+        <View style={styles.searchActionsRow}>
+          <Pressable onPress={() => submitSearch(q)} style={styles.searchActionPrimary}>
+            <Text style={styles.searchActionPrimaryText}>Search</Text>
+          </Pressable>
+          {q.trim() ? (
+            <Pressable
+              onPress={() => {
+                setQ('');
+                setSuggestions([]);
+                setPage(1);
+              }}
+              style={styles.searchActionSecondary}
+            >
+              <Text style={styles.searchActionSecondaryText}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         {suggestions.length ? (
           <View style={styles.suggestionBox}>
             {suggestions.slice(0, 5).map((item, index) => (
               <Pressable key={`${item.label}-${index}`} onPress={() => submitSearch(item.label)} style={styles.suggestionItem}>
                 <Text style={styles.suggestionText}>{item.label}</Text>
+                <Text style={styles.suggestionMeta}>
+                  {[item.categoryName, item.city].filter(Boolean).join(' | ') || 'Suggestion'}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -502,8 +524,41 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   suggestionText: {
-    color: '#65676B',
+    color: '#1C1E21',
     fontSize: 14,
+    fontWeight: '700',
+  },
+  suggestionMeta: {
+    color: '#8C939B',
+    fontSize: 11,
+    marginTop: 4,
+  },
+  searchActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  searchActionPrimary: {
+    backgroundColor: '#E53935',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  searchActionPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  searchActionSecondary: {
+    backgroundColor: '#F5F6F7',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  searchActionSecondaryText: {
+    color: '#65676B',
+    fontSize: 12,
+    fontWeight: '700',
   },
   discoveryStack: {
     gap: 10,

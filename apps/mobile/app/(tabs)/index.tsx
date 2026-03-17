@@ -31,8 +31,19 @@ const quickActions = [
   { icon: '\u{1F4CD}', label: 'Mere Paas', href: '/(tabs)/browse?city=Lahore&lat=31.5204&lng=74.3587&radiusKm=10' },
   { icon: '\u{1F525}', label: 'Top Deals', href: '/(tabs)/browse?sort=price_asc' },
   { icon: '\u{1F381}', label: 'Naye Items', href: '/(tabs)/browse?condition=NEW' },
-  { icon: '\u{1F6D2}', label: 'Dukaan', href: '/(tabs)/browse?store=road&city=Lahore' },
+  { icon: '\u260E\uFE0F', label: 'Contact', href: '/contact' },
 ];
+
+function mergeListings(...groups: Array<Listing[] | undefined>) {
+  const merged: Listing[] = [];
+  for (const group of groups) {
+    for (const item of group ?? []) {
+      if (merged.some((entry) => entry.id === item.id)) continue;
+      merged.push(item);
+    }
+  }
+  return merged;
+}
 
 function CategoryShowcase({
   slug,
@@ -44,8 +55,17 @@ function CategoryShowcase({
   city?: string;
 }) {
   const router = useRouter();
-  const { data } = useListings({ category: slug, city, limit: 3, sort: 'newest' });
-  const listings = data?.data ?? [];
+  const cityListings = useListings({ category: slug, city, limit: 3, sort: 'newest' });
+  const globalListings = useListings({ category: slug, limit: 6, sort: 'newest' });
+  const listings = useMemo(() => {
+    const merged = [...(cityListings.data?.data ?? [])];
+    for (const item of globalListings.data?.data ?? []) {
+      if (merged.some((entry) => entry.id === item.id)) continue;
+      merged.push(item);
+      if (merged.length >= 3) break;
+    }
+    return merged.slice(0, 3);
+  }, [cityListings.data?.data, globalListings.data?.data]);
 
   return (
     <View style={styles.categorySection}>
@@ -129,6 +149,7 @@ export default function HomeScreen() {
 
   const topSearch = recentSearches[0];
   const featured = useListings({ city: preferredCity, limit: 8, sort: 'newest' });
+  const featuredGlobal = useListings({ limit: 12, sort: 'newest' });
   const personalized = useListings({
     q: topSearch,
     city: preferredCity,
@@ -159,23 +180,27 @@ export default function HomeScreen() {
   }, [categories, viewedCategorySlugs]);
 
   const recommended = useMemo(() => {
-    const merged = [
-      ...(cityPool.data?.data ?? []),
-      ...(personalized.data?.data ?? []),
-      ...(nearby.data?.data ?? []),
-      ...(featured.data?.data ?? []),
-    ];
+    const merged = mergeListings(
+      cityPool.data?.data,
+      personalized.data?.data,
+      nearby.data?.data,
+      featured.data?.data,
+      featuredGlobal.data?.data,
+    );
 
-    return buildRecommendedFeed(merged, {
+    const ranked = buildRecommendedFeed(merged, {
       preferredCity,
       recentSearches,
       viewedCategorySlugs,
       viewedListingIds,
       nearbyListingIds: (nearby.data?.data ?? []).map((item) => item.id),
-    }).slice(0, 8);
+    });
+
+    return mergeListings(ranked, featuredGlobal.data?.data).slice(0, 8);
   }, [
     cityPool.data?.data,
     featured.data?.data,
+    featuredGlobal.data?.data,
     nearby.data?.data,
     personalized.data?.data,
     preferredCity,
@@ -184,20 +209,38 @@ export default function HomeScreen() {
     viewedListingIds,
   ]);
 
+  const featuredCombined = useMemo(
+    () => mergeListings(featured.data?.data, featuredGlobal.data?.data).slice(0, 8),
+    [featured.data?.data, featuredGlobal.data?.data],
+  );
+
+  const personalizedCombined = useMemo(() => {
+    if (!topSearch) return [];
+    return mergeListings(personalized.data?.data, featuredCombined).slice(0, 4);
+  }, [featuredCombined, personalized.data?.data, topSearch]);
+
+  const nearbyCombined = useMemo(
+    () => mergeListings(nearby.data?.data, featuredCombined).slice(0, 4),
+    [featuredCombined, nearby.data?.data],
+  );
+
   const continueWatching = useMemo(() => {
     const byViewed = new Set(viewedListingIds);
-    return recommended.filter((item) => !byViewed.has(item.id)).slice(0, 4);
-  }, [recommended, viewedListingIds]);
+    const ranked = recommended.filter((item) => !byViewed.has(item.id));
+    if (ranked.length) return ranked.slice(0, 4);
+    return featuredCombined.slice(0, 4);
+  }, [featuredCombined, recommended, viewedListingIds]);
 
   useWarmListingImages(recommended, 12);
-  useWarmListingImages(personalized.data?.data ?? [], 8);
-  useWarmListingImages(nearby.data?.data ?? [], 8);
-  useWarmListingImages(featured.data?.data ?? [], 12);
+  useWarmListingImages(personalizedCombined, 8);
+  useWarmListingImages(nearbyCombined, 8);
+  useWarmListingImages(featuredCombined, 12);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       featured.refetch(),
+      featuredGlobal.refetch(),
       personalized.refetch(),
       nearby.refetch(),
       cityPool.refetch(),
@@ -375,7 +418,7 @@ export default function HomeScreen() {
             onPress={() => router.push(`/(tabs)/browse?q=${encodeURIComponent(topSearch)}&city=${preferredCity}`)}
           />
           <FlatList
-            data={personalized.data?.data ?? []}
+            data={personalizedCombined}
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}
@@ -400,7 +443,7 @@ export default function HomeScreen() {
             }
           />
           <FlatList
-            data={nearby.data?.data ?? []}
+            data={nearbyCombined}
             keyExtractor={(item) => item.id}
             numColumns={2}
             scrollEnabled={false}
@@ -436,7 +479,7 @@ export default function HomeScreen() {
 
       <SectionHeader title="Aaj Ki Listings" linkLabel="Sab Dekho" onPress={() => router.push('/(tabs)/browse')} />
       <FlatList
-        data={featured.data?.data ?? []}
+        data={featuredCombined}
         keyExtractor={(item) => item.id}
         numColumns={2}
         scrollEnabled={false}

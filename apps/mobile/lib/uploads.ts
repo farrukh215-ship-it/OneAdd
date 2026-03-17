@@ -8,7 +8,6 @@ type UploadDescriptor = {
   filename: string;
   mimeType: string;
   size: number;
-  blob: Blob;
 };
 
 function guessMimeType(uri: string, kind: UploadKind) {
@@ -29,17 +28,16 @@ function filenameFromUri(uri: string, kind: UploadKind) {
 }
 
 async function toDescriptor(uri: string, kind: UploadKind): Promise<UploadDescriptor> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
   const filename = filenameFromUri(uri, kind);
-  const mimeType = blob.type || guessMimeType(filename, kind);
+  const mimeType = guessMimeType(filename, kind);
+  const asset = await fetch(uri);
+  const blob = await asset.blob();
   return {
     uri,
     kind,
     filename,
     mimeType,
     size: blob.size,
-    blob,
   };
 }
 
@@ -56,19 +54,39 @@ export async function uploadPostMediaToR2(input: { images: string[]; videos: str
   const imageUrls: string[] = [];
   const videoUrls: string[] = [];
 
-  for (const descriptor of descriptors) {
-    const formData = new FormData();
-    formData.append('kind', descriptor.kind);
-    formData.append('file', descriptor.blob, descriptor.filename);
+  const presignResponse = await api.post('/uploads/r2/presign', {
+    files: descriptors.map((descriptor) => ({
+      filename: descriptor.filename,
+      mimeType: descriptor.mimeType,
+      size: descriptor.size,
+      kind: descriptor.kind,
+    })),
+  });
 
-    const response = await api.post('/uploads/proxy', formData, {
+  const presignedFiles = presignResponse.data?.files ?? [];
+
+  for (let index = 0; index < descriptors.length; index += 1) {
+    const descriptor = descriptors[index];
+    const presigned = presignedFiles[index];
+    if (!presigned?.uploadUrl || !presigned?.publicUrl) {
+      throw new Error('Upload URL nahi mili');
+    }
+
+    const asset = await fetch(descriptor.uri);
+    const blob = await asset.blob();
+    const uploadResponse = await fetch(presigned.uploadUrl, {
+      method: 'PUT',
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': descriptor.mimeType,
       },
+      body: blob,
     });
+    if (!uploadResponse.ok) {
+      throw new Error('Media upload fail hui');
+    }
 
-    if (descriptor.kind === 'image') imageUrls.push(response.data.publicUrl);
-    else videoUrls.push(response.data.publicUrl);
+    if (descriptor.kind === 'image') imageUrls.push(presigned.publicUrl);
+    else videoUrls.push(presigned.publicUrl);
   }
 
   return { imageUrls, videoUrls };

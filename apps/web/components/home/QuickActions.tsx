@@ -81,8 +81,8 @@ export function QuickActions({ city = 'Lahore' }: { city?: string }) {
       <Link href={`/listings?sort=newest&city=${encodeURIComponent(city)}`} className="chip shrink-0">
         Naye Items
       </Link>
-      <Link href={`/dukaan?city=${encodeURIComponent(city)}`} className="chip shrink-0">
-        Dukaan
+      <Link href="/contact" className="chip shrink-0">
+        Contact
       </Link>
     </section>
   );
