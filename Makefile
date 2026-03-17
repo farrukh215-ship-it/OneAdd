@@ -1,4 +1,4 @@
-.PHONY: dev build down migrate seed logs shell-api
+.PHONY: dev build down migrate seed logs shell-api safe-cleanup healthcheck deploy cleanup-invalid-listings
 
 dev:
 	docker compose up --build
@@ -20,3 +20,15 @@ logs:
 
 shell-api:
 	docker compose exec api sh
+
+safe-cleanup:
+	bash ./ops/vps-safe-cleanup.sh
+
+healthcheck:
+	HOST_HEADER=teragharmeraghar.com bash ./ops/vps-healthcheck.sh
+
+deploy:
+	bash ./ops/vps-deploy.sh
+
+cleanup-invalid-listings:
+	docker compose exec -T postgres sh -lc 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < ./ops/sql/cleanup-invalid-public-listings.sql

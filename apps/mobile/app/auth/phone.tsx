@@ -82,8 +82,8 @@ export default function PhoneAuthScreen() {
       if (data?.accessToken) setToken(data.accessToken);
       router.replace('/(tabs)');
     },
-    onError: () => {
-      Alert.alert('Login failed', 'Email ya password ghalat hai.');
+    onError: (error) => {
+      Alert.alert('Login failed', extractApiMessage(error, 'Email ya password ghalat hai.'));
     },
   });
 
