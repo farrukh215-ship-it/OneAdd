@@ -4,6 +4,8 @@ const version = process.env.EXPO_APP_VERSION || '1.0.1';
 const versionCode = Number(process.env.EXPO_ANDROID_VERSION_CODE || '2');
 const packageName = process.env.EXPO_ANDROID_PACKAGE || 'com.tgmg.app';
 const environment = process.env.EXPO_PUBLIC_ENV || 'development';
+const productionApiUrl = 'https://teragharmeraghar.com/api';
+const apiUrl = process.env.EXPO_PUBLIC_API_URL || (environment === 'production' ? productionApiUrl : undefined);
 
 export default {
   expo: {
@@ -31,7 +33,7 @@ export default {
       : undefined,
     plugins: ['expo-router', 'expo-asset', 'expo-location', 'expo-notifications'],
     extra: {
-      apiUrl: process.env.EXPO_PUBLIC_API_URL,
+      apiUrl,
       environment,
       eas: projectId ? { projectId } : undefined,
     },

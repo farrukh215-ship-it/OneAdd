@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useListingDashboard } from '../../hooks/useListingDashboard';
 import { useMyListings } from '../../hooks/useMyListings';
@@ -15,6 +16,7 @@ export default function ProfileScreen() {
   const { data: dashboard } = useListingDashboard();
   const { notifications, unreadCount } = useNotifications();
   const { data: myListings } = useMyListings();
+  const [refreshing, setRefreshing] = useState(false);
 
   const updateListingStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'ACTIVE' | 'PENDING' | 'INACTIVE' | 'SOLD' }) => {
@@ -28,8 +30,27 @@ export default function ProfileScreen() {
     },
   });
 
+  const refreshProfile = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['current-user'] }),
+        queryClient.invalidateQueries({ queryKey: ['listing-dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+        queryClient.invalidateQueries({ queryKey: ['my-listings'] }),
+        queryClient.invalidateQueries({ queryKey: ['saved-listings'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshProfile()} />}
+    >
       <Text style={styles.title}>Mera Profile</Text>
 
       <View style={styles.profileCard}>
@@ -46,6 +67,15 @@ export default function ProfileScreen() {
         </Pressable>
         <Pressable onPress={() => router.push('/(tabs)/saved')} style={styles.softAction}>
           <Text style={styles.softActionText}>Saved Ads</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.actionsRow}>
+        <Pressable onPress={() => router.push('/analytics')} style={styles.softAction}>
+          <Text style={styles.softActionText}>Analytics</Text>
+        </Pressable>
+        <Pressable onPress={() => void refreshProfile()} style={styles.softAction}>
+          <Text style={styles.softActionText}>Refresh</Text>
         </Pressable>
       </View>
 

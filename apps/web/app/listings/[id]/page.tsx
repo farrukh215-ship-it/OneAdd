@@ -10,6 +10,7 @@ import {
   VerifiedIcon,
 } from './DetailIcons';
 import { ListingDescriptionClient } from './ListingDescriptionClient';
+import { ListingActionsClient } from './ListingActionsClient';
 import { ListingMediaCarousel } from './ListingMediaCarousel';
 import { ListingPublicChat } from './ListingPublicChat';
 import { SellerSidebarClient } from './SellerSidebarClient';
@@ -49,6 +50,7 @@ export default async function ListingDetailPage({
   const related = categorySlug ? await getListings({ category: categorySlug, limit: 4 }) : { data: [], total: 0, page: 1, totalPages: 0 };
   const sellerName = listing.user?.name || 'Seller';
   const locationText = [listing.city, listing.area].filter(Boolean).join(', ');
+  const listingUrl = `https://teragharmeraghar.com/listings/${listing.id}`;
   const sellerLocation = [listing.user?.area || listing.area, listing.user?.city || listing.city]
     .filter(Boolean)
     .join(', ');
@@ -98,6 +100,7 @@ export default async function ListingDetailPage({
                       text={`Updated ${new Date(listing.updatedAt).toLocaleDateString('en-GB')}`}
                     />
                   </div>
+                  <ListingActionsClient title={listing.title} url={listingUrl} />
                 </div>
 
                 <div className="rounded-[22px] border border-black/5 bg-[linear-gradient(180deg,_rgba(248,249,251,0.95),_rgba(255,255,255,0.95))] p-4 md:w-[280px]">

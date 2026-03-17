@@ -46,6 +46,7 @@ export function ListingsPageClient({
   const [refreshing, setRefreshing] = useState(false);
   const [pullStartY, setPullStartY] = useState<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   const filters = useMemo(
     () => ({
@@ -75,6 +76,26 @@ export function ListingsPageClient({
     () => listings.data?.pages.flatMap((page) => page.data) ?? [],
     [listings.data?.pages],
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('tgmg_recent_searches');
+      const parsed = raw ? (JSON.parse(raw) as string[]) : [];
+      setRecentSearches(Array.isArray(parsed) ? parsed.slice(0, 6) : []);
+    } catch {
+      setRecentSearches([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!filters.q || typeof window === 'undefined') return;
+    setRecentSearches((current) => {
+      const next = [filters.q!, ...current.filter((item) => item !== filters.q)].slice(0, 6);
+      window.localStorage.setItem('tgmg_recent_searches', JSON.stringify(next));
+      return next;
+    });
+  }, [filters.q]);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -216,6 +237,27 @@ export function ListingsPageClient({
             setPullDistance(0);
           }}
         >
+          {recentSearches.length ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {recentSearches.map((item) => (
+                <button key={item} type="button" className="chip" onClick={() => navigateWith({ q: item })}>
+                  {item}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="chip"
+                onClick={() => {
+                  setRecentSearches([]);
+                  if (typeof window !== 'undefined') {
+                    window.localStorage.removeItem('tgmg_recent_searches');
+                  }
+                }}
+              >
+                Clear History
+              </button>
+            </div>
+          ) : null}
           <div
             className="overflow-hidden text-center text-xs font-semibold text-ink2 transition-all"
             style={{ maxHeight: pullDistance ? `${pullDistance}px` : '0px', opacity: pullDistance ? 1 : 0 }}

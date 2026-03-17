@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, Linking, Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import type { Listing, ListingThreadResponse } from '@tgmg/types';
 import { useRequireAuthAction } from '../../components/AuthGuardAction';
 import { ListingCard } from '../../components/ListingCard';
@@ -28,6 +28,7 @@ export default function ListingDetailScreen() {
   const [fullScreenVisible, setFullScreenVisible] = useState(false);
   const [chatImageUri, setChatImageUri] = useState<string | null>(null);
   const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const { data: savedItems = [] } = useQuery({
     queryKey: ['saved-listings', currentUser?.id],
@@ -155,6 +156,19 @@ export default function ListingDetailScreen() {
     }
   }, [listing]);
 
+  const refreshListing = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['listing', id] }),
+        queryClient.invalidateQueries({ queryKey: ['listings'] }),
+        queryClient.invalidateQueries({ queryKey: ['saved-listings'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-bg">
@@ -174,11 +188,16 @@ export default function ListingDetailScreen() {
     );
   }
 
+  const listingUrl = `https://teragharmeraghar.com/listings/${listing.id}`;
+
   const galleryItems = listing.images.length ? listing.images : ['placeholder'];
 
   return (
     <View className="flex-1 bg-bg">
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshListing()} />}
+      >
         <FlatList
           horizontal
           pagingEnabled
@@ -243,12 +262,30 @@ export default function ListingDetailScreen() {
             <Pressable
               onPress={() =>
                 Share.share({
-                  message: `Dekho: ${listing.title} - https://teragharmeraghar.com/listings/${listing.id}`,
+                  message: `Dekho: ${listing.title} - ${listingUrl}`,
                 })
               }
               className="flex-1 rounded-xl border border-border bg-white px-4 py-3"
             >
               <Text className="text-center font-semibold text-ink">Share</Text>
+            </Pressable>
+          </View>
+
+          <View className="mt-2 flex-row gap-2">
+            <Pressable
+              onPress={() => Share.share({ message: listingUrl })}
+              className="flex-1 rounded-xl border border-border bg-white px-4 py-3"
+            >
+              <Text className="text-center font-semibold text-ink">Copy Link</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                const query = encodeURIComponent([listing.title, listing.area, listing.city].filter(Boolean).join(', '));
+                void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+              }}
+              className="flex-1 rounded-xl border border-border bg-white px-4 py-3"
+            >
+              <Text className="text-center font-semibold text-ink">Open Maps</Text>
             </Pressable>
           </View>
 
@@ -378,6 +415,9 @@ export default function ListingDetailScreen() {
             <Text className="text-center text-xs font-semibold text-ink2">{revealedPhone}</Text>
           </View>
         ) : null}
+        <View className="mb-2 rounded-xl bg-[#FDECEC] px-3 py-2">
+          <Text className="text-center text-[11px] font-semibold text-red">Refresh, share, maps aur secure contact actions yahan milenge.</Text>
+        </View>
         <View className="flex-row gap-3">
           <Pressable onPress={openWhatsapp} className="flex-1 rounded-xl bg-green py-3">
             <Text className="text-center text-[15px] font-bold text-white">WhatsApp</Text>

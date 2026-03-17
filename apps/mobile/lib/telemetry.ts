@@ -1,13 +1,8 @@
 import Constants from 'expo-constants';
+import { getMobileApiUrl, getMobileEnvironment } from './runtime-config';
 
-const apiUrl =
-  Constants.expoConfig?.extra?.apiUrl ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  'http://localhost:3001';
-const environment =
-  Constants.expoConfig?.extra?.environment ||
-  process.env.EXPO_PUBLIC_ENV ||
-  'development';
+const apiUrl = getMobileApiUrl();
+const environment = getMobileEnvironment();
 const appVersion = Constants.expoConfig?.version || '0.0.0';
 
 type TelemetryPayload = {

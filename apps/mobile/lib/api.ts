@@ -1,16 +1,11 @@
-import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { storage } from './storage';
 import { captureApiFailure } from './telemetry';
-
-const apiUrl =
-  Constants.expoConfig?.extra?.apiUrl ||
-  process.env.EXPO_PUBLIC_API_URL ||
-  'http://localhost:3001';
+import { getMobileApiUrl } from './runtime-config';
 
 export const api = axios.create({
-  baseURL: apiUrl,
+  baseURL: getMobileApiUrl(),
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
