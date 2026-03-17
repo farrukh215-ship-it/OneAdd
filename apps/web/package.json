@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node .next/standalone/server.js",
+    "start": "node .next/standalone/apps/web/server.js",
     "lint": "next lint"
   },
   "dependencies": {
