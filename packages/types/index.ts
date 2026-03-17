@@ -1,6 +1,7 @@
 export * from './listing-taxonomy';
 
-import { STANDARD_CATEGORY_SEEDS, type ListingAttributes } from './listing-taxonomy';
+import { STANDARD_CATEGORY_SEEDS } from './listing-taxonomy';
+import type { ListingAttributes } from './listing-taxonomy';
 
 export interface User {
   id: string;
