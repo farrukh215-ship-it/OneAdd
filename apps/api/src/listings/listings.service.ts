@@ -13,10 +13,10 @@ import {
   getCategoryDefinitionBySlug,
   getMinimumPriceForListing,
   getSubcategoryDefinition,
-  PaginatedResponse,
   type ListingAttributes,
   type ListingFeatureDefinition,
-} from '@tgmg/types';
+} from './listing-taxonomy';
+import type { PaginatedResponse } from '@tgmg/types';
 import { ListingsRepository } from './listings.repository';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
