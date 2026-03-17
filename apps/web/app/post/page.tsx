@@ -427,10 +427,17 @@ export default function PostPage() {
                           setPrice(String(subcategory.minPrice));
                         }
                       }}
-                      className={`surface p-4 text-left ${
-                        subcategorySlug === subcategory.slug ? '!border-red !bg-red-light' : ''
+                      className={`surface relative p-4 text-left transition duration-150 ${
+                        subcategorySlug === subcategory.slug
+                          ? '!border-red !bg-red-light shadow-[0_18px_40px_rgba(228,59,48,0.18)] -translate-y-0.5 ring-2 ring-red/15'
+                          : 'hover:-translate-y-0.5 hover:border-red/30 hover:shadow-[0_14px_32px_rgba(15,23,42,0.10)]'
                       }`}
                     >
+                      {subcategorySlug === subcategory.slug ? (
+                        <div className="absolute right-3 top-3 rounded-full bg-red px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+                          Selected
+                        </div>
+                      ) : null}
                       <div className="text-sm font-bold text-ink">{subcategory.name}</div>
                       <div className="mt-2 text-xs text-ink2">
                         Min price: PKR {subcategory.minPrice.toLocaleString()}
