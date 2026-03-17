@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, SafeAreaView, ScrollView, Text, TextInput } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
+import { extractApiMessage } from '../../lib/auth-utils';
 
 export default function OtpScreen() {
   const router = useRouter();
@@ -62,8 +63,8 @@ export default function OtpScreen() {
       }
       router.replace('/(tabs)');
     },
-    onError: () => {
-      Alert.alert('Verify failed', 'OTP ya details ghalat hain.');
+    onError: (error) => {
+      Alert.alert('Verify failed', extractApiMessage(error, 'OTP ya details ghalat hain.'));
     },
   });
 
@@ -75,7 +76,15 @@ export default function OtpScreen() {
       );
       return response.data;
     },
-    onSuccess: () => setCountdown(30),
+    onSuccess: (data) => {
+      if (data?.devOtp) {
+        Alert.alert('Dev OTP', `OTP: ${data.devOtp}`);
+      }
+      setCountdown(30);
+    },
+    onError: (error) => {
+      Alert.alert('Masla aa gaya', extractApiMessage(error, 'OTP dobara bhejne mein masla aa gaya.'));
+    },
   });
 
   const disabled =

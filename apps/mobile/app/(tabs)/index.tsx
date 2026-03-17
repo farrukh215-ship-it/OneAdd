@@ -16,6 +16,7 @@ import type { Category, Listing } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { WideCard } from '../../components/WideCard';
+import { useAuth } from '../../hooks/useAuth';
 import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -70,6 +71,7 @@ function CategoryShowcase({
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { currentUser, logout } = useAuth();
   const { data: categories = [] } = useCategories();
   const { unreadCount } = useNotifications();
   const [preferredCity, setPreferredCity] = useState('Lahore');
@@ -215,6 +217,12 @@ export default function HomeScreen() {
           <Text style={styles.tagline}>Asli log, asli cheezein</Text>
         </View>
         <View style={styles.topBarRight}>
+          <Pressable
+            onPress={() => (currentUser ? logout() : router.push('/auth/phone'))}
+            style={styles.pillButton}
+          >
+            <Text style={styles.pillButtonText}>{currentUser ? 'Logout' : 'Login'}</Text>
+          </Pressable>
           <Pressable onPress={() => router.push('/notifications')} style={styles.pillButton}>
             <Text style={styles.pillButtonText}>Inbox</Text>
             {unreadCount ? (

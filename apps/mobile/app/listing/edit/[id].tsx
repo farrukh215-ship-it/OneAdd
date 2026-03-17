@@ -2,8 +2,35 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  getCategoryDefinitionBySlug,
+  getMinimumPriceForListing,
+  getSubcategoryDefinition,
+  type ListingAttributes,
+  type ListingFeatureDefinition,
+} from '@tgmg/types';
 import { useListing } from '../../../hooks/useListing';
 import { api } from '../../../lib/api';
+
+function normalizeFeatureValue(
+  feature: ListingFeatureDefinition,
+  value: string | boolean | undefined,
+): string | number | boolean | undefined {
+  if (feature.type === 'boolean') {
+    return typeof value === 'boolean' ? value : undefined;
+  }
+
+  const text = String(value ?? '').trim();
+  if (!text) return undefined;
+
+  if (feature.type === 'number') {
+    const numeric = Number(text);
+    if (!Number.isFinite(numeric)) return undefined;
+    return numeric;
+  }
+
+  return text;
+}
 
 export default function EditListingScreen() {
   const router = useRouter();
@@ -14,6 +41,12 @@ export default function EditListingScreen() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [condition, setCondition] = useState<'NEW' | 'USED'>('USED');
+  const [subcategorySlug, setSubcategorySlug] = useState('');
+  const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
+
+  const categoryDefinition = getCategoryDefinitionBySlug(listing?.category?.slug);
+  const selectedSubcategory = getSubcategoryDefinition(listing?.category?.slug, subcategorySlug);
+  const minimumPrice = getMinimumPriceForListing(listing?.category?.slug, subcategorySlug);
 
   useEffect(() => {
     if (!listing) return;
@@ -21,7 +54,24 @@ export default function EditListingScreen() {
     setDescription(listing.description);
     setPrice(String(listing.price));
     setCondition(listing.condition);
+    setSubcategorySlug(listing.subcategorySlug ?? '');
+    const nextAttributes = Object.entries((listing.attributes ?? {}) as Record<string, string | number | boolean>).reduce<
+      Record<string, string | boolean>
+    >((acc, [key, value]) => {
+      acc[key] = typeof value === 'boolean' ? value : String(value);
+      return acc;
+    }, {});
+    setAttributes(nextAttributes);
   }, [listing]);
+
+  const normalizedAttributes = useMemo<ListingAttributes>(() => {
+    if (!selectedSubcategory) return {};
+    return selectedSubcategory.features.reduce<ListingAttributes>((acc, feature) => {
+      const value = normalizeFeatureValue(feature, attributes[feature.key]);
+      if (value !== undefined) acc[feature.key] = value;
+      return acc;
+    }, {});
+  }, [attributes, selectedSubcategory]);
 
   const updateListing = useMutation({
     mutationFn: async () => {
@@ -30,6 +80,9 @@ export default function EditListingScreen() {
         description: description.trim(),
         price: Number(price),
         condition,
+        subcategorySlug,
+        subcategoryName: selectedSubcategory?.name,
+        attributes: normalizedAttributes,
       });
       return response.data;
     },
@@ -45,10 +98,14 @@ export default function EditListingScreen() {
     },
   });
 
-  const valid = useMemo(
-    () => title.trim().length >= 10 && description.trim().length >= 20 && Number(price) > 0,
-    [description, price, title],
-  );
+  const valid = useMemo(() => {
+    if (title.trim().length < 10 || description.trim().length < 20 || Number(price) < minimumPrice) return false;
+    if (!selectedSubcategory) return false;
+    return selectedSubcategory.features.every((feature) => {
+      if (!feature.required) return true;
+      return normalizedAttributes[feature.key] !== undefined;
+    });
+  }, [description, minimumPrice, normalizedAttributes, price, selectedSubcategory, title]);
 
   if (isLoading || !listing) {
     return (
@@ -93,6 +150,61 @@ export default function EditListingScreen() {
         placeholder="Price"
         keyboardType="numeric"
       />
+      <Text className="mt-2 text-xs text-ink2">Minimum price: PKR {minimumPrice.toLocaleString()}</Text>
+
+      {categoryDefinition ? (
+        <>
+          <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Sub-category</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {categoryDefinition.subcategories.map((item) => (
+              <Pressable
+                key={item.slug}
+                onPress={() => {
+                  setSubcategorySlug(item.slug);
+                  setAttributes({});
+                  if (Number(price) < item.minPrice) setPrice(String(item.minPrice));
+                }}
+                className={`rounded-xl px-4 py-3 ${subcategorySlug === item.slug ? 'bg-red' : 'border border-border bg-white'}`}
+              >
+                <Text className={`font-semibold ${subcategorySlug === item.slug ? 'text-white' : 'text-ink2'}`}>{item.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {selectedSubcategory ? (
+        <>
+          <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Auto Features</Text>
+          {selectedSubcategory.features.map((feature) => {
+            if (feature.type === 'boolean') {
+              const active = attributes[feature.key] === true;
+              return (
+                <Pressable
+                  key={feature.key}
+                  onPress={() => setAttributes((current) => ({ ...current, [feature.key]: !active }))}
+                  className={`mb-3 rounded-xl px-4 py-4 ${active ? 'bg-red' : 'border border-border bg-white'}`}
+                >
+                  <Text className={`font-semibold ${active ? 'text-white' : 'text-ink2'}`}>{feature.label}</Text>
+                </Pressable>
+              );
+            }
+
+            return (
+              <View key={feature.key}>
+                <Text className="mb-2 mt-2 text-sm font-semibold text-ink">{feature.label}</Text>
+                <TextInput
+                  value={typeof attributes[feature.key] === 'string' ? String(attributes[feature.key]) : ''}
+                  onChangeText={(value) => setAttributes((current) => ({ ...current, [feature.key]: value }))}
+                  className="rounded-xl border border-border bg-white px-4 py-3 text-ink"
+                  placeholder={feature.placeholder || feature.label}
+                  keyboardType={feature.type === 'number' ? 'numeric' : 'default'}
+                />
+              </View>
+            );
+          })}
+        </>
+      ) : null}
 
       <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Condition</Text>
       <View className="flex-row gap-3">

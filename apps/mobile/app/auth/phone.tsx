@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
+import { extractApiMessage, getPkPhoneLocalPart, normalizePkPhone } from '../../lib/auth-utils';
 
 export default function PhoneAuthScreen() {
   const router = useRouter();
@@ -23,17 +24,18 @@ export default function PhoneAuthScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const normalizedPhone = useMemo(() => {
-    const digits = phone.replace(/\D/g, '');
-    return digits.length === 10 ? `+92${digits}` : `+92${digits.slice(0, 10)}`;
-  }, [phone]);
+  const localPhone = useMemo(() => getPkPhoneLocalPart(phone), [phone]);
+  const normalizedPhone = useMemo(() => normalizePkPhone(phone), [phone]);
 
   const sendSignupOtp = useMutation({
     mutationFn: async () => {
       const response = await api.post('/auth/send-otp', { phone: normalizedPhone });
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.devOtp) {
+        Alert.alert('Dev OTP', `OTP: ${data.devOtp}`);
+      }
       router.push({
         pathname: '/auth/otp',
         params: {
@@ -46,8 +48,8 @@ export default function PhoneAuthScreen() {
         },
       });
     },
-    onError: () => {
-      Alert.alert('Masla aa gaya', 'OTP bhejne mein masla aa gaya.');
+    onError: (error) => {
+      Alert.alert('Masla aa gaya', extractApiMessage(error, 'OTP bhejne mein masla aa gaya.'));
     },
   });
 
@@ -56,11 +58,14 @@ export default function PhoneAuthScreen() {
       const response = await api.post('/auth/forgot-password/send-otp', { phone: normalizedPhone });
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.devOtp) {
+        Alert.alert('Dev OTP', `OTP: ${data.devOtp}`);
+      }
       router.push({ pathname: '/auth/otp', params: { phone: normalizedPhone, mode: 'forgot' } });
     },
-    onError: () => {
-      Alert.alert('Masla aa gaya', 'Reset OTP bhejne mein masla aa gaya.');
+    onError: (error) => {
+      Alert.alert('Masla aa gaya', extractApiMessage(error, 'Reset OTP bhejne mein masla aa gaya.'));
     },
   });
 
@@ -82,7 +87,7 @@ export default function PhoneAuthScreen() {
   });
 
   const otpBusy = sendSignupOtp.isPending || sendForgotOtp.isPending;
-  const otpDisabled = normalizedPhone.length !== 13 || otpBusy;
+  const otpDisabled = localPhone.length !== 10 || otpBusy;
   const signInDisabled = signIn.isPending || !email.trim() || password.length < 8;
   const signUpDisabled =
     otpDisabled ||
@@ -159,7 +164,7 @@ export default function PhoneAuthScreen() {
                   onChangeText={setPhone}
                   style={styles.phoneInput}
                   keyboardType="number-pad"
-                  maxLength={10}
+                  maxLength={13}
                   placeholder="3001234567"
                   placeholderTextColor="#9AA1A9"
                 />
@@ -229,7 +234,7 @@ export default function PhoneAuthScreen() {
                   onChangeText={setPhone}
                   style={styles.phoneInput}
                   keyboardType="number-pad"
-                  maxLength={10}
+                  maxLength={13}
                   placeholder="3001234567"
                   placeholderTextColor="#9AA1A9"
                 />
