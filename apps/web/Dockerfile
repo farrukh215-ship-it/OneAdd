@@ -11,9 +11,10 @@ WORKDIR /app/apps/web
 RUN pnpm build
 
 FROM node:20-alpine AS runner
-RUN npm i -g pnpm
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app /app
+COPY --from=builder /app/apps/web/.next/standalone /app
+COPY --from=builder /app/apps/web/.next/static /app/apps/web/.next/static
+COPY --from=builder /app/apps/web/public /app/apps/web/public
 EXPOSE 3000
-CMD ["pnpm", "--dir", "apps/web", "start"]
+CMD ["node", "apps/web/server.js"]
