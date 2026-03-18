@@ -6,6 +6,10 @@ df -h
 echo
 docker system df -v || true
 echo
+du -xh /var/lib --max-depth=2 2>/dev/null | sort -h | tail -n 20 || true
+echo
+du -xh /opt --max-depth=2 2>/dev/null | sort -h | tail -n 20 || true
+echo
 
 echo "=== OS SAFE CLEANUP ==="
 apt-get clean
@@ -35,4 +39,7 @@ echo "=== AFTER CLEANUP ==="
 df -h
 echo
 docker system df -v || true
-
+echo
+du -xh /var/lib --max-depth=2 2>/dev/null | sort -h | tail -n 20 || true
+echo
+du -xh /opt --max-depth=2 2>/dev/null | sort -h | tail -n 20 || true

@@ -162,6 +162,58 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
         ],
       },
       {
+        slug: 'hatchbacks',
+        name: 'Hatchbacks',
+        minPrice: 450000,
+        features: [
+          { key: 'make', label: 'Make', type: 'text', required },
+          { key: 'model', label: 'Model', type: 'text', required },
+          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'CNG'] },
+          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
+        ],
+      },
+      {
+        slug: 'crossovers',
+        name: 'Crossovers',
+        minPrice: 850000,
+        features: [
+          { key: 'make', label: 'Make', type: 'text', required },
+          { key: 'model', label: 'Model', type: 'text', required },
+          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric'] },
+          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
+        ],
+      },
+      {
+        slug: 'coupes-sports',
+        name: 'Coupes & Sports',
+        minPrice: 1500000,
+        features: [
+          { key: 'make', label: 'Make', type: 'text', required },
+          { key: 'model', label: 'Model', type: 'text', required },
+          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Hybrid', 'Electric'] },
+          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
+        ],
+      },
+      {
+        slug: 'hybrid-electric',
+        name: 'Hybrid & Electric',
+        minPrice: 1200000,
+        features: [
+          { key: 'make', label: 'Make', type: 'text', required },
+          { key: 'model', label: 'Model', type: 'text', required },
+          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+          { key: 'rangeKm', label: 'Range (KM)', type: 'number', required, min: 40, max: 1200 },
+          { key: 'batteryHealth', label: 'Battery Health %', type: 'number', required, min: 1, max: 100 },
+          { key: 'chargingTime', label: 'Charging Time', type: 'text', required, placeholder: 'Fast 45 min / Home 6 hrs' },
+        ],
+      },
+      {
         slug: 'car-spare-parts',
         name: 'Spare Parts',
         minPrice: 1000,
@@ -462,21 +514,34 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
     ],
   },
   {
-    name: 'Cycles & Bikes',
-    slug: 'cycles',
-    icon: '\u{1F6B2}',
+    name: 'Motorcycles',
+    slug: 'motorcycles',
+    icon: '\u{1F3CD}\uFE0F',
     order: 6,
-    minPrice: 2000,
+    minPrice: 25000,
     subcategories: [
       {
-        slug: 'motorcycles',
-        name: 'Motorcycles',
-        minPrice: 30000,
+        slug: 'standard-bikes',
+        name: 'Standard Bikes',
+        minPrice: 50000,
         features: [
           { key: 'make', label: 'Make', type: 'text', required },
           { key: 'model', label: 'Model', type: 'text', required },
           { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'cc', label: 'CC', type: 'number', required, min: 50, max: 2500 },
+          { key: 'cc', label: 'CC', type: 'number', required, min: 50, max: 2000 },
+          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+          { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
+        ],
+      },
+      {
+        slug: 'sports-bikes',
+        name: 'Sports Bikes',
+        minPrice: 250000,
+        features: [
+          { key: 'make', label: 'Make', type: 'text', required },
+          { key: 'model', label: 'Model', type: 'text', required },
+          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+          { key: 'cc', label: 'CC', type: 'number', required, min: 125, max: 2000 },
           { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
           { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
         ],
@@ -494,8 +559,8 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
         ],
       },
       {
-        slug: 'electric-bikes',
-        name: 'Electric Bikes',
+        slug: 'electric-motorcycles',
+        name: 'Electric Motorcycles',
         minPrice: 40000,
         features: [
           { key: 'brand', label: 'Brand', type: 'text', required },
@@ -504,6 +569,35 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
           { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
         ],
       },
+      {
+        slug: 'motorcycle-spare-parts',
+        name: 'Motorcycle Spare Parts',
+        minPrice: 500,
+        features: [
+          { key: 'partName', label: 'Part Name', type: 'text', required },
+          { key: 'compatibleModel', label: 'Compatible Model', type: 'text', required },
+          { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
+        ],
+      },
+      {
+        slug: 'motorcycle-accessories',
+        name: 'Motorcycle Accessories',
+        minPrice: 500,
+        features: [
+          { key: 'type', label: 'Type', type: 'text', required },
+          { key: 'compatibleVehicle', label: 'Compatible Vehicle', type: 'text', required },
+          { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Cycles & Bikes',
+    slug: 'cycles',
+    icon: '\u{1F6B2}',
+    order: 7,
+    minPrice: 2000,
+    subcategories: [
       {
         slug: 'bicycles',
         name: 'Bicycles',
@@ -517,8 +611,8 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
         ],
       },
       {
-        slug: 'bike-spare-parts',
-        name: 'Spare Parts',
+        slug: 'cycle-spare-parts',
+        name: 'Cycle Spare Parts',
         minPrice: 500,
         features: [
           { key: 'partName', label: 'Part Name', type: 'text', required },
@@ -527,8 +621,8 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
         ],
       },
       {
-        slug: 'bike-accessories',
-        name: 'Accessories',
+        slug: 'cycle-accessories',
+        name: 'Cycle Accessories',
         minPrice: 500,
         features: [
           { key: 'type', label: 'Type', type: 'text', required },
@@ -542,7 +636,7 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
     name: 'Fashion',
     slug: 'fashion',
     icon: '\u{1F455}',
-    order: 7,
+    order: 8,
     minPrice: 500,
     subcategories: [
       {
@@ -626,7 +720,7 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
     name: 'Books',
     slug: 'books',
     icon: '\u{1F4DA}',
-    order: 8,
+    order: 9,
     minPrice: 200,
     subcategories: [
       {
@@ -697,7 +791,7 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
     name: 'Pets',
     slug: 'pets',
     icon: '\u{1F43E}',
-    order: 9,
+    order: 10,
     minPrice: 1000,
     subcategories: [
       {
@@ -770,7 +864,7 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
     name: 'Services',
     slug: 'services',
     icon: '\u2699\uFE0F',
-    order: 10,
+    order: 11,
     minPrice: 500,
     subcategories: [
       {

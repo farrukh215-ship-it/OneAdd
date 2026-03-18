@@ -8,6 +8,7 @@ export class UserDto {
   city!: string | null;
   area!: string | null;
   verified!: boolean;
+  role!: User['role'];
   createdAt!: Date;
   updatedAt!: Date;
 
@@ -20,6 +21,7 @@ export class UserDto {
       city: user.city,
       area: user.area,
       verified: user.verified,
+      role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

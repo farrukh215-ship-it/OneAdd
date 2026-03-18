@@ -43,7 +43,7 @@ export function ListingCard({
         ? { label: 'Pending', className: 'bg-[#FFF7D6] text-[#8A6B00]' }
       : listing.status === 'DELETED'
         ? { label: 'Inactive', className: 'bg-[#EFF1F4] text-ink2' }
-        : { label: 'Available', className: 'bg-[rgba(46,125,50,0.1)] text-green' };
+        : { label: 'Available', className: 'bg-green text-white' };
 
   return (
     <Link
@@ -63,6 +63,13 @@ export function ListingCard({
         <div className="absolute bottom-2 left-2">
           <span className="badge-green">Asli Malik</span>
         </div>
+        {listing.isInspectionApproved ? (
+          <div className="absolute bottom-2 right-2">
+            <span className="rounded-full bg-[rgba(46,125,50,0.95)] px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+              {listing.inspectionBadgeLabel || 'TGMG Inspected'}
+            </span>
+          </div>
+        ) : null}
         <div className="absolute left-2 top-2">
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ${statusBadge.className}`}>
             {statusBadge.label}

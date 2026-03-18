@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 type CurrentUser = {
   id: string;
   phone: string;
+  role?: 'USER' | 'ADMIN' | 'WORKSHOP_MANAGER' | 'POLICE_OFFICER';
   name?: string | null;
   city?: string | null;
   area?: string | null;

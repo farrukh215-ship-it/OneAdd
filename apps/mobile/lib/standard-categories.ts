@@ -6,6 +6,7 @@ export const STANDARD_CATEGORIES: Category[] = [
   { id: 'property', name: 'Property', slug: 'property', icon: '\u{1F3E0}', count: 0 },
   { id: 'electronics', name: 'Electronics', slug: 'electronics', icon: '\u{1F4BB}', count: 0 },
   { id: 'furniture', name: 'Furniture', slug: 'furniture', icon: '\u{1F6CB}\uFE0F', count: 0 },
+  { id: 'motorcycles', name: 'Motorcycles', slug: 'motorcycles', icon: '\u{1F3CD}\uFE0F', count: 0 },
   { id: 'cycles', name: 'Cycles & Bikes', slug: 'cycles', icon: '\u{1F6B2}', count: 0 },
   { id: 'fashion', name: 'Fashion', slug: 'fashion', icon: '\u{1F455}', count: 0 },
   { id: 'books', name: 'Books', slug: 'books', icon: '\u{1F4DA}', count: 0 },

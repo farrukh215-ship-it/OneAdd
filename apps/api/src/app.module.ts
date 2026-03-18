@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { FirebaseModule } from './firebase/firebase.module';
@@ -10,9 +11,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { SearchModule } from './search/search.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { InspectionsModule } from './inspections/inspections.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     FirebaseModule,
     OtpModule,
@@ -23,6 +26,7 @@ import { UploadsModule } from './uploads/uploads.module';
     SearchModule,
     TelemetryModule,
     UploadsModule,
+    InspectionsModule,
   ],
   controllers: [HealthController],
 })

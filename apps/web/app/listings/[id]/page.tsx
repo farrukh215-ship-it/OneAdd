@@ -14,6 +14,7 @@ import { ListingActionsClient } from './ListingActionsClient';
 import { ListingMediaCarousel } from './ListingMediaCarousel';
 import { ListingPublicChat } from './ListingPublicChat';
 import { SellerSidebarClient } from './SellerSidebarClient';
+import { ListingInspectionClient } from './ListingInspectionClient';
 
 function FactChip({
   icon,
@@ -138,6 +139,7 @@ export default async function ListingDetailPage({
             </div>
 
             <ListingDescriptionClient description={listing.description} />
+            <ListingInspectionClient listing={listing} />
 
             {attributeEntries.length ? (
               <div className="surface-premium mt-5 p-5 md:p-6">

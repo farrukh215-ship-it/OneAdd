@@ -68,6 +68,13 @@ export function ListingCard({
             </View>
           </View>
           <View style={styles.content}>
+            {listing.isInspectionApproved ? (
+              <View style={styles.inspectionBadge}>
+                <Text style={styles.inspectionBadgeText}>
+                  {listing.inspectionBadgeLabel || 'TGMG Inspected'}
+                </Text>
+              </View>
+            ) : null}
             <Text style={styles.price}>PKR {listing.price.toLocaleString()}</Text>
             <Text style={styles.title} numberOfLines={2}>
               {listing.title}
@@ -171,6 +178,19 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 12,
+  },
+  inspectionBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E8F5E9',
+    borderRadius: 999,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  inspectionBadgeText: {
+    color: '#1B5E20',
+    fontSize: 10,
+    fontWeight: '800',
   },
   price: {
     color: '#1C1E21',

@@ -149,7 +149,7 @@ export class AuthService {
     await this.redis.del(`signup_otp:${payload.phone}`);
 
     const accessToken = await this.jwtService.signAsync(
-      { sub: user.id, phone: user.phone },
+      { sub: user.id, phone: user.phone, role: user.role },
       { expiresIn: '30d' },
     );
 
@@ -191,7 +191,7 @@ export class AuthService {
     }
 
     const accessToken = await this.jwtService.signAsync(
-      { sub: refreshedUser.id, phone: refreshedUser.phone },
+      { sub: refreshedUser.id, phone: refreshedUser.phone, role: refreshedUser.role },
       { expiresIn: '30d' },
     );
 
@@ -227,7 +227,7 @@ export class AuthService {
     await this.redis.del(`forgot_otp:${payload.phone}`);
 
     const accessToken = await this.jwtService.signAsync(
-      { sub: updatedUser.id, phone: updatedUser.phone },
+      { sub: updatedUser.id, phone: updatedUser.phone, role: updatedUser.role },
       { expiresIn: '30d' },
     );
 

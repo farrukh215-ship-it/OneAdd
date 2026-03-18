@@ -69,13 +69,13 @@ export default async function HomePage({
         city={city}
       />
 
-      <section className="page-wrap">
+      <section className="page-wrap pb-2">
         <HeroBanner />
         <QuickActions city={city} />
         <StatsRow />
       </section>
 
-      <section className="border-y border-border bg-white">
+      <section className="border-y border-border bg-white py-2">
         <div className="page-wrap">
           <div id="today">
             <SectionHeader title="Aaj Ki Listings" link="/listings" />
@@ -86,7 +86,7 @@ export default async function HomePage({
 
       <HomeFeedClient featured={featured} fallbackCity={city} />
 
-      <section className="page-wrap">
+      <section className="page-wrap py-1">
         <StripBanner />
       </section>
 
@@ -100,7 +100,7 @@ export default async function HomePage({
         />
       ))}
 
-      <section className="page-wrap">
+      <section className="page-wrap py-2">
         <Footer />
       </section>
     </>

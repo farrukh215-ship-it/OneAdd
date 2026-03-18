@@ -3,7 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, Share, Text, TextInput, View } from 'react-native';
-import type { Listing, ListingThreadResponse } from '@tgmg/types';
+import type {
+  InspectionRequest,
+  Listing,
+  ListingThreadResponse,
+  WorkshopPartner,
+} from '@tgmg/types';
 import { useRequireAuthAction } from '../../components/AuthGuardAction';
 import { ListingCard } from '../../components/ListingCard';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,6 +18,26 @@ import { api } from '../../lib/api';
 import { getListingStatusMeta } from '../../lib/listing-ui';
 import { trackViewedListing } from '../../lib/mobile-preferences';
 import { uploadPostMediaToR2 } from '../../lib/uploads';
+
+const INSPECTION_STAGES = [
+  'REQUESTED',
+  'BOOKED',
+  'WORKSHOP_VERIFIED',
+  'POLICE_VERIFIED',
+  'SUBMITTED',
+  'APPROVED',
+] as const;
+
+const INSPECTION_STATUS_LABEL: Record<string, string> = {
+  REQUESTED: 'Requested',
+  BOOKED: 'Booked',
+  WORKSHOP_VERIFIED: 'Workshop Verified',
+  POLICE_VERIFIED: 'Police Verified',
+  SUBMITTED: 'Submitted',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  EXPIRED: 'Expired',
+};
 
 export default function ListingDetailScreen() {
   const router = useRouter();
@@ -41,6 +66,150 @@ export default function ListingDetailScreen() {
 
   const isSaved = savedItems.some((item) => item.id === listing?.id);
   const statusMeta = listing ? getListingStatusMeta(listing) : null;
+  const isOwner = Boolean(currentUser && listing && currentUser.id === listing.userId);
+  const inspectionEligible = Boolean(
+    listing &&
+      (listing.category?.slug === 'cars' || listing.category?.slug === 'motorcycles'),
+  );
+
+  const inspectionQuery = useQuery({
+    queryKey: ['inspection-summary', listing?.id],
+    enabled: Boolean(inspectionEligible && listing?.id),
+    queryFn: async () => {
+      const response = await api.get<InspectionRequest | null>(
+        `/inspections/listing/${listing?.id}/summary`,
+      );
+      return response.data;
+    },
+  });
+
+  const workshopsQuery = useQuery({
+    queryKey: ['inspection-workshops', listing?.city],
+    enabled: Boolean(inspectionEligible && isOwner && listing?.city),
+    queryFn: async () => {
+      const response = await api.get<WorkshopPartner[]>('/inspections/workshops', {
+        params: { city: listing?.city },
+      });
+      return response.data;
+    },
+  });
+
+  const [selectedWorkshop, setSelectedWorkshop] = useState('');
+  const [bookedDate, setBookedDate] = useState('');
+  const [frontFormUrl, setFrontFormUrl] = useState('');
+  const [backFormUrl, setBackFormUrl] = useState('');
+  const [evidenceUrls, setEvidenceUrls] = useState('');
+  const [avlsRef, setAvlsRef] = useState('');
+  const [policeStation, setPoliceStation] = useState('');
+
+  const refreshInspection = () =>
+    void queryClient.invalidateQueries({ queryKey: ['inspection-summary', listing?.id] });
+
+  const requestInspectionMutation = useMutation({
+    mutationFn: async () => {
+      if (!listing) return;
+      await api.post('/inspections/request', { listingId: listing.id });
+    },
+    onSuccess: refreshInspection,
+  });
+
+  const bookInspectionMutation = useMutation({
+    mutationFn: async () => {
+      if (!inspectionQuery.data?.id) return;
+      await api.post(`/inspections/${inspectionQuery.data.id}/book`, {
+        workshopPartnerId: selectedWorkshop,
+        bookedDate,
+        offlinePaymentAcknowledged: true,
+      });
+    },
+    onSuccess: refreshInspection,
+  });
+
+  const workshopVerifyMutation = useMutation({
+    mutationFn: async () => {
+      if (!inspectionQuery.data?.id) return;
+      await api.post(`/inspections/${inspectionQuery.data.id}/workshop-verify`, {
+        inspectorName: currentUser?.name || 'Workshop Inspector',
+      });
+    },
+    onSuccess: refreshInspection,
+  });
+
+  const policeVerifyMutation = useMutation({
+    mutationFn: async () => {
+      if (!inspectionQuery.data?.id || !listing) return;
+      await api.post(`/inspections/${inspectionQuery.data.id}/police-verify`, {
+        isStolen: false,
+        firStatus: 'Clear',
+        avlsReferenceNo: avlsRef || 'AVLS-PENDING',
+        policeStation: policeStation || listing.city,
+      });
+    },
+    onSuccess: refreshInspection,
+  });
+
+  const submitInspectionReportMutation = useMutation({
+    mutationFn: async () => {
+      if (!inspectionQuery.data?.id || !listing) return;
+      await api.post(`/inspections/${inspectionQuery.data.id}/report`, {
+        vehicleInfo: {
+          make: listing.attributes?.make || '',
+          model: listing.attributes?.model || '',
+          year: listing.attributes?.year || '',
+          chassisNo: listing.attributes?.chassisNo || '',
+          engineNo: listing.attributes?.engineNo || '',
+        },
+        ownerVerification: { cnicMatch: true, registrationBookSeen: true },
+        avlsVerification: {
+          isStolen: false,
+          firStatus: 'Clear',
+          avlsReferenceNo: avlsRef || 'AVLS-PENDING',
+          policeStation: policeStation || listing.city,
+        },
+        mechanicalChecklist: { engine: 'ok', brakes: 'ok', suspension: 'ok' },
+        bodyChecklist: { paint: 'good', frame: 'ok' },
+        interiorChecklist: { dashboard: 'ok', seats: 'ok' },
+        tyreChecklist: {
+          frontLeft: 'ok',
+          frontRight: 'ok',
+          rearLeft: 'ok',
+          rearRight: 'ok',
+          spare: 'ok',
+        },
+        evidencePhotos: evidenceUrls
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        formPageFrontUrl: frontFormUrl || undefined,
+        formPageBackUrl: backFormUrl || undefined,
+        overallRating: 4,
+        verdict: 'RECOMMENDED',
+        signatures: { owner: true, inspector: true, manager: true, police: true },
+        stamps: { workshop: true, police: true, avls: true, tgmg: true, digital: true },
+      });
+    },
+    onSuccess: refreshInspection,
+  });
+
+  const approveInspectionMutation = useMutation({
+    mutationFn: async () => {
+      if (!inspectionQuery.data?.id) return;
+      await api.post(`/inspections/${inspectionQuery.data.id}/admin-approve`, {
+        badgeLabel: 'TGMG Inspected',
+      });
+    },
+    onSuccess: refreshInspection,
+  });
+
+  const rejectInspectionMutation = useMutation({
+    mutationFn: async () => {
+      if (!inspectionQuery.data?.id) return;
+      await api.post(`/inspections/${inspectionQuery.data.id}/admin-reject`, {
+        note: 'Manual recheck required',
+      });
+    },
+    onSuccess: refreshInspection,
+  });
 
   const initials = useMemo(() => {
     const name = listing?.user?.name || 'Seller';
@@ -309,6 +478,187 @@ export default function ListingDetailScreen() {
                   </View>
                 ))}
               </View>
+            </View>
+          ) : null}
+
+          {inspectionEligible ? (
+            <View className="mt-3 rounded-xl bg-white p-4">
+              <Text className="text-[13px] font-bold text-ink2">Vehicle Inspection</Text>
+              <Text className="mt-1 text-xs text-ink3">
+                Status:{' '}
+                {inspectionQuery.data?.status
+                  ? INSPECTION_STATUS_LABEL[inspectionQuery.data.status] ?? inspectionQuery.data.status
+                  : 'Not Requested'}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+                <View className="flex-row gap-2">
+                  {INSPECTION_STAGES.map((stage) => {
+                    const isDone =
+                      inspectionQuery.data?.status === stage ||
+                      (inspectionQuery.data?.status === 'APPROVED' && stage !== 'APPROVED');
+                    return (
+                      <View
+                        key={stage}
+                        className={`rounded-full px-3 py-1.5 ${
+                          isDone ? 'bg-green/15' : 'bg-[#F1F3F5]'
+                        }`}
+                      >
+                        <Text
+                          className={`text-[10px] font-bold ${
+                            isDone ? 'text-green' : 'text-ink2'
+                          }`}
+                        >
+                          {INSPECTION_STATUS_LABEL[stage]}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+              {listing.isInspectionApproved ? (
+                <View className="mt-2 self-start rounded-full bg-green px-3 py-1.5">
+                  <Text className="text-[11px] font-bold text-white">
+                    {listing.inspectionBadgeLabel || 'TGMG Inspected'}
+                  </Text>
+                </View>
+              ) : null}
+
+              {isOwner && !inspectionQuery.data ? (
+                <Pressable
+                  onPress={() => requestInspectionMutation.mutate()}
+                  className="mt-3 rounded-xl bg-red px-4 py-3"
+                >
+                  <Text className="text-center font-bold text-white">
+                    {requestInspectionMutation.isPending ? 'Requesting...' : 'Inspection Book Karo'}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {isOwner &&
+              (inspectionQuery.data?.status === 'REQUESTED' ||
+                inspectionQuery.data?.status === 'REJECTED' ||
+                inspectionQuery.data?.status === 'EXPIRED') ? (
+                <View className="mt-3 rounded-xl border border-border bg-[#FAFBFC] p-3">
+                  <Text className="text-xs font-semibold text-ink">Workshop Select + Date</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+                    <View className="flex-row gap-2">
+                      {(workshopsQuery.data ?? []).map((workshop) => (
+                        <Pressable
+                          key={workshop.id}
+                          onPress={() => setSelectedWorkshop(workshop.id)}
+                          className={`rounded-full border px-3 py-1.5 ${
+                            selectedWorkshop === workshop.id ? 'border-red bg-[#FDECEC]' : 'border-border bg-white'
+                          }`}
+                        >
+                          <Text className="text-[11px] font-semibold text-ink">{workshop.name}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </ScrollView>
+                  <TextInput
+                    value={bookedDate}
+                    onChangeText={setBookedDate}
+                    placeholder="2026-03-20T15:00"
+                    className="mt-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                  />
+                  <Pressable
+                    onPress={() => bookInspectionMutation.mutate()}
+                    disabled={!selectedWorkshop || !bookedDate || bookInspectionMutation.isPending}
+                    className="mt-2 rounded-xl bg-ink px-4 py-3 disabled:opacity-60"
+                  >
+                    <Text className="text-center font-bold text-white">
+                      {bookInspectionMutation.isPending ? 'Booking...' : 'Confirm Booking'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {currentUser?.role === 'WORKSHOP_MANAGER' && inspectionQuery.data?.status === 'BOOKED' ? (
+                <Pressable
+                  onPress={() => workshopVerifyMutation.mutate()}
+                  className="mt-3 rounded-xl bg-[#0F766E] px-4 py-3"
+                >
+                  <Text className="text-center font-bold text-white">
+                    {workshopVerifyMutation.isPending ? 'Updating...' : 'Workshop Verify'}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              {currentUser?.role === 'POLICE_OFFICER' &&
+              inspectionQuery.data?.status === 'WORKSHOP_VERIFIED' ? (
+                <View className="mt-3 rounded-xl border border-border bg-[#FAFBFC] p-3">
+                  <TextInput
+                    value={avlsRef}
+                    onChangeText={setAvlsRef}
+                    placeholder="AVLS Reference"
+                    className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                  />
+                  <TextInput
+                    value={policeStation}
+                    onChangeText={setPoliceStation}
+                    placeholder="Police Station"
+                    className="mt-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                  />
+                  <Pressable
+                    onPress={() => policeVerifyMutation.mutate()}
+                    className="mt-2 rounded-xl bg-[#1D4ED8] px-4 py-3"
+                  >
+                    <Text className="text-center font-bold text-white">
+                      {policeVerifyMutation.isPending ? 'Verifying...' : 'Police Verify'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {isOwner &&
+              (inspectionQuery.data?.status === 'POLICE_VERIFIED' ||
+                inspectionQuery.data?.status === 'SUBMITTED') ? (
+                <View className="mt-3 rounded-xl border border-border bg-[#FAFBFC] p-3">
+                  <TextInput
+                    value={frontFormUrl}
+                    onChangeText={setFrontFormUrl}
+                    placeholder="Form Page 1 URL"
+                    className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                  />
+                  <TextInput
+                    value={backFormUrl}
+                    onChangeText={setBackFormUrl}
+                    placeholder="Form Page 2 URL"
+                    className="mt-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                  />
+                  <TextInput
+                    value={evidenceUrls}
+                    onChangeText={setEvidenceUrls}
+                    placeholder="Evidence URLs comma separated"
+                    className="mt-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-ink"
+                  />
+                  <Pressable
+                    onPress={() => submitInspectionReportMutation.mutate()}
+                    className="mt-2 rounded-xl bg-red px-4 py-3"
+                  >
+                    <Text className="text-center font-bold text-white">
+                      {submitInspectionReportMutation.isPending ? 'Submitting...' : 'Submit Report'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {currentUser?.role === 'ADMIN' && inspectionQuery.data?.status === 'SUBMITTED' ? (
+                <View className="mt-3 flex-row gap-2">
+                  <Pressable
+                    onPress={() => approveInspectionMutation.mutate()}
+                    className="flex-1 rounded-xl bg-green px-4 py-3"
+                  >
+                    <Text className="text-center font-bold text-white">Approve</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => rejectInspectionMutation.mutate()}
+                    className="flex-1 rounded-xl bg-red px-4 py-3"
+                  >
+                    <Text className="text-center font-bold text-white">Reject</Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
           ) : null}
 

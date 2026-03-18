@@ -28,6 +28,12 @@ cd /opt/tgmg
 bash ./ops/vps-deploy.sh
 ```
 
+Deploy script now includes:
+- `prisma migrate deploy`
+- `prisma db seed`
+- DB schema validation (`ops/sql/validate-schema.sql`)
+- readiness wait for `api`, `web`, `nginx`
+
 ## 3) Manual Healthcheck
 Run on VPS:
 
@@ -51,7 +57,20 @@ cd /opt/tgmg
 docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ./ops/sql/cleanup-invalid-public-listings.sql
 ```
 
-## 5) Suggested cron jobs
+## 5) Mobile Invalid-Hook Reset (Windows local)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\ops\mobile-dev-reset.ps1
+```
+
+Then run:
+
+```powershell
+cd .\apps\mobile
+npx expo start --dev-client --clear
+```
+
+## 6) Suggested cron jobs
 
 ### Daily invalid listing cleanup
 ```cron
@@ -62,4 +81,3 @@ docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_D
 ```cron
 30 3 * * 0 cd /opt/tgmg && bash ./ops/vps-safe-cleanup.sh >/var/log/tgmg-safe-cleanup.log 2>&1
 ```
-

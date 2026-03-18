@@ -1,12 +1,14 @@
 export * from './listing-taxonomy';
 
 import { STANDARD_CATEGORY_SEEDS } from './listing-taxonomy';
-import type { ListingAttributes } from './listing-taxonomy';
+
+type ListingAttributes = Record<string, string | number | boolean>;
 
 export interface User {
   id: string;
   phone: string;
   email?: string;
+  role?: 'USER' | 'ADMIN' | 'WORKSHOP_MANAGER' | 'POLICE_OFFICER';
   name?: string;
   city?: string;
   area?: string;
@@ -58,9 +60,105 @@ export interface Listing {
   distanceKm?: number;
   isNearby?: boolean;
   status: 'ACTIVE' | 'PENDING' | 'INACTIVE' | 'SOLD' | 'DELETED';
+  inspectionStatus?:
+    | 'NONE'
+    | 'REQUESTED'
+    | 'BOOKED'
+    | 'WORKSHOP_VERIFIED'
+    | 'POLICE_VERIFIED'
+    | 'SUBMITTED'
+    | 'APPROVED'
+    | 'REJECTED'
+    | 'EXPIRED';
+  isInspectionApproved?: boolean;
+  inspectionApprovedAt?: string;
+  inspectionBadgeLabel?: string;
   views: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WorkshopPartner {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  contact: string;
+  active: boolean;
+}
+
+export interface InspectionReport {
+  id: string;
+  inspectionRequestId: string;
+  vehicleInfo: Record<string, string | number | boolean>;
+  ownerVerification: Record<string, string | number | boolean>;
+  avlsVerification: Record<string, string | number | boolean>;
+  mechanicalChecklist: Record<string, string | number | boolean>;
+  bodyChecklist: Record<string, string | number | boolean>;
+  interiorChecklist: Record<string, string | number | boolean>;
+  tyreChecklist: Record<string, string | number | boolean>;
+  evidencePhotos: string[];
+  formPageFrontUrl?: string;
+  formPageBackUrl?: string;
+  overallRating?: number;
+  verdict?: 'RECOMMENDED' | 'CAUTION' | 'NOT_RECOMMENDED';
+  signatures: Record<string, string | boolean | null>;
+  stamps: Record<string, string | boolean | null>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InspectionRequest {
+  id: string;
+  listingId: string;
+  sellerId: string;
+  workshopPartnerId?: string;
+  status:
+    | 'REQUESTED'
+    | 'BOOKED'
+    | 'WORKSHOP_VERIFIED'
+    | 'POLICE_VERIFIED'
+    | 'SUBMITTED'
+    | 'APPROVED'
+    | 'REJECTED'
+    | 'EXPIRED';
+  bookedDate?: string;
+  offlineFee: number;
+  workshopPayout: number;
+  tgmgCommission: number;
+  offlinePaymentAcknowledged: boolean;
+  submittedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  listing?: Pick<
+    Listing,
+    | 'id'
+    | 'title'
+    | 'city'
+    | 'subcategorySlug'
+    | 'subcategoryName'
+    | 'inspectionStatus'
+    | 'isInspectionApproved'
+    | 'inspectionApprovedAt'
+    | 'inspectionBadgeLabel'
+  > & { category?: Pick<Category, 'slug' | 'name'> };
+  workshopPartner?: WorkshopPartner;
+  report?: InspectionReport;
+  auditLogs?: InspectionAuditLog[];
+}
+
+export interface InspectionAuditLog {
+  id: string;
+  inspectionRequestId: string;
+  actorUserId?: string;
+  actorRole?: 'USER' | 'ADMIN' | 'WORKSHOP_MANAGER' | 'POLICE_OFFICER';
+  action: string;
+  note?: string;
+  payload?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface ListingMessage {

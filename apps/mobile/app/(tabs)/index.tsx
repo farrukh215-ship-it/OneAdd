@@ -30,7 +30,6 @@ const quickActions = [
   { icon: '\u26A1', label: 'Taaza Listings', href: '/(tabs)/browse?sort=newest' },
   { icon: '\u{1F4CD}', label: 'Mere Paas', href: '/(tabs)/browse?city=Lahore&lat=31.5204&lng=74.3587&radiusKm=10' },
   { icon: '\u{1F525}', label: 'Top Deals', href: '/(tabs)/browse?sort=price_asc' },
-  { icon: '\u{1F381}', label: 'Naye Items', href: '/(tabs)/browse?condition=NEW' },
   { icon: '\u260E\uFE0F', label: 'Contact', href: '/contact' },
 ];
 
@@ -516,8 +515,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 32,
-    paddingTop: 8,
+    paddingBottom: 40,
+    paddingTop: 10,
   },
   topBar: {
     alignItems: 'center',
@@ -617,7 +616,7 @@ const styles = StyleSheet.create({
   },
   categoriesRow: {
     paddingHorizontal: 12,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   categoryChip: {
     alignItems: 'center',
@@ -651,16 +650,16 @@ const styles = StyleSheet.create({
     color: '#E53935',
   },
   heroCard: {
-    backgroundColor: '#E53935',
-    borderRadius: 24,
+    backgroundColor: '#D32F2F',
+    borderRadius: 28,
     flexDirection: 'row',
     marginHorizontal: 12,
-    marginTop: 2,
+    marginTop: 6,
     overflow: 'hidden',
   },
   heroBody: {
     flex: 1,
-    padding: 18,
+    padding: 20,
   },
   heroEyebrow: {
     color: '#FFD6D2',
@@ -727,7 +726,7 @@ const styles = StyleSheet.create({
   },
   quickActionsRow: {
     paddingHorizontal: 12,
-    paddingVertical: 16,
+    paddingVertical: 18,
   },
   quickAction: {
     alignItems: 'center',
@@ -772,7 +771,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   categorySection: {
-    marginTop: 4,
+    marginTop: 8,
   },
   sectionInset: {
     paddingHorizontal: 12,

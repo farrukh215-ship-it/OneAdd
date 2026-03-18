@@ -12,6 +12,7 @@ model User {
   phone     String    @unique
   email     String?   @unique
   passwordHash String?
+  role      UserRole  @default(USER)
   name      String?
   city      String?
   area      String?
@@ -29,6 +30,11 @@ model User {
   pushTokens UserPushToken[]
   notifications Notification[]
   notificationPreference UserNotificationPreference?
+  workshopInspectionVerifications InspectionRequest[] @relation("WorkshopVerifier")
+  policeInspectionVerifications   InspectionRequest[] @relation("PoliceVerifier")
+  adminInspectionReviews          InspectionRequest[] @relation("AdminReviewer")
+  inspectionRequests              InspectionRequest[] @relation("InspectionSeller")
+  inspectionAuditLogs             InspectionAuditLog[]
 }
 
 model Listing {
@@ -53,6 +59,10 @@ model Listing {
   lat         Float?
   lng         Float?
   status      ListingStatus @default(ACTIVE)
+  inspectionStatus ListingInspectionStatus @default(NONE)
+  isInspectionApproved Boolean @default(false)
+  inspectionApprovedAt DateTime?
+  inspectionBadgeLabel String? @default("TGMG Inspected")
   isFeatured  Boolean       @default(false)
   views       Int           @default(0)
   createdAt   DateTime      @default(now())
@@ -62,6 +72,7 @@ model Listing {
   thread      ListingThread?
   offers      Offer[]
   viewLogs    ListingViewLog[]
+  inspectionRequests InspectionRequest[]
 
   @@index([city])
   @@index([storeType])
@@ -191,6 +202,92 @@ model UserNotificationPreference {
   updatedAt       DateTime @updatedAt
 }
 
+model WorkshopPartner {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  address   String
+  contact   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  inspectionRequests InspectionRequest[]
+
+  @@index([city, active])
+}
+
+model InspectionRequest {
+  id            String                  @id @default(cuid())
+  listingId     String
+  listing       Listing                 @relation(fields: [listingId], references: [id])
+  sellerId      String
+  seller        User                    @relation("InspectionSeller", fields: [sellerId], references: [id])
+  workshopPartnerId String?
+  workshopPartner   WorkshopPartner?    @relation(fields: [workshopPartnerId], references: [id])
+  status        InspectionRequestStatus @default(REQUESTED)
+  bookedDate    DateTime?
+  offlineFee    Int                     @default(3000)
+  workshopPayout Int                    @default(2500)
+  tgmgCommission Int                    @default(500)
+  offlinePaymentAcknowledged Boolean    @default(false)
+  workshopVerifiedById String?
+  workshopVerifiedBy   User?            @relation("WorkshopVerifier", fields: [workshopVerifiedById], references: [id])
+  policeVerifiedById String?
+  policeVerifiedBy     User?            @relation("PoliceVerifier", fields: [policeVerifiedById], references: [id])
+  adminReviewedById String?
+  adminReviewedBy     User?             @relation("AdminReviewer", fields: [adminReviewedById], references: [id])
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  rejectionNote String?
+  report        InspectionReport?
+  auditLogs     InspectionAuditLog[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([listingId, status])
+  @@index([sellerId, status])
+  @@index([workshopPartnerId, status])
+}
+
+model InspectionReport {
+  id                 String              @id @default(cuid())
+  inspectionRequestId String             @unique
+  inspectionRequest   InspectionRequest  @relation(fields: [inspectionRequestId], references: [id])
+  vehicleInfo         Json
+  ownerVerification   Json
+  avlsVerification    Json
+  mechanicalChecklist Json
+  bodyChecklist       Json
+  interiorChecklist   Json
+  tyreChecklist       Json
+  evidencePhotos      String[]           @default([])
+  formPageFrontUrl    String?
+  formPageBackUrl     String?
+  overallRating       Int?
+  verdict             InspectionVerdict?
+  signatures          Json
+  stamps              Json
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model InspectionAuditLog {
+  id                 String            @id @default(cuid())
+  inspectionRequestId String
+  inspectionRequest   InspectionRequest @relation(fields: [inspectionRequestId], references: [id])
+  actorUserId        String?
+  actorUser          User?             @relation(fields: [actorUserId], references: [id])
+  actorRole          UserRole?
+  action             String
+  note               String?
+  payload            Json?
+  createdAt          DateTime          @default(now())
+
+  @@index([inspectionRequestId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
 enum Condition {
   NEW
   USED
@@ -218,4 +315,40 @@ enum NotificationType {
   CONTACT
   SAVED_UPDATE
   NEW_LISTING
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  WORKSHOP_MANAGER
+  POLICE_OFFICER
+}
+
+enum ListingInspectionStatus {
+  NONE
+  REQUESTED
+  BOOKED
+  WORKSHOP_VERIFIED
+  POLICE_VERIFIED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum InspectionRequestStatus {
+  REQUESTED
+  BOOKED
+  WORKSHOP_VERIFIED
+  POLICE_VERIFIED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum InspectionVerdict {
+  RECOMMENDED
+  CAUTION
+  NOT_RECOMMENDED
 }

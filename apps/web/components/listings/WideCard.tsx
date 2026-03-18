@@ -19,6 +19,10 @@ export function WideCard({ listing }: { listing: Listing }) {
           : listing.status === 'DELETED' || listing.status === 'INACTIVE'
             ? 'Inactive'
             : 'Available';
+  const statusClassName =
+    statusLabel === 'Available'
+      ? 'rounded-full bg-green px-2.5 py-1 text-[11px] font-bold text-white'
+      : 'badge-soft-gray';
 
   return (
     <Link href={`/listings/${listing.id}`} className="surface flex gap-3 overflow-hidden p-3">
@@ -41,12 +45,15 @@ export function WideCard({ listing }: { listing: Listing }) {
         <div className="mt-1 truncate text-[13px] font-semibold text-ink2">{listing.title}</div>
         <div className="mt-2 flex flex-wrap gap-2">
           <span className="badge-soft-green">Asli Malik</span>
+          {listing.isInspectionApproved ? (
+            <span className="badge-soft-green">{listing.inspectionBadgeLabel || 'TGMG Inspected'}</span>
+          ) : null}
           <span className="badge-soft-gray">{listing.condition === 'NEW' ? 'New' : 'Used'}</span>
-          <span className="badge-soft-gray">{statusLabel}</span>
+          <span className={statusClassName}>{statusLabel}</span>
           {listing.storeType ? <span className="badge-soft-gray">{listing.storeType}</span> : null}
         </div>
         <div className="mt-2 text-[11px] text-ink3">
-          {[listing.city, listing.area].filter(Boolean).join(', ')} ·{' '}
+          {[listing.city, listing.area].filter(Boolean).join(', ')} •{' '}
           {new Date(listing.createdAt).toLocaleDateString('en-GB')}
         </div>
       </div>
