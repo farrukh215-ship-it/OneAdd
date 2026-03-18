@@ -67,6 +67,7 @@ export class UploadsService {
       const command = new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
+        ContentType: file.mimeType,
       });
 
       const uploadUrl = await getSignedUrl(this.client!, command, { expiresIn: 15 * 60 });
@@ -92,15 +93,23 @@ export class UploadsService {
     const resolvedKind = this.resolveKind(file, kind);
     const uploadFile: PresignUploadFileDto = {
       filename: file.originalname || `${resolvedKind}-${Date.now()}`,
-      mimeType: file.mimetype || (resolvedKind === UploadKind.IMAGE ? 'image/jpeg' : 'video/mp4'),
+      mimeType:
+        file.mimetype ||
+        (resolvedKind === UploadKind.IMAGE
+          ? 'image/jpeg'
+          : resolvedKind === UploadKind.VIDEO
+            ? 'video/mp4'
+            : 'application/pdf'),
       size: file.size,
       kind: resolvedKind,
     };
 
     if (resolvedKind === UploadKind.IMAGE) {
       this.validateImage(uploadFile);
-    } else {
+    } else if (resolvedKind === UploadKind.VIDEO) {
       this.validateVideo(uploadFile);
+    } else {
+      this.validateDocument(uploadFile);
     }
 
     const key = this.buildKey(userId, uploadFile);
@@ -113,7 +122,9 @@ export class UploadsService {
         CacheControl:
           resolvedKind === UploadKind.IMAGE
             ? 'public, max-age=31536000, immutable'
-            : 'public, max-age=86400',
+            : resolvedKind === UploadKind.VIDEO
+              ? 'public, max-age=86400'
+              : 'public, max-age=3600',
       }),
     );
 
@@ -165,6 +176,7 @@ export class UploadsService {
   private validateBatch(files: PresignUploadFileDto[]) {
     const images = files.filter((file) => file.kind === UploadKind.IMAGE);
     const videos = files.filter((file) => file.kind === UploadKind.VIDEO);
+    const documents = files.filter((file) => file.kind === UploadKind.DOCUMENT);
 
     if (images.length > 6) {
       throw new BadRequestException('Maximum 6 images allowed.');
@@ -172,12 +184,17 @@ export class UploadsService {
     if (videos.length > 1) {
       throw new BadRequestException('Only 1 video allowed.');
     }
+    if (documents.length > 2) {
+      throw new BadRequestException('Maximum 2 documents allowed.');
+    }
 
     for (const file of files) {
       if (file.kind === UploadKind.IMAGE) {
         this.validateImage(file);
-      } else {
+      } else if (file.kind === UploadKind.VIDEO) {
         this.validateVideo(file);
+      } else {
+        this.validateDocument(file);
       }
     }
   }
@@ -209,8 +226,22 @@ export class UploadsService {
     }
   }
 
+  private validateDocument(file: PresignUploadFileDto) {
+    const allowed = new Set(['application/pdf']);
+    if (!allowed.has(file.mimeType.toLowerCase())) {
+      throw new BadRequestException('Sirf PDF document allow hai.');
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      throw new BadRequestException('PDF size is too large (max 20MB).');
+    }
+  }
+
   private resolveKind(file: UploadedBinaryFile, kind?: UploadKind) {
-    if (kind === UploadKind.IMAGE || kind === UploadKind.VIDEO) {
+    if (
+      kind === UploadKind.IMAGE ||
+      kind === UploadKind.VIDEO ||
+      kind === UploadKind.DOCUMENT
+    ) {
       return kind;
     }
     if (file.mimetype?.startsWith('image/')) {
@@ -218,6 +249,9 @@ export class UploadsService {
     }
     if (file.mimetype?.startsWith('video/')) {
       return UploadKind.VIDEO;
+    }
+    if (file.mimetype?.toLowerCase() === 'application/pdf') {
+      return UploadKind.DOCUMENT;
     }
     throw new BadRequestException('Unsupported upload type.');
   }
@@ -229,8 +263,20 @@ export class UploadsService {
       .toLowerCase()
       .slice(-80);
     const extension = safeName.includes('.') ? safeName.split('.').pop() : undefined;
-    const ext = extension ? `.${extension}` : file.kind === UploadKind.IMAGE ? '.jpg' : '.mp4';
-    const folder = file.kind === UploadKind.IMAGE ? 'images' : 'videos';
+    const ext =
+      extension
+        ? `.${extension}`
+        : file.kind === UploadKind.IMAGE
+          ? '.jpg'
+          : file.kind === UploadKind.VIDEO
+            ? '.mp4'
+            : '.pdf';
+    const folder =
+      file.kind === UploadKind.IMAGE
+        ? 'images'
+        : file.kind === UploadKind.VIDEO
+          ? 'videos'
+          : 'documents';
     return `uploads/${userId}/${folder}/${Date.now()}-${randomUUID()}${ext}`;
   }
 

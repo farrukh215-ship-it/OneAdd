@@ -202,6 +202,14 @@ export class AuthService {
     };
   }
 
+  async adminSignIn(email: string, password: string) {
+    const result = await this.signIn(email, password);
+    if (result.user.role !== 'ADMIN') {
+      throw new ForbiddenException('Admin access required.');
+    }
+    return result;
+  }
+
   async resetForgottenPassword(payload: ForgotPasswordResetDto) {
     if (payload.password !== payload.confirmPassword) {
       throw new HttpException('Password match nahi kar raha', HttpStatus.BAD_REQUEST);

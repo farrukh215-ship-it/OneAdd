@@ -6,6 +6,7 @@ import {
   getCategoryDefinitionBySlug,
   getMinimumPriceForListing,
   getSubcategoryDefinition,
+  type WorkshopPartner,
   type ListingAttributes,
   type ListingFeatureDefinition,
 } from '@tgmg/types';
@@ -66,6 +67,9 @@ export default function PostPage() {
   const [lng, setLng] = useState<number | undefined>(undefined);
   const [locationQuery, setLocationQuery] = useState('');
   const [locationHints, setLocationHints] = useState<Array<{ label: string; city?: string; lat: number; lng: number }>>([]);
+  const [workshops, setWorkshops] = useState<WorkshopPartner[]>([]);
+  const [selectedWorkshopId, setSelectedWorkshopId] = useState('');
+  const [inspectionPdf, setInspectionPdf] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -119,6 +123,19 @@ export default function PostPage() {
   const selectedCategoryDefinition = getCategoryDefinitionBySlug(selectedCategory?.slug);
   const selectedSubcategory = getSubcategoryDefinition(selectedCategory?.slug, subcategorySlug);
   const minimumPrice = getMinimumPriceForListing(selectedCategory?.slug, subcategorySlug);
+  const requiresVehicleInspection =
+    selectedCategory?.slug === 'cars' || selectedCategory?.slug === 'motorcycles';
+
+  useEffect(() => {
+    if (!requiresVehicleInspection || !city) {
+      setWorkshops([]);
+      return;
+    }
+    void api
+      .get<WorkshopPartner[]>('/inspections/workshops', { params: { city } })
+      .then((response) => setWorkshops(response.data))
+      .catch(() => setWorkshops([]));
+  }, [requiresVehicleInspection, city]);
 
   const onImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -265,6 +282,13 @@ export default function PostPage() {
       if (imageItems.length < 1) return 'Kam az kam 1 image required hai';
       if (!coverImageId) return 'Cover image select karein';
     }
+    if (step === 4 && requiresVehicleInspection) {
+      if (!selectedWorkshopId) return 'Car ya motorcycle ad ke liye workshop select karein';
+      if (!inspectionPdf) return 'Readable inspection PDF upload karein';
+      if (!inspectionPdf.name.toLowerCase().endsWith('.pdf')) {
+        return 'Sirf PDF inspection form allow hai';
+      }
+    }
     return null;
   };
 
@@ -321,7 +345,24 @@ export default function PostPage() {
         return;
       }
 
-      setMessage('Ad publish ho rahi hai...');
+      let inspectionReportPdfUrl: string | undefined;
+      if (requiresVehicleInspection && inspectionPdf) {
+        setMessage('Inspection PDF upload ho rahi hai...');
+        const uploadedPdf = await uploadMediaToR2([
+          {
+            id: 'inspection-pdf',
+            kind: 'document',
+            file: inspectionPdf,
+          },
+        ]);
+        inspectionReportPdfUrl = uploadedPdf[0]?.url;
+      }
+
+      setMessage(
+        requiresVehicleInspection
+          ? 'Vehicle ad admin review ke liye submit ho rahi hai...'
+          : 'Ad publish ho rahi hai...',
+      );
       const response = await api.post('/listings', {
         title: title.trim(),
         description: description.trim(),
@@ -339,9 +380,15 @@ export default function PostPage() {
         area: area.trim() || undefined,
         lat,
         lng,
+        workshopPartnerId: requiresVehicleInspection ? selectedWorkshopId : undefined,
+        inspectionReportPdfUrl,
       });
 
-      setMessage('Mubarak! Aapki ad publish ho gayi.');
+      setMessage(
+        requiresVehicleInspection
+          ? 'Vehicle ad admin approval ke liye submit ho gayi. Approval ke baad listing live hogi.'
+          : 'Mubarak! Aapki ad publish ho gayi.',
+      );
       const nextId = response.data.id ?? response.data.data?.id;
       if (nextId) {
         window.setTimeout(() => router.push(`/listings/${nextId}`), 900);
@@ -624,6 +671,49 @@ export default function PostPage() {
                 <button type="button" className={`chip ${storeType === 'ONLINE' ? 'active' : ''}`} onClick={() => setStoreType('ONLINE')}>
                   Online Dukaan
                 </button>
+              </div>
+            ) : null}
+
+            {requiresVehicleInspection ? (
+              <div className="space-y-4 rounded-[20px] border border-[#D8E5DC] bg-[#F7FBF8] p-4">
+                <div>
+                  <div className="text-sm font-bold text-ink">Vehicle Compliance Lock</div>
+                  <div className="mt-1 text-sm text-ink2">
+                    Cars aur Motorcycles ad workshop selection, readable PDF form, aur admin approval ke baghair live nahi hogi.
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-sm font-semibold text-ink">Partner Workshop</div>
+                  <select
+                    value={selectedWorkshopId}
+                    onChange={(event) => setSelectedWorkshopId(event.target.value)}
+                    className="field-select"
+                  >
+                    <option value="">Workshop choose karo</option>
+                    {workshops.map((workshop) => (
+                      <option key={workshop.id} value={workshop.id}>
+                        {workshop.name} - {workshop.city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-sm font-semibold text-ink">Inspection Form PDF</div>
+                  <label className="surface flex cursor-pointer items-center justify-between gap-3 rounded-[16px] p-4">
+                    <span className="text-sm text-ink2">
+                      {inspectionPdf ? inspectionPdf.name : 'Readable PDF upload karein'}
+                    </span>
+                    <span className="chip active">PDF Upload</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      className="hidden"
+                      onChange={(event) => setInspectionPdf(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
               </div>
             ) : null}
 

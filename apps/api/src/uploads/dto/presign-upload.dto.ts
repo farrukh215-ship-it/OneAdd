@@ -14,6 +14,7 @@ import { Type } from 'class-transformer';
 export enum UploadKind {
   IMAGE = 'image',
   VIDEO = 'video',
+  DOCUMENT = 'document',
 }
 
 export class PresignUploadFileDto {
@@ -40,4 +41,3 @@ export class PresignUploadDto {
   @Type(() => PresignUploadFileDto)
   files!: PresignUploadFileDto[];
 }
-

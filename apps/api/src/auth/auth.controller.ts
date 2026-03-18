@@ -40,6 +40,11 @@ export class AuthController {
     return this.authService.signIn(body.email, body.password);
   }
 
+  @Post('admin-sign-in')
+  adminSignIn(@Body() body: SignInDto) {
+    return this.authService.adminSignIn(body.email, body.password);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser() user: User) {

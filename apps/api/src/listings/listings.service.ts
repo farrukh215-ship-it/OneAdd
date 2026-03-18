@@ -7,7 +7,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Condition, Listing, NotificationType, Prisma, StoreType, User } from '@prisma/client';
+import {
+  Condition,
+  InspectionVerdict,
+  Listing,
+  NotificationType,
+  Prisma,
+  StoreType,
+  User,
+} from '@prisma/client';
 import Redis from 'ioredis';
 import {
   getCategoryDefinitionBySlug,
@@ -52,6 +60,7 @@ export class ListingsService {
   async create(userId: string, dto: CreateListingDto) {
     const resolvedCategory = await this.resolveCategory(dto.categoryId);
     const resolvedCategoryId = resolvedCategory.id;
+    const requiresInspection = this.requiresPreListingInspection(resolvedCategory.slug);
     const structuredInput = this.validateStructuredListingInput({
       categorySlug: resolvedCategory.slug,
       price: dto.price,
@@ -93,9 +102,95 @@ export class ListingsService {
       area: dto.area,
       lat: dto.lat,
       lng: dto.lng,
+      status: requiresInspection ? 'PENDING' : 'ACTIVE',
+      inspectionStatus: requiresInspection ? 'SUBMITTED' : 'NONE',
     } as Prisma.ListingUncheckedCreateInput;
 
-    const listing = await this.listingsRepository.create(createData);
+    if (requiresInspection) {
+      if (!dto.workshopPartnerId?.trim()) {
+        throw new BadRequestException(
+          'Cars aur Motorcycles ad ke liye pehle workshop select karna zaroori hai.',
+        );
+      }
+      if (!dto.inspectionReportPdfUrl?.trim()) {
+        throw new BadRequestException(
+          'Cars aur Motorcycles ad ke liye readable inspection PDF submit karna zaroori hai.',
+        );
+      }
+      if (!/\.pdf(\?|$)/i.test(dto.inspectionReportPdfUrl)) {
+        throw new BadRequestException('Sirf PDF inspection form upload kiya ja sakta hai.');
+      }
+    }
+
+    const listing = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.listing.create({
+        data: createData,
+        include: {
+          category: true,
+          user: {
+            select: this.sellerSelect,
+          },
+        },
+      });
+
+      if (requiresInspection) {
+        const workshop = await tx.workshopPartner.findUnique({
+          where: { id: dto.workshopPartnerId! },
+        });
+        if (!workshop || !workshop.active) {
+          throw new BadRequestException('Selected workshop available nahi hai.');
+        }
+
+        const inspectionRequest = await tx.inspectionRequest.create({
+          data: {
+            listingId: created.id,
+            sellerId: userId,
+            workshopPartnerId: dto.workshopPartnerId!,
+            status: 'SUBMITTED',
+            submittedAt: new Date(),
+            offlinePaymentAcknowledged: true,
+          },
+        });
+
+        await tx.inspectionReport.create({
+          data: {
+            inspectionRequestId: inspectionRequest.id,
+            vehicleInfo: {} as Prisma.InputJsonValue,
+            ownerVerification: {} as Prisma.InputJsonValue,
+            avlsVerification: {} as Prisma.InputJsonValue,
+            mechanicalChecklist: {} as Prisma.InputJsonValue,
+            bodyChecklist: {} as Prisma.InputJsonValue,
+            interiorChecklist: {} as Prisma.InputJsonValue,
+            tyreChecklist: {} as Prisma.InputJsonValue,
+            evidencePhotos: [],
+            formPageFrontUrl: dto.inspectionReportPdfUrl!,
+            overallRating: 3,
+            verdict: InspectionVerdict.CAUTION,
+            signatures: {
+              sellerSubmitted: true,
+            } as Prisma.InputJsonValue,
+            stamps: {
+              submissionMode: 'pdf-only-prelisting',
+            } as Prisma.InputJsonValue,
+          },
+        });
+
+        await tx.inspectionAuditLog.create({
+          data: {
+            inspectionRequestId: inspectionRequest.id,
+            actorUserId: userId,
+            actorRole: 'USER',
+            action: 'PRELISTING_REPORT_SUBMITTED',
+            payload: {
+              workshopPartnerId: dto.workshopPartnerId!,
+              inspectionReportPdfUrl: dto.inspectionReportPdfUrl!,
+            } as Prisma.InputJsonValue,
+          },
+        });
+      }
+
+      return created;
+    });
 
     await this.notifyCategoryWatchers(listing);
     return listing;
@@ -214,6 +309,10 @@ export class ListingsService {
       page: safePage,
       totalPages: Math.max(1, Math.ceil(total / safeLimit)),
     };
+  }
+
+  private requiresPreListingInspection(categorySlug?: string | null) {
+    return categorySlug === 'cars' || categorySlug === 'motorcycles';
   }
 
   async featured() {

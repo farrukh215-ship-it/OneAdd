@@ -1,7 +1,6 @@
 import { InspectionVerdict } from '@prisma/client';
 import {
   ArrayMaxSize,
-  ArrayMinSize,
   IsArray,
   IsEnum,
   IsInt,
@@ -35,14 +34,12 @@ export class SubmitInspectionReportDto {
   tyreChecklist!: Record<string, string | number | boolean>;
 
   @IsArray()
-  @ArrayMinSize(4)
   @ArrayMaxSize(20)
   @IsString({ each: true })
   evidencePhotos!: string[];
 
-  @IsOptional()
   @IsString()
-  formPageFrontUrl?: string;
+  formPageFrontUrl!: string;
 
   @IsOptional()
   @IsString()
@@ -62,4 +59,3 @@ export class SubmitInspectionReportDto {
   @IsObject()
   stamps!: Record<string, string | boolean>;
 }
-

@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AdminInspectionDecisionDto } from './dto/admin-inspection-decision.dto';
 import { BookInspectionDto } from './dto/book-inspection.dto';
 import { InspectionQueueDto } from './dto/inspection-queue.dto';
+import { ManageWorkshopDto } from './dto/manage-workshop.dto';
 import { PoliceVerifyDto } from './dto/police-verify.dto';
 import { RequestInspectionDto } from './dto/request-inspection.dto';
 import { SubmitInspectionReportDto } from './dto/submit-inspection-report.dto';
@@ -78,6 +79,97 @@ export class InspectionsService {
       },
       orderBy: [{ city: 'asc' }, { name: 'asc' }],
     });
+  }
+
+  async adminListWorkshops(user: User) {
+    this.ensureRole(user, ['ADMIN']);
+    await this.ensureSeedWorkshops();
+    return this.prisma.workshopPartner.findMany({
+      orderBy: [{ city: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async adminCreateWorkshop(user: User, dto: ManageWorkshopDto) {
+    this.ensureRole(user, ['ADMIN']);
+    return this.prisma.workshopPartner.create({
+      data: {
+        name: dto.name.trim(),
+        city: dto.city.trim(),
+        address: dto.address.trim(),
+        contact: dto.contact.trim(),
+        active: dto.active ?? true,
+      },
+    });
+  }
+
+  async adminUpdateWorkshop(id: string, user: User, dto: ManageWorkshopDto) {
+    this.ensureRole(user, ['ADMIN']);
+    return this.prisma.workshopPartner.update({
+      where: { id },
+      data: {
+        name: dto.name.trim(),
+        city: dto.city.trim(),
+        address: dto.address.trim(),
+        contact: dto.contact.trim(),
+        active: dto.active ?? true,
+      },
+    });
+  }
+
+  async createPendingVehicleInspectionForListing(input: {
+    listingId: string;
+    sellerId: string;
+    workshopPartnerId: string;
+    inspectionReportPdfUrl: string;
+  }) {
+    await this.ensureSeedWorkshops();
+    const workshop = await this.prisma.workshopPartner.findUnique({
+      where: { id: input.workshopPartnerId },
+    });
+    if (!workshop || !workshop.active) {
+      throw new BadRequestException('Selected workshop available nahi hai.');
+    }
+    this.ensurePdfUrl(input.inspectionReportPdfUrl);
+
+    const request = await this.prisma.inspectionRequest.create({
+      data: {
+        listingId: input.listingId,
+        sellerId: input.sellerId,
+        workshopPartnerId: input.workshopPartnerId,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+        offlinePaymentAcknowledged: true,
+        report: {
+          create: {
+            vehicleInfo: {} as Prisma.InputJsonValue,
+            ownerVerification: {} as Prisma.InputJsonValue,
+            avlsVerification: {} as Prisma.InputJsonValue,
+            mechanicalChecklist: {} as Prisma.InputJsonValue,
+            bodyChecklist: {} as Prisma.InputJsonValue,
+            interiorChecklist: {} as Prisma.InputJsonValue,
+            tyreChecklist: {} as Prisma.InputJsonValue,
+            evidencePhotos: [],
+            formPageFrontUrl: input.inspectionReportPdfUrl,
+            overallRating: 3,
+            verdict: 'CAUTION',
+            signatures: {
+              sellerSubmitted: true,
+            } as Prisma.InputJsonValue,
+            stamps: {
+              submissionMode: 'pdf-only-prelisting',
+            } as Prisma.InputJsonValue,
+          },
+        },
+      },
+      include: this.inspectionInclude(),
+    });
+
+    await this.syncListingInspectionState(request.listingId, request.status);
+    await this.logAction(request.id, 'PRELISTING_REPORT_SUBMITTED', undefined, undefined, {
+      workshopPartnerId: input.workshopPartnerId,
+      inspectionReportPdfUrl: input.inspectionReportPdfUrl,
+    });
+    return request;
   }
 
   async requestInspection(user: User, dto: RequestInspectionDto) {
@@ -249,6 +341,7 @@ export class InspectionsService {
       throw new ForbiddenException('Aap is inspection report ko submit nahi kar sakte.');
     }
     this.ensureStatus(record.status, ['POLICE_VERIFIED', 'SUBMITTED']);
+    this.ensurePdfUrl(dto.formPageFrontUrl);
 
     const updated = await this.prisma.inspectionRequest.update({
       where: { id },
@@ -327,6 +420,7 @@ export class InspectionsService {
     await this.prisma.listing.update({
       where: { id: updated.listingId },
       data: {
+        status: 'ACTIVE',
         inspectionStatus: 'APPROVED',
         isInspectionApproved: true,
         inspectionApprovedAt: approvedAt,
@@ -355,7 +449,15 @@ export class InspectionsService {
       },
       include: this.inspectionInclude(),
     });
-    await this.syncListingInspectionState(updated.listingId, updated.status);
+    await this.prisma.listing.update({
+      where: { id: updated.listingId },
+      data: {
+        status: 'PENDING',
+        inspectionStatus: 'REJECTED',
+        isInspectionApproved: false,
+        inspectionApprovedAt: null,
+      },
+    });
     await this.logAction(updated.id, 'ADMIN_REJECTED', user, dto.note);
     return updated;
   }
@@ -409,7 +511,7 @@ export class InspectionsService {
       ...(query.status ? { status: query.status } : {}),
     };
 
-    const [data, total] = await Promise.all([
+    const [data, total, grouped] = await Promise.all([
       this.prisma.inspectionRequest.findMany({
         where,
         include: this.inspectionInclude(),
@@ -418,13 +520,23 @@ export class InspectionsService {
         take: limit,
       }),
       this.prisma.inspectionRequest.count({ where }),
+      this.prisma.inspectionRequest.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
     ]);
+
+    const summary = grouped.reduce<Record<string, number>>((acc, item) => {
+      acc[item.status] = item._count._all;
+      return acc;
+    }, {});
 
     return {
       data,
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / limit)),
+      summary,
     };
   }
 
@@ -562,6 +674,16 @@ export class InspectionsService {
       signatures: { inspectorName: inspectorName ?? null } as Prisma.InputJsonValue,
       stamps: { workshopNotes: workshopNotes ?? null } as Prisma.InputJsonValue,
     };
+  }
+
+  private ensurePdfUrl(url?: string | null) {
+    const value = url?.trim();
+    if (!value) {
+      throw new BadRequestException('Inspection form PDF required hai.');
+    }
+    if (!/\.pdf(\?|$)/i.test(value)) {
+      throw new BadRequestException('Sirf readable PDF form submit kiya ja sakta hai.');
+    }
   }
 
   private async syncListingInspectionState(

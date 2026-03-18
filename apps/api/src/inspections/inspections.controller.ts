@@ -16,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { AdminInspectionDecisionDto } from './dto/admin-inspection-decision.dto';
 import { BookInspectionDto } from './dto/book-inspection.dto';
 import { InspectionQueueDto } from './dto/inspection-queue.dto';
+import { ManageWorkshopDto } from './dto/manage-workshop.dto';
 import { PoliceVerifyDto } from './dto/police-verify.dto';
 import { RequestInspectionDto } from './dto/request-inspection.dto';
 import { SubmitInspectionReportDto } from './dto/submit-inspection-report.dto';
@@ -29,6 +30,31 @@ export class InspectionsController {
   @Get('workshops')
   workshops(@Query('city') city?: string) {
     return this.inspectionsService.listWorkshops(city);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/workshops')
+  adminWorkshops(@CurrentUser() user: User) {
+    return this.inspectionsService.adminListWorkshops(user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('admin/workshops')
+  createWorkshop(@CurrentUser() user: User, @Body() dto: ManageWorkshopDto) {
+    return this.inspectionsService.adminCreateWorkshop(user, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('admin/workshops/:id')
+  updateWorkshop(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() dto: ManageWorkshopDto,
+  ) {
+    return this.inspectionsService.adminUpdateWorkshop(id, user, dto);
   }
 
   @UseGuards(OptionalJwtAuthGuard)

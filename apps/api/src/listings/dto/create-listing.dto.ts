@@ -43,6 +43,14 @@ export class CreateListingDto {
   subcategoryName?: string;
 
   @IsOptional()
+  @IsString()
+  workshopPartnerId?: string;
+
+  @IsOptional()
+  @IsString()
+  inspectionReportPdfUrl?: string;
+
+  @IsOptional()
   @IsObject()
   attributes?: Record<string, string | number | boolean>;
 

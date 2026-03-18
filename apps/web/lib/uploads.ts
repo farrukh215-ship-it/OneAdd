@@ -4,7 +4,7 @@ import { api } from './api';
 
 export type UploadItem = {
   id: string;
-  kind: 'image' | 'video';
+  kind: 'image' | 'video' | 'document';
   file: File;
 };
 

@@ -1,11 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import type { WorkshopPartner } from '@tgmg/types';
 import { ProgressHeader } from '../../components/ProgressHeader';
 import { api } from '../../lib/api';
-import { uploadPostMediaToR2 } from '../../lib/uploads';
+import { uploadDocumentToR2, uploadPostMediaToR2 } from '../../lib/uploads';
 
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
@@ -21,12 +23,18 @@ export default function PostLocationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<Record<string, string>>();
   const isDukaanMode = params.mode === 'dukaan' || params.mode === 'store';
+  const requiresVehicleInspection =
+    params.categorySlug === 'cars' || params.categorySlug === 'motorcycles';
   const [city, setCity] = useState(cities.includes(params.city || '') ? params.city! : cities[0]);
   const [area, setArea] = useState('');
   const [storeType, setStoreType] = useState<'ONLINE' | 'ROAD'>('ROAD');
   const [lat, setLat] = useState<number | undefined>(cityCoords[params.city || cities[0]]?.lat);
   const [lng, setLng] = useState<number | undefined>(cityCoords[params.city || cities[0]]?.lng);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  const [workshops, setWorkshops] = useState<WorkshopPartner[]>([]);
+  const [selectedWorkshopId, setSelectedWorkshopId] = useState('');
+  const [inspectionPdfUri, setInspectionPdfUri] = useState('');
+  const [inspectionPdfName, setInspectionPdfName] = useState('');
 
   const images = useMemo(() => {
     const parsed = params.images ? JSON.parse(params.images) : [];
@@ -54,6 +62,16 @@ export default function PostLocationScreen() {
       if (!imageUrls.length) {
         throw new Error('Image upload fail hui');
       }
+      let inspectionReportPdfUrl: string | undefined;
+      if (requiresVehicleInspection) {
+        if (!selectedWorkshopId) {
+          throw new Error('Workshop select karein');
+        }
+        if (!inspectionPdfUri) {
+          throw new Error('Inspection PDF upload karein');
+        }
+        inspectionReportPdfUrl = await uploadDocumentToR2(inspectionPdfUri);
+      }
 
       const payload = {
         title: params.title,
@@ -72,12 +90,19 @@ export default function PostLocationScreen() {
         area: area.trim() || undefined,
         lat: lat ?? coords?.lat,
         lng: lng ?? coords?.lng,
+        workshopPartnerId: requiresVehicleInspection ? selectedWorkshopId : undefined,
+        inspectionReportPdfUrl,
       };
       const response = await api.post('/listings', payload);
       return response.data;
     },
     onSuccess: (data) => {
-      Alert.alert('Mubarak', 'Aapki listing publish ho gayi.');
+      Alert.alert(
+        'Done',
+        requiresVehicleInspection
+          ? 'Vehicle ad admin approval ke liye submit ho gayi. Approval ke baad live hogi.'
+          : 'Aapki listing publish ho gayi.',
+      );
       router.replace(`/listing/${data.id ?? data.data?.id}`);
     },
     onError: (error: any) => {
@@ -86,6 +111,27 @@ export default function PostLocationScreen() {
       Alert.alert('Masla', text || error?.message || 'Ad publish nahi hui, dobara try karein.');
     },
   });
+
+  useEffect(() => {
+    if (!requiresVehicleInspection || !city) return;
+    void api
+      .get<WorkshopPartner[]>('/inspections/workshops', { params: { city } })
+      .then((response) => setWorkshops(response.data))
+      .catch(() => setWorkshops([]));
+  }, [city, requiresVehicleInspection]);
+
+  const pickInspectionPdf = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled) return;
+    const file = result.assets?.[0];
+    if (!file?.uri) return;
+    setInspectionPdfUri(file.uri);
+    setInspectionPdfName(file.name || 'inspection-form.pdf');
+  };
 
   const useCurrentLocation = async () => {
     setIsResolvingLocation(true);
@@ -195,6 +241,38 @@ export default function PostLocationScreen() {
               </Pressable>
             </View>
           </>
+        ) : null}
+
+        {requiresVehicleInspection ? (
+          <View className="mt-4 rounded-2xl border border-[#D8E5DC] bg-[#F7FBF8] p-4">
+            <Text className="text-sm font-bold text-ink">Vehicle Compliance Lock</Text>
+            <Text className="mt-1 text-sm text-ink2">
+              Cars aur Motorcycles ad workshop selection aur readable PDF ke baghair live nahi hogi.
+            </Text>
+
+            <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Workshop</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {workshops.map((workshop) => (
+                <Pressable
+                  key={workshop.id}
+                  onPress={() => setSelectedWorkshopId(workshop.id)}
+                  className={`rounded-full px-4 py-3 ${
+                    selectedWorkshopId === workshop.id ? 'bg-red' : 'border border-border bg-white'
+                  }`}
+                >
+                  <Text className={`font-semibold ${selectedWorkshopId === workshop.id ? 'text-white' : 'text-ink2'}`}>
+                    {workshop.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable onPress={pickInspectionPdf} className="mt-4 rounded-xl border border-border bg-white px-4 py-3">
+              <Text className="text-center font-semibold text-ink">
+                {inspectionPdfName || 'Inspection PDF Select Karo'}
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         <View className="mt-5 rounded-xl bg-[#FFF8E1] p-4">
