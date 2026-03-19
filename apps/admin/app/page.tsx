@@ -65,6 +65,7 @@ export default function AdminHomePage() {
   const [savingWorkshop, setSavingWorkshop] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [decisionNote, setDecisionNote] = useState('');
   const [activeId, setActiveId] = useState('');
 
@@ -82,6 +83,7 @@ export default function AdminHomePage() {
     if (!token.trim()) return;
     setLoading(true);
     setError('');
+    setSuccess('');
     try {
       const params = new URLSearchParams();
       params.set('page', String(page));
@@ -126,6 +128,7 @@ export default function AdminHomePage() {
   const signIn = async () => {
     setAuthLoading(true);
     setError('');
+    setSuccess('');
     try {
       const response = await fetch(`${API_BASE}/auth/admin-sign-in`, {
         method: 'POST',
@@ -139,6 +142,7 @@ export default function AdminHomePage() {
       const nextToken = data.accessToken as string;
       setToken(nextToken);
       localStorage.setItem('tgmg_admin_jwt', nextToken);
+      setSuccess('Admin login successful.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Admin sign-in error');
     } finally {
@@ -150,6 +154,7 @@ export default function AdminHomePage() {
     if (!token.trim()) return;
     setActiveId(id);
     setError('');
+    setSuccess('');
     try {
       const response = await fetch(`${API_BASE}/inspections/${id}/admin-${action}`, {
         method: 'POST',
@@ -167,6 +172,7 @@ export default function AdminHomePage() {
         throw new Error((await response.text()) || `Decision failed: ${response.status}`);
       }
       await loadQueue();
+      setSuccess(action === 'approve' ? 'Listing approved.' : 'Inspection rejected.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Decision error');
     } finally {
@@ -176,8 +182,20 @@ export default function AdminHomePage() {
 
   const saveWorkshop = async () => {
     if (!token.trim()) return;
+    const normalizedWorkshop = {
+      name: workshopForm.name.trim(),
+      city: workshopForm.city.trim(),
+      address: workshopForm.address.trim(),
+      contact: workshopForm.contact.trim(),
+      active: workshopForm.active,
+    };
+    if (!normalizedWorkshop.name || !normalizedWorkshop.city || !normalizedWorkshop.address || !normalizedWorkshop.contact) {
+      setError('Workshop name, city, address, aur contact sab required hain.');
+      return;
+    }
     setSavingWorkshop(true);
     setError('');
+    setSuccess('');
     try {
       const response = await fetch(
         `${API_BASE}/inspections/admin/workshops${editingWorkshopId ? `/${editingWorkshopId}` : ''}`,
@@ -187,7 +205,7 @@ export default function AdminHomePage() {
             'Content-Type': 'application/json',
             ...headers,
           },
-          body: JSON.stringify(workshopForm),
+          body: JSON.stringify(normalizedWorkshop),
         },
       );
       if (!response.ok) {
@@ -196,6 +214,7 @@ export default function AdminHomePage() {
       setWorkshopForm(emptyWorkshop);
       setEditingWorkshopId('');
       await loadWorkshops();
+      setSuccess(editingWorkshopId ? 'Workshop updated.' : 'Workshop added.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Workshop save error');
     } finally {
@@ -204,11 +223,26 @@ export default function AdminHomePage() {
   };
 
   return (
-    <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif', color: '#101828', background: '#f6f8fb', minHeight: '100vh' }}>
-      <h1 style={{ margin: 0, fontSize: 30 }}>TGMG Admin</h1>
-      <p style={{ marginTop: 8, color: '#475467' }}>
-        Vehicle ad approval, workshop management, and inspection compliance queue.
-      </p>
+    <main style={pageStyle}>
+      <section style={heroStyle}>
+        <div>
+          <div style={eyebrowStyle}>Admin Console</div>
+          <h1 style={{ margin: '6px 0 0', fontSize: 34 }}>TGMG Admin</h1>
+          <p style={{ marginTop: 10, color: '#475467', maxWidth: 720 }}>
+            Vehicle ad approval, workshop management, and inspection compliance queue.
+          </p>
+        </div>
+        <div style={heroMetricGrid}>
+          <div style={heroMetricCard}>
+            <div style={heroMetricLabel}>Queue</div>
+            <div style={heroMetricValue}>{queue?.total ?? 0}</div>
+          </div>
+          <div style={heroMetricCard}>
+            <div style={heroMetricLabel}>Workshops</div>
+            <div style={heroMetricValue}>{workshops.length}</div>
+          </div>
+        </div>
+      </section>
 
       <section style={cardStyle}>
         <h2 style={headingStyle}>Admin Login</h2>
@@ -236,6 +270,9 @@ export default function AdminHomePage() {
         </div>
       </section>
 
+      {error ? <div style={errorStyle}>{error}</div> : null}
+      {success ? <div style={successStyle}>{success}</div> : null}
+
       {queue?.summary ? (
         <section style={{ ...cardStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
           {Object.entries(queue.summary).map(([key, value]) => (
@@ -248,7 +285,13 @@ export default function AdminHomePage() {
       ) : null}
 
       <section style={cardStyle}>
-        <h2 style={headingStyle}>Workshop Directory</h2>
+        <div style={sectionBarStyle}>
+          <div>
+            <h2 style={headingStyle}>Workshop Directory</h2>
+            <div style={subtleTextStyle}>Add, edit, aur activate/deactivate partner workshops.</div>
+          </div>
+          <div style={pillStyle}>{workshops.length} workshops</div>
+        </div>
         <div style={grid2Style}>
           <input value={workshopForm.name} onChange={(event) => setWorkshopForm((current) => ({ ...current, name: event.target.value }))} placeholder="Workshop name" style={inputStyle} />
           <input value={workshopForm.city} onChange={(event) => setWorkshopForm((current) => ({ ...current, city: event.target.value }))} placeholder="City" style={inputStyle} />
@@ -277,9 +320,9 @@ export default function AdminHomePage() {
             Reset
           </button>
         </div>
-        <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+        <div style={{ marginTop: 18, display: 'grid', gap: 12 }}>
           {workshops.map((workshop) => (
-            <div key={workshop.id} style={{ border: '1px solid #eaecf0', borderRadius: 12, background: '#fff', padding: 14 }}>
+            <div key={workshop.id} style={workshopCardStyle}>
               <div style={{ fontWeight: 800 }}>{workshop.name}</div>
               <div style={{ color: '#667085', fontSize: 13 }}>{workshop.city} • {workshop.contact}</div>
               <div style={{ color: '#667085', fontSize: 13 }}>{workshop.address}</div>
@@ -307,7 +350,10 @@ export default function AdminHomePage() {
 
       <section style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <h2 style={headingStyle}>Inspection Queue</h2>
+          <div>
+            <h2 style={headingStyle}>Inspection Queue</h2>
+            <div style={subtleTextStyle}>Admin approval ke baad hi vehicle listing live hoti hai.</div>
+          </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <input value={city} onChange={(event) => setCity(event.target.value)} placeholder="City" style={inputStyle} />
             <select value={status} onChange={(event) => setStatus(event.target.value)} style={inputStyle}>
@@ -328,8 +374,6 @@ export default function AdminHomePage() {
           placeholder="Approval / rejection note"
           style={{ ...inputStyle, minHeight: 90, marginTop: 12 }}
         />
-
-        {error ? <p style={{ color: '#b42318', fontWeight: 700 }}>{error}</p> : null}
 
         <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
           {(queue?.data ?? []).map((item) => (
@@ -394,17 +438,99 @@ export default function AdminHomePage() {
   );
 }
 
+const pageStyle: CSSProperties = {
+  padding: 24,
+  fontFamily: 'system-ui, sans-serif',
+  color: '#101828',
+  background: 'linear-gradient(180deg, #eef2f7 0%, #f8fafc 100%)',
+  minHeight: '100vh',
+};
+
+const heroStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 16,
+  flexWrap: 'wrap',
+  padding: 24,
+  borderRadius: 24,
+  background: 'linear-gradient(135deg, #101828 0%, #1d2939 100%)',
+  color: '#ffffff',
+  boxShadow: '0 28px 70px rgba(15, 23, 42, 0.18)',
+};
+
+const eyebrowStyle: CSSProperties = {
+  display: 'inline-flex',
+  borderRadius: 999,
+  background: 'rgba(255,255,255,0.12)',
+  padding: '6px 10px',
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+};
+
+const heroMetricGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(120px, 1fr))',
+  gap: 12,
+  alignSelf: 'stretch',
+};
+
+const heroMetricCard: CSSProperties = {
+  borderRadius: 18,
+  background: 'rgba(255,255,255,0.08)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  padding: 16,
+  minWidth: 120,
+};
+
+const heroMetricLabel: CSSProperties = {
+  fontSize: 12,
+  color: 'rgba(255,255,255,0.72)',
+};
+
+const heroMetricValue: CSSProperties = {
+  marginTop: 8,
+  fontSize: 28,
+  fontWeight: 800,
+};
+
 const cardStyle: CSSProperties = {
   marginTop: 18,
-  border: '1px solid #eaecf0',
-  borderRadius: 16,
-  padding: 18,
+  border: '1px solid #dbe2ea',
+  borderRadius: 20,
+  padding: 20,
   background: '#ffffff',
+  boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)',
 };
 
 const headingStyle: CSSProperties = {
   margin: 0,
   fontSize: 22,
+};
+
+const subtleTextStyle: CSSProperties = {
+  marginTop: 6,
+  color: '#667085',
+  fontSize: 13,
+};
+
+const sectionBarStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 12,
+  flexWrap: 'wrap',
+  alignItems: 'flex-start',
+  marginBottom: 12,
+};
+
+const pillStyle: CSSProperties = {
+  borderRadius: 999,
+  background: '#eef2ff',
+  color: '#344054',
+  padding: '8px 12px',
+  fontSize: 12,
+  fontWeight: 800,
 };
 
 const grid2Style: CSSProperties = {
@@ -414,10 +540,11 @@ const grid2Style: CSSProperties = {
 };
 
 const inputStyle: CSSProperties = {
-  padding: '11px 12px',
-  borderRadius: 10,
+  padding: '12px 14px',
+  borderRadius: 14,
   border: '1px solid #d0d5dd',
   width: '100%',
+  background: '#f8fafc',
 };
 
 const primaryButton: CSSProperties = {
@@ -448,4 +575,49 @@ const dangerButton: CSSProperties = {
   color: '#fff',
   fontWeight: 700,
   cursor: 'pointer',
+};
+
+const errorStyle: CSSProperties = {
+  marginTop: 16,
+  borderRadius: 14,
+  border: '1px solid #fecdca',
+  background: '#fef3f2',
+  color: '#b42318',
+  padding: '12px 14px',
+  fontWeight: 700,
+};
+
+const successStyle: CSSProperties = {
+  marginTop: 16,
+  borderRadius: 14,
+  border: '1px solid #abefc6',
+  background: '#ecfdf3',
+  color: '#067647',
+  padding: '12px 14px',
+  fontWeight: 700,
+};
+
+const workshopCardStyle: CSSProperties = {
+  border: '1px solid #eaecf0',
+  borderRadius: 16,
+  background: 'linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)',
+  padding: 16,
+};
+
+const activePillStyle: CSSProperties = {
+  borderRadius: 999,
+  background: '#ecfdf3',
+  color: '#067647',
+  padding: '8px 10px',
+  fontSize: 12,
+  fontWeight: 800,
+};
+
+const inactivePillStyle: CSSProperties = {
+  borderRadius: 999,
+  background: '#f2f4f7',
+  color: '#475467',
+  padding: '8px 10px',
+  fontSize: 12,
+  fontWeight: 800,
 };

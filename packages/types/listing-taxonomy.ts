@@ -37,6 +37,110 @@ export interface ListingCategoryDefinition extends StandardCategorySeed {
 
 const required = true;
 
+const CAR_MAKE_MODELS = {
+  Toyota: ['Corolla', 'Yaris', 'Vitz', 'Aqua', 'Prius', 'Camry', 'Fortuner', 'Hilux', 'Prado'],
+  Honda: ['Civic', 'City', 'BR-V', 'HR-V', 'Vezel', 'Accord'],
+  Suzuki: ['Alto', 'Cultus', 'Wagon R', 'Swift', 'Bolan', 'Ravi', 'Every'],
+  Kia: ['Picanto', 'Stonic', 'Sportage', 'Sorento'],
+  Hyundai: ['Santro', 'Elantra', 'Sonata', 'Tucson', 'Porter'],
+  Changan: ['Alsvin', 'Karvaan', 'Oshan X7'],
+  MG: ['HS', 'ZS EV', 'MG 5'],
+  Isuzu: ['D-Max'],
+  Proton: ['Saga'],
+  DFSK: ['Glory 580'],
+  Peugeot: ['2008'],
+} as const;
+
+const MOTORCYCLE_MAKE_MODELS = {
+  Honda: ['CD 70', 'CG 125', 'CB 125F', 'Pridor', 'CB 150F'],
+  Yamaha: ['YB 125Z', 'YBR 125', 'YBR 125G', 'YZF R3'],
+  Suzuki: ['GD 110S', 'GS 150', 'GR 150', 'GSX 125'],
+  United: ['US 70', 'US 100', 'US 125'],
+  'Road Prince': ['RP 70', 'Classic 70', 'RP 110', 'RX3'],
+  'Super Power': ['SP 70', 'SP 125', 'Leo 200'],
+  Benelli: ['TNT 150', 'TRK 251', '302S'],
+} as const;
+
+const CAR_CC_OPTIONS = ['660', '800', '1000', '1300', '1500', '1600', '1800', '2000', '2400', '2700', '3000+'];
+const MOTORCYCLE_CC_OPTIONS = ['70', '100', '110', '125', '150', '200', '250', '300', '500+'];
+
+type VehicleKind = 'cars' | 'motorcycles';
+
+function vehicleMakeFeature(kind: VehicleKind): ListingFeatureDefinition {
+  return {
+    key: 'make',
+    label: 'Make',
+    type: 'select',
+    required,
+    options: kind === 'cars' ? [...Object.keys(CAR_MAKE_MODELS)] : [...Object.keys(MOTORCYCLE_MAKE_MODELS)],
+  };
+}
+
+function vehicleModelFeature(): ListingFeatureDefinition {
+  return {
+    key: 'model',
+    label: 'Model',
+    type: 'select',
+    required,
+    options: [],
+  };
+}
+
+function vehicleCcFeature(kind: VehicleKind): ListingFeatureDefinition {
+  return {
+    key: 'cc',
+    label: 'CC',
+    type: 'select',
+    required,
+    options: kind === 'cars' ? CAR_CC_OPTIONS : MOTORCYCLE_CC_OPTIONS,
+  };
+}
+
+function carListingFeatures(extra: ListingFeatureDefinition[] = []): ListingFeatureDefinition[] {
+  return [
+    vehicleMakeFeature('cars'),
+    vehicleModelFeature(),
+    { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+    vehicleCcFeature('cars'),
+    { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+    { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'CNG'] },
+    { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
+    ...extra,
+  ];
+}
+
+function motorcycleListingFeatures(extra: ListingFeatureDefinition[] = []): ListingFeatureDefinition[] {
+  return [
+    vehicleMakeFeature('motorcycles'),
+    vehicleModelFeature(),
+    { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+    vehicleCcFeature('motorcycles'),
+    { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+    ...extra,
+  ];
+}
+
+export function getVehicleMakeOptions(categorySlug?: string | null) {
+  if (categorySlug === 'cars') return [...Object.keys(CAR_MAKE_MODELS)];
+  if (categorySlug === 'motorcycles') return [...Object.keys(MOTORCYCLE_MAKE_MODELS)];
+  return [];
+}
+
+export function getVehicleModelOptions(categorySlug?: string | null, make?: string | null) {
+  if (!make) return [];
+  if (categorySlug === 'cars') return [...(CAR_MAKE_MODELS[make as keyof typeof CAR_MAKE_MODELS] ?? [])];
+  if (categorySlug === 'motorcycles') {
+    return [...(MOTORCYCLE_MAKE_MODELS[make as keyof typeof MOTORCYCLE_MAKE_MODELS] ?? [])];
+  }
+  return [];
+}
+
+export function getVehicleCcOptions(categorySlug?: string | null) {
+  if (categorySlug === 'cars') return [...CAR_CC_OPTIONS];
+  if (categorySlug === 'motorcycles') return [...MOTORCYCLE_CC_OPTIONS];
+  return [];
+}
+
 export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
   {
     name: 'Mobile Phones',
@@ -114,100 +218,61 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
         slug: 'sedans',
         name: 'Sedans',
         minPrice: 500000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'CNG'] },
-          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
+        features: carListingFeatures([
           { key: 'color', label: 'Color', type: 'text', required },
-        ],
+        ]),
       },
       {
         slug: 'suvs-jeeps',
         name: 'SUVs & Jeeps',
         minPrice: 900000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+        features: carListingFeatures([
           { key: 'fourByFour', label: '4x4', type: 'boolean', required },
-          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric'] },
-        ],
+        ]),
       },
       {
         slug: 'vans-minivans',
         name: 'Vans & Minivans',
         minPrice: 700000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+        features: carListingFeatures([
           { key: 'seats', label: 'Seats', type: 'number', required, min: 2, max: 30 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-        ],
+        ]),
       },
       {
         slug: 'pickup-trucks',
         name: 'Pickup Trucks',
         minPrice: 900000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+        features: carListingFeatures([
           { key: 'payloadKg', label: 'Payload (KG)', type: 'number', required, min: 100, max: 10000 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-        ],
+        ]),
       },
       {
         slug: 'hatchbacks',
         name: 'Hatchbacks',
         minPrice: 450000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'CNG'] },
-          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
-        ],
+        features: carListingFeatures(),
       },
       {
         slug: 'crossovers',
         name: 'Crossovers',
         minPrice: 850000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Diesel', 'Hybrid', 'Electric'] },
-          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
-        ],
+        features: carListingFeatures(),
       },
       {
         slug: 'coupes-sports',
         name: 'Coupes & Sports',
         minPrice: 1500000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-          { key: 'fuel', label: 'Fuel', type: 'select', required, options: ['Petrol', 'Hybrid', 'Electric'] },
-          { key: 'transmission', label: 'Transmission', type: 'select', required, options: ['Manual', 'Automatic'] },
-        ],
+        features: carListingFeatures(),
       },
       {
         slug: 'hybrid-electric',
         name: 'Hybrid & Electric',
         minPrice: 1200000,
         features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
+          vehicleMakeFeature('cars'),
+          vehicleModelFeature(),
           { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
+          vehicleCcFeature('cars'),
           { key: 'rangeKm', label: 'Range (KM)', type: 'number', required, min: 40, max: 1200 },
           { key: 'batteryHealth', label: 'Battery Health %', type: 'number', required, min: 1, max: 100 },
           { key: 'chargingTime', label: 'Charging Time', type: 'text', required, placeholder: 'Fast 45 min / Home 6 hrs' },
@@ -524,46 +589,32 @@ export const LISTING_CATEGORY_DEFINITIONS: ListingCategoryDefinition[] = [
         slug: 'standard-bikes',
         name: 'Standard Bikes',
         minPrice: 50000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'cc', label: 'CC', type: 'number', required, min: 50, max: 2000 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+        features: motorcycleListingFeatures([
           { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
-        ],
+        ]),
       },
       {
         slug: 'sports-bikes',
         name: 'Sports Bikes',
         minPrice: 250000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'cc', label: 'CC', type: 'number', required, min: 125, max: 2000 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
+        features: motorcycleListingFeatures([
           { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },
-        ],
+        ]),
       },
       {
         slug: 'scooters',
         name: 'Scooters',
         minPrice: 25000,
-        features: [
-          { key: 'make', label: 'Make', type: 'text', required },
-          { key: 'model', label: 'Model', type: 'text', required },
-          { key: 'year', label: 'Year', type: 'number', required, min: 1980, max: 2100 },
-          { key: 'cc', label: 'CC', type: 'number', required, min: 50, max: 1500 },
-          { key: 'kmDriven', label: 'KM Driven', type: 'number', required, min: 0, max: 2000000 },
-        ],
+        features: motorcycleListingFeatures(),
       },
       {
         slug: 'electric-motorcycles',
         name: 'Electric Motorcycles',
         minPrice: 40000,
         features: [
-          { key: 'brand', label: 'Brand', type: 'text', required },
+          vehicleMakeFeature('motorcycles'),
+          vehicleModelFeature(),
+          vehicleCcFeature('motorcycles'),
           { key: 'rangeKm', label: 'Range (KM)', type: 'number', required, min: 5, max: 1000 },
           { key: 'battery', label: 'Battery', type: 'text', required },
           { key: 'conditionDetail', label: 'Condition', type: 'select', required, options: ['New', 'Used'] },

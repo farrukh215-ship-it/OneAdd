@@ -6,6 +6,9 @@ import {
   getCategoryDefinitionBySlug,
   getMinimumPriceForListing,
   getSubcategoryDefinition,
+  getVehicleCcOptions,
+  getVehicleMakeOptions,
+  getVehicleModelOptions,
   type WorkshopPartner,
   type ListingAttributes,
   type ListingFeatureDefinition,
@@ -125,6 +128,10 @@ export default function PostPage() {
   const minimumPrice = getMinimumPriceForListing(selectedCategory?.slug, subcategorySlug);
   const requiresVehicleInspection =
     selectedCategory?.slug === 'cars' || selectedCategory?.slug === 'motorcycles';
+  const selectedMake = typeof attributes.make === 'string' ? attributes.make : '';
+  const vehicleMakeOptions = getVehicleMakeOptions(selectedCategory?.slug);
+  const vehicleModelOptions = getVehicleModelOptions(selectedCategory?.slug, selectedMake);
+  const vehicleCcOptions = getVehicleCcOptions(selectedCategory?.slug);
 
   useEffect(() => {
     if (!requiresVehicleInspection || !city) {
@@ -262,7 +269,17 @@ export default function PostPage() {
   }, [attributes, selectedSubcategory]);
 
   const canProceed = () => {
-    if (step === 1 && !categoryId) return 'Pehle category select karein';
+    if (step === 1) {
+      if (!categoryId) return 'Pehle category select karein';
+      if (requiresVehicleInspection) {
+        if (!city) return 'Vehicle ad ke liye city select karein';
+        if (!selectedWorkshopId) return 'Car ya motorcycle ad ke liye workshop select karein';
+        if (!inspectionPdf) return 'Readable inspection PDF upload karein';
+        if (!inspectionPdf.name.toLowerCase().endsWith('.pdf')) {
+          return 'Sirf PDF inspection form allow hai';
+        }
+      }
+    }
     if (step === 2) {
       if (!subcategorySlug) return 'Sub-category select karein';
       if (title.trim().length < 10) return 'Title minimum 10 characters ka ho';
@@ -281,13 +298,6 @@ export default function PostPage() {
     if (step === 3) {
       if (imageItems.length < 1) return 'Kam az kam 1 image required hai';
       if (!coverImageId) return 'Cover image select karein';
-    }
-    if (step === 4 && requiresVehicleInspection) {
-      if (!selectedWorkshopId) return 'Car ya motorcycle ad ke liye workshop select karein';
-      if (!inspectionPdf) return 'Readable inspection PDF upload karein';
-      if (!inspectionPdf.name.toLowerCase().endsWith('.pdf')) {
-        return 'Sirf PDF inspection form allow hai';
-      }
     }
     return null;
   };
@@ -445,6 +455,10 @@ export default function PostPage() {
                     setCategoryId(category.id);
                     setSubcategorySlug('');
                     setAttributes({});
+                    if (category.slug !== 'cars' && category.slug !== 'motorcycles') {
+                      setSelectedWorkshopId('');
+                      setInspectionPdf(null);
+                    }
                   }}
                   className={`surface p-4 text-left ${categoryId === category.id ? '!border-red !bg-red-light' : ''}`}
                 >
@@ -453,6 +467,65 @@ export default function PostPage() {
                 </button>
               ))}
             </div>
+            {requiresVehicleInspection ? (
+              <div className="mt-5 rounded-[24px] border border-[#D9E6DB] bg-[linear-gradient(180deg,#F7FBF8_0%,#FFFFFF_100%)] p-5 shadow-[0_18px_45px_rgba(21,128,61,0.08)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-base font-extrabold text-ink">Workshop Verification First</div>
+                    <div className="mt-1 text-sm text-ink2">
+                      Vehicle ad tabhi aage jayegi jab city, workshop, aur readable PDF form select hoga.
+                    </div>
+                  </div>
+                  <div className="rounded-full bg-[#E9F7EE] px-3 py-1 text-xs font-bold text-[#1E7A38]">
+                    Cars + Motorcycles
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="mb-2 text-sm font-semibold text-ink">City</div>
+                    <select value={city} onChange={(event) => setCity(event.target.value)} className="field-select">
+                      <option value="">City choose karo</option>
+                      {cities.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 text-sm font-semibold text-ink">Workshop</div>
+                    <select
+                      value={selectedWorkshopId}
+                      onChange={(event) => setSelectedWorkshopId(event.target.value)}
+                      className="field-select"
+                    >
+                      <option value="">Workshop choose karo</option>
+                      {workshops.map((workshop) => (
+                        <option key={workshop.id} value={workshop.id}>
+                          {workshop.name} - {workshop.city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 text-sm font-semibold text-ink">Inspection Form PDF</div>
+                  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-[18px] border border-dashed border-[#C6D5CA] bg-white px-4 py-4 text-sm font-semibold text-ink2">
+                    <span className="truncate">{inspectionPdf ? inspectionPdf.name : 'Readable PDF upload karein'}</span>
+                    <span className="rounded-full bg-red px-3 py-1 text-xs font-bold text-white">PDF Only</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      className="hidden"
+                      onChange={(event) => setInspectionPdf(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -522,12 +595,25 @@ export default function PostPage() {
                       <select
                         value={String(attributes[feature.key] ?? '')}
                         onChange={(event) =>
-                          setAttributes((current) => ({ ...current, [feature.key]: event.target.value }))
+                          setAttributes((current) => {
+                            const nextValue = event.target.value;
+                            if (feature.key === 'make') {
+                              return { ...current, make: nextValue, model: '' };
+                            }
+                            return { ...current, [feature.key]: nextValue };
+                          })
                         }
                         className="field-select"
                       >
                         <option value="">Select karein</option>
-                        {feature.options?.map((option) => (
+                        {(feature.key === 'make'
+                          ? vehicleMakeOptions
+                          : feature.key === 'model'
+                            ? vehicleModelOptions
+                            : feature.key === 'cc'
+                              ? vehicleCcOptions
+                              : feature.options ?? []
+                        ).map((option) => (
                           <option key={option} value={option}>
                             {option}
                           </option>
@@ -677,42 +763,18 @@ export default function PostPage() {
             {requiresVehicleInspection ? (
               <div className="space-y-4 rounded-[20px] border border-[#D8E5DC] bg-[#F7FBF8] p-4">
                 <div>
-                  <div className="text-sm font-bold text-ink">Vehicle Compliance Lock</div>
+                  <div className="text-sm font-bold text-ink">Vehicle Compliance Summary</div>
                   <div className="mt-1 text-sm text-ink2">
-                    Cars aur Motorcycles ad workshop selection, readable PDF form, aur admin approval ke baghair live nahi hogi.
+                    Workshop selection aur inspection PDF first step par lock ho chuki hai. Admin approval ke baad hi ad live hogi.
                   </div>
                 </div>
-
-                <div>
-                  <div className="mb-2 text-sm font-semibold text-ink">Partner Workshop</div>
-                  <select
-                    value={selectedWorkshopId}
-                    onChange={(event) => setSelectedWorkshopId(event.target.value)}
-                    className="field-select"
-                  >
-                    <option value="">Workshop choose karo</option>
-                    {workshops.map((workshop) => (
-                      <option key={workshop.id} value={workshop.id}>
-                        {workshop.name} - {workshop.city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="mb-2 text-sm font-semibold text-ink">Inspection Form PDF</div>
-                  <label className="surface flex cursor-pointer items-center justify-between gap-3 rounded-[16px] p-4">
-                    <span className="text-sm text-ink2">
-                      {inspectionPdf ? inspectionPdf.name : 'Readable PDF upload karein'}
+                <div className="flex flex-wrap gap-2">
+                  {selectedWorkshopId ? (
+                    <span className="badge-soft-green">
+                      Workshop: {workshops.find((item) => item.id === selectedWorkshopId)?.name || 'Selected'}
                     </span>
-                    <span className="chip active">PDF Upload</span>
-                    <input
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      className="hidden"
-                      onChange={(event) => setInspectionPdf(event.target.files?.[0] ?? null)}
-                    />
-                  </label>
+                  ) : null}
+                  {inspectionPdf ? <span className="badge-soft-gray">PDF: {inspectionPdf.name}</span> : null}
                 </div>
               </div>
             ) : null}

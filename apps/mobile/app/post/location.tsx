@@ -32,9 +32,9 @@ export default function PostLocationScreen() {
   const [lng, setLng] = useState<number | undefined>(cityCoords[params.city || cities[0]]?.lng);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const [workshops, setWorkshops] = useState<WorkshopPartner[]>([]);
-  const [selectedWorkshopId, setSelectedWorkshopId] = useState('');
-  const [inspectionPdfUri, setInspectionPdfUri] = useState('');
-  const [inspectionPdfName, setInspectionPdfName] = useState('');
+  const [selectedWorkshopId, setSelectedWorkshopId] = useState(params.selectedWorkshopId || '');
+  const [inspectionPdfUri, setInspectionPdfUri] = useState(params.inspectionPdfUri || '');
+  const [inspectionPdfName, setInspectionPdfName] = useState(params.inspectionPdfName || '');
 
   const images = useMemo(() => {
     const parsed = params.images ? JSON.parse(params.images) : [];
@@ -247,7 +247,7 @@ export default function PostLocationScreen() {
           <View className="mt-4 rounded-2xl border border-[#D8E5DC] bg-[#F7FBF8] p-4">
             <Text className="text-sm font-bold text-ink">Vehicle Compliance Lock</Text>
             <Text className="mt-1 text-sm text-ink2">
-              Cars aur Motorcycles ad workshop selection aur readable PDF ke baghair live nahi hogi.
+              Workshop aur PDF first page par select ho chuki hai. Zarurat ho to neeche se update kar sakte hain.
             </Text>
 
             <Text className="mb-2 mt-4 text-sm font-semibold text-ink">Workshop</Text>

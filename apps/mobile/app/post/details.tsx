@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   Animated,
   Easing,
@@ -15,10 +16,15 @@ import {
   getCategoryDefinitionBySlug,
   getMinimumPriceForListing,
   getSubcategoryDefinition,
+  getVehicleCcOptions,
+  getVehicleMakeOptions,
+  getVehicleModelOptions,
   type ListingAttributes,
   type ListingFeatureDefinition,
+  type WorkshopPartner,
 } from '@tgmg/types';
 import { ProgressHeader } from '../../components/ProgressHeader';
+import { api } from '../../lib/api';
 
 function normalizeFeatureValue(
   feature: ListingFeatureDefinition,
@@ -40,6 +46,8 @@ function normalizeFeatureValue(
   return text;
 }
 
+const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
+
 export default function PostDetailsScreen() {
   const router = useRouter();
   const { categoryId, categoryName, categorySlug } = useLocalSearchParams<{
@@ -47,17 +55,28 @@ export default function PostDetailsScreen() {
     categoryName?: string;
     categorySlug?: string;
   }>();
+  const requiresVehicleInspection = categorySlug === 'cars' || categorySlug === 'motorcycles';
   const [subcategorySlug, setSubcategorySlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [condition, setCondition] = useState<'NEW' | 'USED'>('USED');
   const [attributes, setAttributes] = useState<Record<string, string | boolean>>({});
+  const [city, setCity] = useState('Lahore');
+  const [workshops, setWorkshops] = useState<WorkshopPartner[]>([]);
+  const [selectedWorkshopId, setSelectedWorkshopId] = useState('');
+  const [inspectionPdfUri, setInspectionPdfUri] = useState('');
+  const [inspectionPdfName, setInspectionPdfName] = useState('');
+  const [openSelectKey, setOpenSelectKey] = useState<string | null>(null);
   const entrance = useRef(new Animated.Value(0)).current;
 
   const categoryDefinition = getCategoryDefinitionBySlug(categorySlug);
   const selectedSubcategory = getSubcategoryDefinition(categorySlug, subcategorySlug);
   const minimumPrice = getMinimumPriceForListing(categorySlug, subcategorySlug);
+  const selectedMake = typeof attributes.make === 'string' ? attributes.make : '';
+  const vehicleMakeOptions = getVehicleMakeOptions(categorySlug);
+  const vehicleModelOptions = getVehicleModelOptions(categorySlug, selectedMake);
+  const vehicleCcOptions = getVehicleCcOptions(categorySlug);
 
   useEffect(() => {
     Animated.timing(entrance, {
@@ -67,6 +86,17 @@ export default function PostDetailsScreen() {
       useNativeDriver: true,
     }).start();
   }, [entrance]);
+
+  useEffect(() => {
+    if (!requiresVehicleInspection || !city) {
+      setWorkshops([]);
+      return;
+    }
+    void api
+      .get<WorkshopPartner[]>('/inspections/workshops', { params: { city } })
+      .then((response) => setWorkshops(response.data))
+      .catch(() => setWorkshops([]));
+  }, [city, requiresVehicleInspection]);
 
   const normalizedAttributes = useMemo<ListingAttributes>(() => {
     if (!selectedSubcategory) return {};
@@ -80,6 +110,11 @@ export default function PostDetailsScreen() {
   }, [attributes, selectedSubcategory]);
 
   const valid = useMemo(() => {
+    if (requiresVehicleInspection) {
+      if (!city) return false;
+      if (!selectedWorkshopId) return false;
+      if (!inspectionPdfUri) return false;
+    }
     if (!subcategorySlug) return false;
     if (title.trim().length < 10) return false;
     if (description.trim().length < 20) return false;
@@ -91,7 +126,32 @@ export default function PostDetailsScreen() {
       });
     }
     return true;
-  }, [description, minimumPrice, normalizedAttributes, price, selectedSubcategory, subcategorySlug, title]);
+  }, [
+    city,
+    description,
+    inspectionPdfUri,
+    minimumPrice,
+    normalizedAttributes,
+    price,
+    requiresVehicleInspection,
+    selectedSubcategory,
+    selectedWorkshopId,
+    subcategorySlug,
+    title,
+  ]);
+
+  const pickInspectionPdf = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled) return;
+    const file = result.assets?.[0];
+    if (!file?.uri) return;
+    setInspectionPdfUri(file.uri);
+    setInspectionPdfName(file.name || 'inspection-form.pdf');
+  };
 
   return (
     <View style={styles.screen}>
@@ -113,6 +173,63 @@ export default function PostDetailsScreen() {
           <View style={styles.badge}>
             <Text style={styles.badgeText}>Selected: {categoryName || 'Category'}</Text>
           </View>
+
+          {requiresVehicleInspection ? (
+            <View style={styles.workshopPanel}>
+              <View style={styles.workshopPanelHeader}>
+                <View>
+                  <Text style={styles.workshopTitle}>Workshop Verification First</Text>
+                  <Text style={styles.workshopText}>
+                    Vehicle ad tabhi aage jayegi jab city, workshop, aur readable PDF pehle select hoga.
+                  </Text>
+                </View>
+                <View style={styles.workshopBadge}>
+                  <Text style={styles.workshopBadgeText}>Cars + Bikes</Text>
+                </View>
+              </View>
+
+              <Text style={styles.label}>City</Text>
+              <View style={styles.optionRow}>
+                {cities.map((item) => {
+                  const active = city === item;
+                  return (
+                    <Pressable
+                      key={item}
+                      onPress={() => setCity(item)}
+                      style={[styles.optionChip, active && styles.optionChipActive]}
+                    >
+                      <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>{item}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.label}>Workshop</Text>
+              <View style={styles.optionRow}>
+                {workshops.map((workshop) => {
+                  const active = selectedWorkshopId === workshop.id;
+                  return (
+                    <Pressable
+                      key={workshop.id}
+                      onPress={() => setSelectedWorkshopId(workshop.id)}
+                      style={[styles.optionChip, active && styles.optionChipActive]}
+                    >
+                      <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>
+                        {workshop.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.label}>Inspection PDF</Text>
+              <Pressable onPress={pickInspectionPdf} style={styles.selectButton}>
+                <Text style={inspectionPdfName ? styles.selectValue : styles.selectPlaceholder}>
+                  {inspectionPdfName || 'Readable PDF upload karein'}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {categoryDefinition ? (
             <View style={styles.section}>
@@ -228,23 +345,59 @@ export default function PostDetailsScreen() {
                 <View key={feature.key} style={styles.featureBlock}>
                   <Text style={styles.featureLabel}>{feature.label}</Text>
                   {feature.type === 'select' ? (
-                    <View style={styles.optionRow}>
-                      {feature.options?.map((option) => {
-                        const active = attributes[feature.key] === option;
-                        return (
-                          <Pressable
-                            key={option}
-                            onPress={() =>
-                              setAttributes((current) => ({ ...current, [feature.key]: option }))
-                            }
-                            style={[styles.optionChip, active && styles.optionChipActive]}
-                          >
-                            <Text style={[styles.optionChipText, active && styles.optionChipTextActive]}>
-                              {option}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
+                    <View>
+                      <Pressable
+                        onPress={() =>
+                          setOpenSelectKey((current) => (current === feature.key ? null : feature.key))
+                        }
+                        style={styles.selectButton}
+                      >
+                        <Text
+                          style={
+                            attributes[feature.key] ? styles.selectValue : styles.selectPlaceholder
+                          }
+                        >
+                          {String(attributes[feature.key] ?? '') || `${feature.label} select karein`}
+                        </Text>
+                      </Pressable>
+                      {openSelectKey === feature.key ? (
+                        <View style={styles.dropdownCard}>
+                          {(feature.key === 'make'
+                            ? vehicleMakeOptions
+                            : feature.key === 'model'
+                              ? vehicleModelOptions
+                              : feature.key === 'cc'
+                                ? vehicleCcOptions
+                                : feature.options ?? []
+                          ).map((option) => {
+                            const active = attributes[feature.key] === option;
+                            return (
+                              <Pressable
+                                key={option}
+                                onPress={() => {
+                                  setAttributes((current) => {
+                                    if (feature.key === 'make') {
+                                      return { ...current, make: option, model: '' };
+                                    }
+                                    return { ...current, [feature.key]: option };
+                                  });
+                                  setOpenSelectKey(null);
+                                }}
+                                style={[styles.dropdownOption, active && styles.dropdownOptionActive]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.dropdownOptionText,
+                                    active && styles.dropdownOptionTextActive,
+                                  ]}
+                                >
+                                  {option}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      ) : null}
                     </View>
                   ) : feature.type === 'boolean' ? (
                     <View style={styles.booleanRow}>
@@ -285,6 +438,10 @@ export default function PostDetailsScreen() {
                   categorySlug,
                   subcategorySlug,
                   subcategoryName: selectedSubcategory?.name,
+                  city,
+                  selectedWorkshopId,
+                  inspectionPdfUri,
+                  inspectionPdfName,
                   title,
                   description,
                   price,
@@ -322,6 +479,43 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#E53935',
     fontSize: 12,
+    fontWeight: '800',
+  },
+  workshopPanel: {
+    marginTop: 16,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#D7E5DA',
+    backgroundColor: '#F7FBF8',
+    padding: 16,
+  },
+  workshopPanelHeader: {
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  workshopTitle: {
+    color: '#1C1E21',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  workshopText: {
+    marginTop: 4,
+    color: '#5B6776',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  workshopBadge: {
+    borderRadius: 999,
+    backgroundColor: '#E7F7EB',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  workshopBadgeText: {
+    color: '#1E7A38',
+    fontSize: 11,
     fontWeight: '800',
   },
   section: {
@@ -447,6 +641,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  selectButton: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E4E6EB',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  selectPlaceholder: {
+    color: '#A0A8B5',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  selectValue: {
+    color: '#1C1E21',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dropdownCard: {
+    marginTop: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E4E6EB',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  dropdownOption: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F2F5',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dropdownOptionActive: {
+    backgroundColor: '#FFF1F0',
+  },
+  dropdownOptionText: {
+    color: '#4B5563',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dropdownOptionTextActive: {
+    color: '#E53935',
+    fontWeight: '800',
   },
   optionChip: {
     borderRadius: 999,

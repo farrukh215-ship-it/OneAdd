@@ -23,7 +23,7 @@ import {
   getSubcategoryDefinition,
   type ListingAttributes,
   type ListingFeatureDefinition,
-} from './listing-taxonomy';
+} from '@tgmg/types';
 import type { PaginatedResponse } from '@tgmg/types';
 import { ListingsRepository } from './listings.repository';
 import { CreateListingDto } from './dto/create-listing.dto';
