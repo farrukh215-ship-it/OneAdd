@@ -279,12 +279,13 @@ export class AuthService {
   }
 
   private hashPassword(password: string) {
-    return scryptSync(password, this.passwordSalt, 64).toString('hex');
+    return `scrypt:${scryptSync(password, this.passwordSalt, 64).toString('hex')}`;
   }
 
   private verifyPassword(password: string, storedHash: string) {
     const candidate = scryptSync(password, this.passwordSalt, 64);
-    const stored = Buffer.from(storedHash, 'hex');
+    const normalizedHash = storedHash.startsWith('scrypt:') ? storedHash.slice(7) : storedHash;
+    const stored = Buffer.from(normalizedHash, 'hex');
     if (candidate.length !== stored.length) return false;
     return timingSafeEqual(candidate, stored);
   }
