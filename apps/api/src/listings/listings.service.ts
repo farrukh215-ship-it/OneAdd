@@ -18,13 +18,15 @@ import {
 } from '@prisma/client';
 import Redis from 'ioredis';
 import {
+  type ListingAttributes,
+  type ListingFeatureDefinition,
+  type PaginatedResponse,
+} from '@tgmg/types';
+import {
   getCategoryDefinitionBySlug,
   getMinimumPriceForListing,
   getSubcategoryDefinition,
-  type ListingAttributes,
-  type ListingFeatureDefinition,
-} from '@tgmg/types';
-import type { PaginatedResponse } from '@tgmg/types';
+} from './listing-taxonomy';
 import { ListingsRepository } from './listings.repository';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
