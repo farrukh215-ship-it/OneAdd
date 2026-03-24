@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -11,8 +12,10 @@ import {
   Text,
   View,
   Vibration,
+  Linking,
+  Image,
 } from 'react-native';
-import type { Category, Listing } from '@tgmg/types';
+import type { Category, HomeInsights, Listing } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { WideCard } from '../../components/WideCard';
@@ -21,6 +24,7 @@ import { useCategories } from '../../hooks/useCategories';
 import { useListings } from '../../hooks/useListings';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useWarmListingImages } from '../../hooks/useWarmListingImages';
+import { api } from '../../lib/api';
 import { buildRecommendedFeed } from '../../lib/mobile-recommendations';
 import { getLocationPreference, getViewedCategorySlugs, getViewedListingIds } from '../../lib/mobile-preferences';
 import { getRecentSearches } from '../../lib/search-history';
@@ -147,6 +151,22 @@ export default function HomeScreen() {
   }, [actionsEntrance, chipsEntrance, heroEntrance, heroOffset]);
 
   const topSearch = recentSearches[0];
+  const homeInsights = useQuery<HomeInsights>({
+    queryKey: ['home-insights', preferredCity, preferredLat, preferredLng],
+    enabled: Boolean(preferredCity),
+    staleTime: 0,
+    queryFn: async () => {
+      const response = await api.get<HomeInsights>('/home/insights', {
+        params: {
+          city: preferredCity,
+          lat: preferredLat,
+          lng: preferredLng,
+          countryCode: 'pk',
+        },
+      });
+      return response.data;
+    },
+  });
   const featured = useListings({ city: preferredCity, limit: 8, sort: 'newest' });
   const featuredGlobal = useListings({ limit: 12, sort: 'newest' });
   const personalized = useListings({
@@ -240,6 +260,7 @@ export default function HomeScreen() {
     await Promise.all([
       featured.refetch(),
       featuredGlobal.refetch(),
+      homeInsights.refetch(),
       personalized.refetch(),
       nearby.refetch(),
       cityPool.refetch(),
@@ -329,15 +350,25 @@ export default function HomeScreen() {
       >
       <View style={styles.heroCard}>
         <View style={styles.heroBody}>
-          <Text style={styles.heroEyebrow}>Curated Feed</Text>
-          <Text style={styles.heroTitle}>Aap ke liye behtar listings</Text>
+          <Text style={styles.heroEyebrow}>City Pulse</Text>
+          <Text style={styles.heroTitle}>
+            {homeInsights.data?.weather
+              ? `${homeInsights.data.weather.city} weather, fresh joke aur headlines`
+              : 'Har open par fresh weather, joke aur headlines'}
+          </Text>
           <Text style={styles.heroText}>
-            {topSearch
-              ? `Recent search "${topSearch}" aur ${preferredCity} location ke mutabiq.`
-              : `${preferredCity} location aur aapki viewed categories ke mutabiq.`}
+            {homeInsights.data?.joke
+              ? `${homeInsights.data.joke.setup} ${homeInsights.data.joke.punchline}`
+              : topSearch
+                ? `Recent search "${topSearch}" aur ${preferredCity} location ke mutabiq.`
+                : `${preferredCity} location aur aapki viewed categories ke mutabiq.`}
           </Text>
           <View style={styles.heroTags}>
-            {[preferredCity, topSearch || 'Fresh picks', viewedCategorySlugs[0] || 'Nearby'].map((item) => (
+            {[
+              homeInsights.data?.weather ? `${homeInsights.data.weather.temperatureC}°C` : preferredCity,
+              topSearch || 'Fresh picks',
+              homeInsights.data?.nationalHeadlines?.[0]?.source || viewedCategorySlugs[0] || 'Nearby',
+            ].map((item) => (
               <View key={item} style={styles.heroTag}>
                 <Text style={styles.heroTagText}>{item}</Text>
               </View>
@@ -348,10 +379,73 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <View style={styles.heroAccent}>
-          <Text style={styles.heroAccentText}>{'\u26A1'} For You</Text>
+          {homeInsights.data?.weather?.iconCode ? (
+            <Image
+              source={{ uri: `https://openweathermap.org/img/wn/${homeInsights.data.weather.iconCode}@2x.png` }}
+              style={styles.heroWeatherIcon}
+            />
+          ) : null}
+          <Text style={styles.heroAccentText}>
+            {homeInsights.data?.weather ? `${homeInsights.data.weather.temperatureC}°` : '\u26A1'}
+          </Text>
         </View>
       </View>
       </Animated.View>
+
+      {homeInsights.data?.weather ? (
+        <View style={styles.insightRow}>
+          <View style={[styles.insightCard, styles.insightCardDark]}>
+            <Text style={styles.insightEyebrow}>Weather</Text>
+            <Text style={styles.insightPrimary}>{homeInsights.data.weather.temperatureC}°C</Text>
+            <Text style={styles.insightBody}>
+              {homeInsights.data.weather.description} | Feels like {homeInsights.data.weather.feelsLikeC ?? '--'}°
+            </Text>
+          </View>
+          <View style={styles.insightCard}>
+            <Text style={styles.insightEyebrowLight}>Joke Drop</Text>
+            <Text style={styles.insightJokeTitle}>{homeInsights.data.joke?.setup || 'Fresh joke loading...'}</Text>
+            {homeInsights.data.joke?.punchline ? (
+              <Text style={styles.insightBodyLight}>{homeInsights.data.joke.punchline}</Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {homeInsights.data?.nationalHeadlines?.length ? (
+        <>
+          <SectionHeader title="National Headlines" linkLabel="Open" />
+          <View style={styles.newsStack}>
+            {homeInsights.data.nationalHeadlines.slice(0, 3).map((headline) => (
+              <Pressable
+                key={`${headline.source}-${headline.title}`}
+                onPress={() => Linking.openURL(headline.url)}
+                style={styles.newsCard}
+              >
+                <Text style={styles.newsTitle}>{headline.title}</Text>
+                <Text style={styles.newsMeta}>{headline.source}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {homeInsights.data?.internationalHeadlines?.length ? (
+        <>
+          <SectionHeader title="International Headlines" linkLabel="Open" />
+          <View style={styles.newsStack}>
+            {homeInsights.data.internationalHeadlines.slice(0, 3).map((headline) => (
+              <Pressable
+                key={`${headline.source}-${headline.title}`}
+                onPress={() => Linking.openURL(headline.url)}
+                style={[styles.newsCard, styles.newsCardCool]}
+              >
+                <Text style={styles.newsTitle}>{headline.title}</Text>
+                <Text style={styles.newsMeta}>{headline.source}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
 
       <Animated.View
         style={{
@@ -723,6 +817,95 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
     transform: [{ rotate: '-90deg' }],
+  },
+  heroWeatherIcon: {
+    height: 52,
+    marginBottom: 6,
+    width: 52,
+  },
+  insightRow: {
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingTop: 14,
+  },
+  insightCard: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E6ECF4',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 16,
+  },
+  insightCardDark: {
+    backgroundColor: '#18233A',
+    borderColor: '#24334D',
+  },
+  insightEyebrow: {
+    color: '#FFFFFF99',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+  },
+  insightEyebrowLight: {
+    color: '#D85A47',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+  },
+  insightPrimary: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  insightBody: {
+    color: '#EEF3F9',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  insightJokeTitle: {
+    color: '#172033',
+    fontSize: 18,
+    fontWeight: '800',
+    lineHeight: 24,
+    marginTop: 10,
+  },
+  insightBodyLight: {
+    color: '#5C6778',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  newsStack: {
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  newsCard: {
+    backgroundColor: '#FFF5F1',
+    borderColor: '#F3DED6',
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  newsCardCool: {
+    backgroundColor: '#F4F8FF',
+    borderColor: '#DEE8F9',
+  },
+  newsTitle: {
+    color: '#172033',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 21,
+  },
+  newsMeta: {
+    color: '#667282',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
   },
   quickActionsRow: {
     paddingHorizontal: 12,

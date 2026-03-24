@@ -1,4 +1,4 @@
-import type { Category, Listing, PaginatedResponse } from '@tgmg/types';
+import type { Category, HomeInsights, Listing, PaginatedResponse } from '@tgmg/types';
 import { STANDARD_CATEGORIES } from '@tgmg/types';
 
 function apiBase() {
@@ -62,5 +62,31 @@ export async function getListing(id: string): Promise<Listing> {
     return (await response.json()) as Listing;
   } catch {
     throw new Error(`Listing ${id} not found`);
+  }
+}
+
+export async function getHomeInsights(params: {
+  city?: string;
+  countryCode?: string;
+  lat?: number;
+  lng?: number;
+}): Promise<HomeInsights> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+  });
+
+  try {
+    const response = await fetch(`${apiBase()}/home/insights?${query.toString()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Failed');
+    return (await response.json()) as HomeInsights;
+  } catch {
+    return {
+      city: params.city || 'Lahore',
+      weather: null,
+      joke: null,
+      nationalHeadlines: [],
+      internationalHeadlines: [],
+    };
   }
 }

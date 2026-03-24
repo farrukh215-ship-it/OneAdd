@@ -230,6 +230,37 @@ export interface SavedSearch {
   updatedAt: string;
 }
 
+export interface HomeWeather {
+  city: string;
+  country?: string | null;
+  temperatureC: number;
+  feelsLikeC?: number | null;
+  description: string;
+  iconCode?: string | null;
+  humidity?: number | null;
+  windSpeed?: number | null;
+}
+
+export interface HomeJoke {
+  setup: string;
+  punchline: string;
+}
+
+export interface HomeHeadline {
+  title: string;
+  source: string;
+  url: string;
+  publishedAt?: string | null;
+}
+
+export interface HomeInsights {
+  city: string;
+  weather?: HomeWeather | null;
+  joke?: HomeJoke | null;
+  nationalHeadlines: HomeHeadline[];
+  internationalHeadlines: HomeHeadline[];
+}
+
 export interface ListingDashboardPoint {
   label: string;
   views: number;
