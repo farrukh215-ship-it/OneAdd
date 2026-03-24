@@ -46,6 +46,10 @@ function normalizeFeatureValue(
   return text;
 }
 
+function sanitizeNumericInput(value: string) {
+  return value.replace(/[^\d.]/g, '');
+}
+
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
 export default function PostDetailsScreen() {
@@ -415,7 +419,11 @@ export default function PostDetailsScreen() {
                     <TextInput
                       value={String(attributes[feature.key] ?? '')}
                       onChangeText={(value) =>
-                        setAttributes((current) => ({ ...current, [feature.key]: value }))
+                        setAttributes((current) => ({
+                          ...current,
+                          [feature.key]:
+                            feature.type === 'number' ? sanitizeNumericInput(value) : value,
+                        }))
                       }
                       style={styles.input}
                       placeholder={feature.placeholder || feature.label}

@@ -32,6 +32,10 @@ function normalizeFeatureValue(
   return text;
 }
 
+function sanitizeNumericInput(value: string) {
+  return value.replace(/[^\d.]/g, '');
+}
+
 export default function EditListingScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -195,7 +199,13 @@ export default function EditListingScreen() {
                 <Text className="mb-2 mt-2 text-sm font-semibold text-ink">{feature.label}</Text>
                 <TextInput
                   value={typeof attributes[feature.key] === 'string' ? String(attributes[feature.key]) : ''}
-                  onChangeText={(value) => setAttributes((current) => ({ ...current, [feature.key]: value }))}
+                  onChangeText={(value) =>
+                    setAttributes((current) => ({
+                      ...current,
+                      [feature.key]:
+                        feature.type === 'number' ? sanitizeNumericInput(value) : value,
+                    }))
+                  }
                   className="rounded-xl border border-border bg-white px-4 py-3 text-ink"
                   placeholder={feature.placeholder || feature.label}
                   keyboardType={feature.type === 'number' ? 'numeric' : 'default'}

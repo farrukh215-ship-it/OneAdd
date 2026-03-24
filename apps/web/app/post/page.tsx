@@ -27,6 +27,10 @@ type MediaItem = {
   name: string;
 };
 
+function sanitizeNumericInput(value: string) {
+  return value.replace(/[^\d.]/g, '');
+}
+
 function normalizeFeatureValue(
   feature: ListingFeatureDefinition,
   value: string | boolean | undefined,
@@ -405,16 +409,20 @@ export default function PostPage() {
       } else {
         window.setTimeout(() => router.push('/listings'), 900);
       }
-    } catch (error: any) {
-      const serverMessage = error?.response?.data?.message;
-      const messageText = Array.isArray(serverMessage)
-        ? serverMessage[0]
-        : serverMessage ?? error?.message;
-      if (typeof messageText === 'string' && /upload|network|failed|cors/i.test(messageText)) {
-        setMessage('Media upload fail hui. Cloudflare R2 CORS/API config check karke dobara try karein.');
-      } else {
-        setMessage(typeof messageText === 'string' ? messageText : 'Ad publish nahi hui, dobara try karein.');
-      }
+      } catch (error: any) {
+        const serverMessage = error?.response?.data?.message;
+        const messageText = Array.isArray(serverMessage)
+          ? serverMessage[0]
+          : serverMessage ?? error?.message;
+        if (typeof messageText === 'string' && /temporarily unavailable/i.test(messageText)) {
+          setMessage('Media upload service abhi configured nahi hai. Server R2 keys check karein.');
+        } else if (typeof messageText === 'string' && /Unsupported|size is too large|Sirf PDF/i.test(messageText)) {
+          setMessage(messageText);
+        } else if (typeof messageText === 'string' && /upload|network|failed|cors/i.test(messageText)) {
+          setMessage(`Media upload fail hui: ${messageText}`);
+        } else {
+          setMessage(typeof messageText === 'string' ? messageText : 'Ad publish nahi hui, dobara try karein.');
+        }
     } finally {
       setIsSubmitting(false);
     }
@@ -638,14 +646,20 @@ export default function PostPage() {
                         })}
                       </div>
                     ) : (
-                      <input
-                        value={String(attributes[feature.key] ?? '')}
-                        onChange={(event) =>
-                          setAttributes((current) => ({ ...current, [feature.key]: event.target.value }))
-                        }
-                        className="field-input"
-                        placeholder={feature.placeholder || feature.label}
-                        inputMode={feature.type === 'number' ? 'numeric' : 'text'}
+                        <input
+                          value={String(attributes[feature.key] ?? '')}
+                          onChange={(event) =>
+                            setAttributes((current) => ({
+                              ...current,
+                              [feature.key]:
+                                feature.type === 'number'
+                                  ? sanitizeNumericInput(event.target.value)
+                                  : event.target.value,
+                            }))
+                          }
+                          className="field-input"
+                          placeholder={feature.placeholder || feature.label}
+                          inputMode={feature.type === 'number' ? 'numeric' : 'text'}
                       />
                     )}
                   </div>
