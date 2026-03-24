@@ -253,12 +253,25 @@ export interface HomeHeadline {
   publishedAt?: string | null;
 }
 
+export interface HomeWidgetSettings {
+  weatherEnabled: boolean;
+  jokeEnabled: boolean;
+  nationalNewsEnabled: boolean;
+  internationalNewsEnabled: boolean;
+  gpsWeatherEnabled: boolean;
+  heroTitle?: string | null;
+  heroSubtitle?: string | null;
+  jokePrefix?: string | null;
+}
+
 export interface HomeInsights {
   city: string;
   weather?: HomeWeather | null;
   joke?: HomeJoke | null;
   nationalHeadlines: HomeHeadline[];
   internationalHeadlines: HomeHeadline[];
+  newsPreference?: 'NATIONAL' | 'INTERNATIONAL' | 'BALANCED';
+  widgets: HomeWidgetSettings;
 }
 
 export interface ListingDashboardPoint {

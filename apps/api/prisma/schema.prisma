@@ -31,6 +31,7 @@ model User {
   notifications Notification[]
   notificationPreference UserNotificationPreference?
   savedSearches SavedSearch[]
+  newsClicks NewsClickLog[]
   workshopInspectionVerifications InspectionRequest[] @relation("WorkshopVerifier")
   policeInspectionVerifications   InspectionRequest[] @relation("PoliceVerifier")
   adminInspectionReviews          InspectionRequest[] @relation("AdminReviewer")
@@ -225,6 +226,35 @@ model SavedSearch {
   @@index([userId, alertsEnabled])
 }
 
+model NewsClickLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  city        String?
+  scope       NewsScope
+  source      String
+  title       String
+  url         String
+  createdAt   DateTime @default(now())
+
+  @@index([userId, scope, createdAt])
+  @@index([city, scope, createdAt])
+}
+
+model HomeWidgetSettings {
+  id                       String   @id
+  weatherEnabled           Boolean  @default(true)
+  jokeEnabled              Boolean  @default(true)
+  nationalNewsEnabled      Boolean  @default(true)
+  internationalNewsEnabled Boolean  @default(true)
+  gpsWeatherEnabled        Boolean  @default(true)
+  heroTitle                String?
+  heroSubtitle             String?
+  jokePrefix               String?
+  updatedAt                DateTime @updatedAt
+  createdAt                DateTime @default(now())
+}
+
 model WorkshopPartner {
   id        String   @id @default(cuid())
   name      String
@@ -374,4 +404,9 @@ enum InspectionVerdict {
   RECOMMENDED
   CAUTION
   NOT_RECOMMENDED
+}
+
+enum NewsScope {
+  NATIONAL
+  INTERNATIONAL
 }

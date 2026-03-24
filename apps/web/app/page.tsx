@@ -71,7 +71,7 @@ export default async function HomePage({
       />
 
       <section className="page-wrap pb-2">
-        <HeroBanner insights={insights} />
+        <HeroBanner initialInsights={insights} city={city} />
         <QuickActions city={city} />
         <StatsRow />
       </section>

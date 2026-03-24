@@ -87,6 +87,17 @@ export async function getHomeInsights(params: {
       joke: null,
       nationalHeadlines: [],
       internationalHeadlines: [],
+      newsPreference: 'BALANCED',
+      widgets: {
+        weatherEnabled: true,
+        jokeEnabled: true,
+        nationalNewsEnabled: true,
+        internationalNewsEnabled: true,
+        gpsWeatherEnabled: true,
+        heroTitle: null,
+        heroSubtitle: null,
+        jokePrefix: 'Daily Joke Drop',
+      },
     };
   }
 }
