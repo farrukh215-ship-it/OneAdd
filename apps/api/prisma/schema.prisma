@@ -30,6 +30,7 @@ model User {
   pushTokens UserPushToken[]
   notifications Notification[]
   notificationPreference UserNotificationPreference?
+  savedSearches SavedSearch[]
   workshopInspectionVerifications InspectionRequest[] @relation("WorkshopVerifier")
   policeInspectionVerifications   InspectionRequest[] @relation("PoliceVerifier")
   adminInspectionReviews          InspectionRequest[] @relation("AdminReviewer")
@@ -200,6 +201,28 @@ model UserNotificationPreference {
   pushEnabled     Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model SavedSearch {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  label         String?
+  q             String?
+  category      String?
+  city          String?
+  condition     Condition?
+  minPrice      Int?
+  maxPrice      Int?
+  lat           Float?
+  lng           Float?
+  radiusKm      Int?
+  alertsEnabled Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([userId, alertsEnabled])
 }
 
 model WorkshopPartner {

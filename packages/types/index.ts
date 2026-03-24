@@ -213,6 +213,23 @@ export interface NotificationPreferences {
   pushEnabled: boolean;
 }
 
+export interface SavedSearch {
+  id: string;
+  label?: string | null;
+  q?: string | null;
+  category?: string | null;
+  city?: string | null;
+  condition?: 'NEW' | 'USED' | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  lat?: number | null;
+  lng?: number | null;
+  radiusKm?: number | null;
+  alertsEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ListingDashboardPoint {
   label: string;
   views: number;

@@ -35,6 +35,7 @@ import { CreateListingMessageDto } from './dto/create-listing-message.dto';
 import { CreateOfferDto } from './dto/create-offer.dto';
 import { PushNotificationsService } from '../notifications/push-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RecommendationQueryDto, SaveSearchDto } from '../search/dto/saved-search.dto';
 
 @Injectable()
 export class ListingsService {
@@ -195,6 +196,7 @@ export class ListingsService {
     });
 
     await this.notifyCategoryWatchers(listing);
+    await this.notifyMatchingSavedSearches(listing);
     return listing;
   }
 
@@ -478,6 +480,9 @@ export class ListingsService {
 
     if (previousPrice !== updated.price) {
       await this.notifySavedUsersOfUpdate(updated.id, updated.title);
+      if (updated.price < previousPrice) {
+        await this.notifyPriceDropWatchers(updated, previousPrice, updated.price);
+      }
     }
 
     return updated;
@@ -654,6 +659,132 @@ export class ListingsService {
 
   async popularSearches() {
     return this.listingsRepository.findPopularSuggestions(8);
+  }
+
+  async listSavedSearches(currentUser: User) {
+    return this.prisma.savedSearch.findMany({
+      where: { userId: currentUser.id },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+    });
+  }
+
+  async saveSearch(currentUser: User, dto: SaveSearchDto) {
+    const normalized = {
+      label: dto.label?.trim() || undefined,
+      q: dto.q?.trim() || undefined,
+      category: dto.category?.trim() || undefined,
+      city: dto.city?.trim() || undefined,
+      condition: dto.condition,
+      minPrice: dto.minPrice,
+      maxPrice: dto.maxPrice,
+      lat: dto.lat,
+      lng: dto.lng,
+      radiusKm: dto.radiusKm,
+      alertsEnabled: dto.alertsEnabled ?? true,
+    };
+
+    if (!normalized.q && !normalized.category && !normalized.city && typeof normalized.lat !== 'number') {
+      throw new BadRequestException('Saved search ke liye kam az kam search, category, city ya nearby filter dein.');
+    }
+
+    const existing = await this.prisma.savedSearch.findFirst({
+      where: {
+        userId: currentUser.id,
+        q: normalized.q ?? null,
+        category: normalized.category ?? null,
+        city: normalized.city ?? null,
+        condition: normalized.condition ?? null,
+        minPrice: normalized.minPrice ?? null,
+        maxPrice: normalized.maxPrice ?? null,
+        lat: normalized.lat ?? null,
+        lng: normalized.lng ?? null,
+        radiusKm: normalized.radiusKm ?? null,
+      },
+    });
+
+    if (existing) {
+      return this.prisma.savedSearch.update({
+        where: { id: existing.id },
+        data: {
+          label: normalized.label ?? existing.label,
+          alertsEnabled: normalized.alertsEnabled,
+        },
+      });
+    }
+
+    return this.prisma.savedSearch.create({
+      data: {
+        userId: currentUser.id,
+        ...normalized,
+      },
+    });
+  }
+
+  async removeSavedSearch(currentUser: User, id: string) {
+    await this.prisma.savedSearch.deleteMany({
+      where: {
+        id,
+        userId: currentUser.id,
+      },
+    });
+    return { ok: true };
+  }
+
+  async recommendedSearchFeed(currentUser: User, query: RecommendationQueryDto) {
+    const savedSearches = await this.prisma.savedSearch.findMany({
+      where: { userId: currentUser.id },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+    });
+
+    const preferredCity =
+      query.city?.trim() ||
+      currentUser.city?.trim() ||
+      savedSearches.find((item) => item.city)?.city ||
+      undefined;
+
+    const recommendedGroups = await Promise.all(
+      savedSearches.slice(0, 3).map((savedSearch) =>
+        this.findAll({
+          q: savedSearch.q ?? undefined,
+          category: savedSearch.category ?? undefined,
+          city: savedSearch.city ?? preferredCity,
+          condition: savedSearch.condition ?? undefined,
+          minPrice: savedSearch.minPrice ?? undefined,
+          maxPrice: savedSearch.maxPrice ?? undefined,
+          lat: savedSearch.lat ?? undefined,
+          lng: savedSearch.lng ?? undefined,
+          radiusKm: savedSearch.radiusKm ?? undefined,
+          sort: 'newest',
+          page: 1,
+          limit: Math.max(4, Math.min(query.limit, 12)),
+        } as ListingFilterDto),
+      ),
+    );
+
+    const fallback = await this.findAll({
+      city: preferredCity,
+      sort: 'newest',
+      page: 1,
+      limit: query.limit,
+    });
+
+    const deduped = new Map<string, (typeof fallback.data)[number]>();
+    for (const group of recommendedGroups) {
+      for (const item of group.data) {
+        deduped.set(item.id, item);
+      }
+    }
+    for (const item of fallback.data) {
+      deduped.set(item.id, item);
+    }
+
+    return {
+      data: Array.from(deduped.values()).slice(0, query.limit),
+      savedSearches,
+      city: preferredCity,
+    };
   }
 
   async dashboard(currentUser: User) {
@@ -942,6 +1073,25 @@ export class ListingsService {
     );
   }
 
+  private async notifyPriceDropWatchers(
+    listing: Listing & { category?: { slug?: string | null } },
+    previousPrice: number,
+    nextPrice: number,
+  ) {
+    const matchingSavedSearches = await this.findMatchingSavedSearchUsers(listing);
+
+    await this.pushNotificationsService.notifyUsers(
+      matchingSavedSearches,
+      {
+        title: 'Price drop alert',
+        body: `"${listing.title}" PKR ${previousPrice.toLocaleString()} se ${nextPrice.toLocaleString()} ho gayi`,
+        href: `/listings/${listing.id}`,
+        type: NotificationType.SAVED_UPDATE,
+        data: { href: `/listings/${listing.id}`, type: 'saved_update' },
+      },
+    );
+  }
+
   private async notifyCategoryWatchers(listing: Listing & { category?: { name?: string } }) {
     const watchers = await this.prisma.user.findMany({
       where: {
@@ -975,6 +1125,43 @@ export class ListingsService {
         data: { href: `/listings/${listing.id}`, type: 'new_listing' },
       },
     );
+  }
+
+  private async notifyMatchingSavedSearches(
+    listing: Listing & { category?: { slug?: string | null } },
+  ) {
+    const searches = await this.findMatchingSavedSearchUsers(listing);
+
+    await this.pushNotificationsService.notifyUsers(
+      searches.filter((userId) => userId !== listing.userId),
+      {
+        title: 'Matching listing mil gayi',
+        body: `"${listing.title}" aapki saved search se match karti hai`,
+        href: `/listings/${listing.id}`,
+        type: NotificationType.NEW_LISTING,
+        data: { href: `/listings/${listing.id}`, type: 'new_listing' },
+      },
+    );
+  }
+
+  private async findMatchingSavedSearchUsers(listing: Listing & { category?: { slug?: string | null } }) {
+    const keyword = listing.title.split(' ').find(Boolean) || listing.title;
+    const searches = await this.prisma.savedSearch.findMany({
+      where: {
+        alertsEnabled: true,
+        OR: [
+          listing.categoryId ? { category: listing.categoryId } : undefined,
+          listing.category?.slug ? { category: listing.category.slug } : undefined,
+          { city: listing.city },
+          keyword ? { q: { contains: keyword, mode: 'insensitive' } } : undefined,
+        ].filter(Boolean) as Prisma.SavedSearchWhereInput[],
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+      take: 50,
+    });
+
+    return searches.map((entry) => entry.userId);
   }
 
   private publicVisibilityWhere(): Prisma.ListingWhereInput {

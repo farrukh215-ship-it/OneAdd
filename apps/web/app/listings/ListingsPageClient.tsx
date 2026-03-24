@@ -1,11 +1,12 @@
 'use client';
 
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Listing, PaginatedResponse, SearchSuggestion } from '@tgmg/types';
+import type { Listing, PaginatedResponse, SavedSearch, SearchSuggestion } from '@tgmg/types';
 import { ListingGrid } from '../../components/listings/ListingGrid';
 import { useCategories } from '../../hooks/useCategories';
+import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../lib/api';
 
 const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
@@ -50,6 +51,7 @@ export function ListingsPageClient({
   const [q, setQ] = useState(initialParams.q ?? '');
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [popularSearches, setPopularSearches] = useState<SearchSuggestion[]>([]);
+  const { currentUser } = useAuth();
 
   const filters = useMemo(
     () => ({
@@ -62,6 +64,53 @@ export function ListingsPageClient({
   );
 
   const { data: categories = [] } = useCategories();
+  const savedSearches = useQuery({
+    queryKey: ['saved-searches', currentUser?.id],
+    enabled: Boolean(currentUser),
+    queryFn: async () => {
+      const response = await api.get<SavedSearch[]>('/search/saved');
+      return response.data;
+    },
+  });
+  const recommended = useQuery({
+    queryKey: ['recommended-searches', currentUser?.id, filters.city],
+    enabled: Boolean(currentUser),
+    queryFn: async () => {
+      const response = await api.get<{ data: Listing[]; city?: string }>('/search/recommended', {
+        params: { city: filters.city, limit: 8 },
+      });
+      return response.data;
+    },
+  });
+  const saveSearch = useMutation({
+    mutationFn: async () => {
+      const response = await api.post<SavedSearch>('/search/saved', {
+        label: q.trim() || filters.category || filters.city || 'Saved Filter',
+        q: q.trim() || undefined,
+        category: filters.category,
+        city: filters.city,
+        condition: filters.condition,
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice,
+        lat: filters.lat,
+        lng: filters.lng,
+        radiusKm: filters.radiusKm,
+        alertsEnabled: true,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      void savedSearches.refetch();
+    },
+  });
+  const removeSavedSearch = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/search/saved/${id}`);
+    },
+    onSuccess: () => {
+      void savedSearches.refetch();
+    },
+  });
   const listings = useInfiniteQuery({
     queryKey: ['listings-infinite', filters],
     queryFn: async ({ pageParam = 1 }) => {
@@ -287,6 +336,48 @@ export function ListingsPageClient({
               </button>
             </div>
           ) : null}
+          {currentUser && savedSearches.data?.length ? (
+            <div className="mb-3 rounded-2xl border border-border bg-white p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-extrabold text-ink">Saved Filters</div>
+                  <div className="text-xs text-ink2">Ek tap me same search dobara kholo.</div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {savedSearches.data.slice(0, 6).map((item) => (
+                  <div key={item.id} className="flex items-center gap-2 rounded-full border border-border bg-[#F8F9FB] px-3 py-2">
+                    <button
+                      type="button"
+                      className="text-sm font-semibold text-ink"
+                      onClick={() =>
+                        navigateWith({
+                          q: item.q ?? undefined,
+                          category: item.category ?? undefined,
+                          city: item.city ?? undefined,
+                          condition: item.condition ?? undefined,
+                          minPrice: item.minPrice ?? undefined,
+                          maxPrice: item.maxPrice ?? undefined,
+                          lat: item.lat ?? undefined,
+                          lng: item.lng ?? undefined,
+                          radiusKm: item.radiusKm ?? undefined,
+                        })
+                      }
+                    >
+                      {item.label || item.q || item.category || item.city || 'Saved'}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs font-bold text-red"
+                      onClick={() => removeSavedSearch.mutate(item.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div
             className="overflow-hidden text-center text-xs font-semibold text-ink2 transition-all"
             style={{ maxHeight: pullDistance ? `${pullDistance}px` : '0px', opacity: pullDistance ? 1 : 0 }}
@@ -305,9 +396,11 @@ export function ListingsPageClient({
                 placeholder="Search titles, category, city..."
               />
               <div className="flex gap-2">
-                <button type="button" className="btn-red" onClick={() => submitSearch(q)}>
-                  Search
-                </button>
+                {currentUser ? (
+                  <button type="button" className="btn-white" onClick={() => saveSearch.mutate()}>
+                    {saveSearch.isPending ? 'Saving...' : 'Save Filter'}
+                  </button>
+                ) : null}
                 {q.trim() ? (
                   <button
                     type="button"
@@ -351,6 +444,24 @@ export function ListingsPageClient({
               </div>
             ) : null}
           </div>
+          {currentUser && recommended.data?.data?.length ? (
+            <div className="mb-4 rounded-2xl border border-border bg-white p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-lg font-extrabold text-ink">For You Feed</div>
+                  <div className="text-sm text-ink2">
+                    Saved searches, city, aur aapki history ke mutabiq.
+                  </div>
+                </div>
+              </div>
+              <ListingGrid
+                listings={recommended.data.data.slice(0, 4)}
+                referenceCity={recommended.data.city || filters.city}
+                referenceLat={filters.lat}
+                referenceLng={filters.lng}
+              />
+            </div>
+          ) : null}
           <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-lg font-extrabold text-ink">{firstPage?.total ?? 0} listings mile</div>

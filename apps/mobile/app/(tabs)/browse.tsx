@@ -1,8 +1,10 @@
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -12,9 +14,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { Listing, SearchSuggestion } from '@tgmg/types';
+import type { Listing, SavedSearch, SearchSuggestion } from '@tgmg/types';
 import { ListingCard } from '../../components/ListingCard';
 import { useCategories } from '../../hooks/useCategories';
+import { useAuth } from '../../hooks/useAuth';
 import { useListings } from '../../hooks/useListings';
 import { useWarmListingImages } from '../../hooks/useWarmListingImages';
 import { api } from '../../lib/api';
@@ -25,6 +28,7 @@ const cities = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad'];
 
 export default function BrowseScreen() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const params = useLocalSearchParams<{
     category?: string;
     city?: string;
@@ -56,6 +60,47 @@ export default function BrowseScreen() {
   const lat = params.lat ? Number(params.lat) : undefined;
   const lng = params.lng ? Number(params.lng) : undefined;
   const radiusKm = params.radiusKm ? Number(params.radiusKm) : undefined;
+  const savedSearches = useQuery({
+    queryKey: ['saved-searches', currentUser?.id],
+    enabled: Boolean(currentUser),
+    queryFn: async () => {
+      const response = await api.get<SavedSearch[]>('/search/saved');
+      return response.data;
+    },
+  });
+  const saveSearch = useMutation({
+    mutationFn: async () => {
+      const response = await api.post<SavedSearch>('/search/saved', {
+        label: q.trim() || category || city || 'Saved Filter',
+        q: q.trim() || undefined,
+        category,
+        city,
+        condition,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        lat,
+        lng,
+        radiusKm,
+        alertsEnabled: true,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      Alert.alert('Saved', 'Ye search save ho gayi.');
+      void savedSearches.refetch();
+    },
+    onError: () => {
+      Alert.alert('Masla', 'Search save nahi hui.');
+    },
+  });
+  const removeSavedSearch = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/search/saved/${id}`);
+    },
+    onSuccess: () => {
+      void savedSearches.refetch();
+    },
+  });
 
   const listingsQuery = useListings({
     q: q.trim() || undefined,
@@ -204,9 +249,15 @@ export default function BrowseScreen() {
         />
 
         <View style={styles.searchActionsRow}>
-          <Pressable onPress={() => submitSearch(q)} style={styles.searchActionPrimary}>
-            <Text style={styles.searchActionPrimaryText}>Search</Text>
-          </Pressable>
+          {currentUser ? (
+            <Pressable onPress={() => saveSearch.mutate()} style={styles.searchActionPrimary}>
+              <Text style={styles.searchActionPrimaryText}>{saveSearch.isPending ? 'Saving...' : 'Save Filter'}</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => submitSearch(q)} style={styles.searchActionPrimary}>
+              <Text style={styles.searchActionPrimaryText}>Search</Text>
+            </Pressable>
+          )}
           {q.trim() ? (
             <Pressable
               onPress={() => {
@@ -234,6 +285,36 @@ export default function BrowseScreen() {
           </View>
         ) : !q.trim() && (recentSearches.length || popularSearches.length) ? (
           <View style={styles.discoveryStack}>
+            {currentUser && savedSearches.data?.length ? (
+              <View style={styles.discoveryCard}>
+                <Text style={styles.discoveryTitle}>Saved Filters</Text>
+                <View style={styles.chipsRow}>
+                  {savedSearches.data.slice(0, 6).map((item) => (
+                    <View key={item.id} style={styles.savedFilterRow}>
+                      <Pressable
+                        onPress={() => {
+                          setCategory(item.category ?? undefined);
+                          setCity(item.city ?? undefined);
+                          setCondition(item.condition ?? undefined);
+                          setQ(item.q ?? '');
+                          setMinPrice(item.minPrice ? String(item.minPrice) : '');
+                          setMaxPrice(item.maxPrice ? String(item.maxPrice) : '');
+                          setPage(1);
+                        }}
+                        style={styles.softChip}
+                      >
+                        <Text style={styles.softChipText}>
+                          {item.label || item.q || item.category || item.city || 'Saved'}
+                        </Text>
+                      </Pressable>
+                      <Pressable onPress={() => removeSavedSearch.mutate(item.id)}>
+                        <Text style={styles.savedFilterRemove}>Remove</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
             {recentSearches.length ? (
               <View style={styles.discoveryCard}>
                 <View style={styles.discoveryHeader}>
@@ -592,6 +673,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  savedFilterRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
   softChip: {
     backgroundColor: '#F5F6F7',
     borderRadius: 999,
@@ -600,6 +686,11 @@ const styles = StyleSheet.create({
   },
   softChipText: {
     color: '#65676B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  savedFilterRemove: {
+    color: '#E53935',
     fontSize: 12,
     fontWeight: '700',
   },
