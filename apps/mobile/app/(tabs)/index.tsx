@@ -1,6 +1,5 @@
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -27,7 +26,7 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { useWarmListingImages } from '../../hooks/useWarmListingImages';
 import { api } from '../../lib/api';
 import { buildRecommendedFeed } from '../../lib/mobile-recommendations';
-import { getLocationPreference, getViewedCategorySlugs, getViewedListingIds, setLocationPreference } from '../../lib/mobile-preferences';
+import { getLocationPreference, getViewedCategorySlugs, getViewedListingIds } from '../../lib/mobile-preferences';
 import { getRecentSearches } from '../../lib/search-history';
 
 const quickActions = [
@@ -119,40 +118,6 @@ export default function HomeScreen() {
     setViewedCategorySlugs(getViewedCategorySlugs());
     setViewedListingIds(getViewedListingIds());
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const syncPreciseLocation = async () => {
-      const stored = getLocationPreference();
-      let permission = await Location.getForegroundPermissionsAsync();
-      if (permission.status !== 'granted' && stored.granted !== false) {
-        permission = await Location.requestForegroundPermissionsAsync();
-      }
-      if (permission.status !== 'granted') {
-        setLocationPreference({ ...stored, granted: false });
-        return;
-      }
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      if (cancelled) return;
-      setPreferredLat(position.coords.latitude);
-      setPreferredLng(position.coords.longitude);
-      setLocationPreference({
-        ...stored,
-        city: stored.city || preferredCity,
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        granted: true,
-      });
-    };
-
-    void syncPreciseLocation();
-    return () => {
-      cancelled = true;
-    };
-  }, [preferredCity]);
 
   useEffect(() => {
     Animated.parallel([
@@ -387,16 +352,12 @@ export default function HomeScreen() {
         <View style={styles.heroBody}>
           <Text style={styles.heroEyebrow}>City Pulse</Text>
           <Text style={styles.heroTitle}>
-            {homeInsights.data?.widgets.heroTitle
-              ? homeInsights.data.widgets.heroTitle
-              : homeInsights.data?.weather
+            {homeInsights.data?.weather
               ? `${homeInsights.data.weather.city} weather, fresh joke aur headlines`
               : 'Har open par fresh weather, joke aur headlines'}
           </Text>
           <Text style={styles.heroText}>
-            {homeInsights.data?.widgets.heroSubtitle
-              ? homeInsights.data.widgets.heroSubtitle
-              : homeInsights.data?.joke
+            {homeInsights.data?.joke
               ? `${homeInsights.data.joke.setup} ${homeInsights.data.joke.punchline}`
               : topSearch
                 ? `Recent search "${topSearch}" aur ${preferredCity} location ke mutabiq.`
@@ -431,7 +392,7 @@ export default function HomeScreen() {
       </View>
       </Animated.View>
 
-      {homeInsights.data?.widgets.weatherEnabled && homeInsights.data?.weather ? (
+      {homeInsights.data?.weather ? (
         <View style={styles.insightRow}>
           <View style={[styles.insightCard, styles.insightCardDark]}>
             <Text style={styles.insightEyebrow}>Weather</Text>
@@ -440,35 +401,24 @@ export default function HomeScreen() {
               {homeInsights.data.weather.description} | Feels like {homeInsights.data.weather.feelsLikeC ?? '--'}°
             </Text>
           </View>
-          {homeInsights.data?.widgets.jokeEnabled ? (
-            <View style={styles.insightCard}>
-              <Text style={styles.insightEyebrowLight}>{homeInsights.data.widgets.jokePrefix || 'Joke Drop'}</Text>
-              <Text style={styles.insightJokeTitle}>{homeInsights.data.joke?.setup || 'Fresh joke loading...'}</Text>
-              {homeInsights.data.joke?.punchline ? (
-                <Text style={styles.insightBodyLight}>{homeInsights.data.joke.punchline}</Text>
-              ) : null}
-            </View>
-          ) : null}
+          <View style={styles.insightCard}>
+            <Text style={styles.insightEyebrowLight}>Joke Drop</Text>
+            <Text style={styles.insightJokeTitle}>{homeInsights.data.joke?.setup || 'Fresh joke loading...'}</Text>
+            {homeInsights.data.joke?.punchline ? (
+              <Text style={styles.insightBodyLight}>{homeInsights.data.joke.punchline}</Text>
+            ) : null}
+          </View>
         </View>
       ) : null}
 
-      {homeInsights.data?.widgets.nationalNewsEnabled && homeInsights.data?.nationalHeadlines?.length ? (
+      {homeInsights.data?.nationalHeadlines?.length ? (
         <>
           <SectionHeader title="National Headlines" linkLabel="Open" />
           <View style={styles.newsStack}>
             {homeInsights.data.nationalHeadlines.slice(0, 3).map((headline) => (
               <Pressable
                 key={`${headline.source}-${headline.title}`}
-                onPress={() => {
-                  void api.post('/home/news-click', {
-                    city: homeInsights.data?.weather?.city || preferredCity,
-                    scope: 'NATIONAL',
-                    source: headline.source,
-                    title: headline.title,
-                    url: headline.url,
-                  });
-                  void Linking.openURL(headline.url);
-                }}
+                onPress={() => Linking.openURL(headline.url)}
                 style={styles.newsCard}
               >
                 <Text style={styles.newsTitle}>{headline.title}</Text>
@@ -479,23 +429,14 @@ export default function HomeScreen() {
         </>
       ) : null}
 
-      {homeInsights.data?.widgets.internationalNewsEnabled && homeInsights.data?.internationalHeadlines?.length ? (
+      {homeInsights.data?.internationalHeadlines?.length ? (
         <>
           <SectionHeader title="International Headlines" linkLabel="Open" />
           <View style={styles.newsStack}>
             {homeInsights.data.internationalHeadlines.slice(0, 3).map((headline) => (
               <Pressable
                 key={`${headline.source}-${headline.title}`}
-                onPress={() => {
-                  void api.post('/home/news-click', {
-                    city: homeInsights.data?.weather?.city || preferredCity,
-                    scope: 'INTERNATIONAL',
-                    source: headline.source,
-                    title: headline.title,
-                    url: headline.url,
-                  });
-                  void Linking.openURL(headline.url);
-                }}
+                onPress={() => Linking.openURL(headline.url)}
                 style={[styles.newsCard, styles.newsCardCool]}
               >
                 <Text style={styles.newsTitle}>{headline.title}</Text>

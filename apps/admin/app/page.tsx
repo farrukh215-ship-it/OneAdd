@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import type { HomeWidgetSettings, InspectionRequest, WorkshopPartner } from '@tgmg/types';
+import type { InspectionRequest, WorkshopPartner } from '@tgmg/types';
 
 type QueueResponse = {
   data: InspectionRequest[];
@@ -43,17 +43,6 @@ const emptyWorkshop: WorkshopFormState = {
   active: true,
 };
 
-const defaultWidgets: HomeWidgetSettings = {
-  weatherEnabled: true,
-  jokeEnabled: true,
-  nationalNewsEnabled: true,
-  internationalNewsEnabled: true,
-  gpsWeatherEnabled: true,
-  heroTitle: '',
-  heroSubtitle: '',
-  jokePrefix: 'Daily Joke Drop',
-};
-
 function statusTone(status: string) {
   if (status === 'APPROVED') return '#157347';
   if (status === 'REJECTED' || status === 'EXPIRED') return '#b42318';
@@ -72,10 +61,8 @@ export default function AdminHomePage() {
   const [workshops, setWorkshops] = useState<WorkshopPartner[]>([]);
   const [workshopForm, setWorkshopForm] = useState<WorkshopFormState>(emptyWorkshop);
   const [editingWorkshopId, setEditingWorkshopId] = useState('');
-  const [widgets, setWidgets] = useState<HomeWidgetSettings>(defaultWidgets);
   const [loading, setLoading] = useState(false);
   const [savingWorkshop, setSavingWorkshop] = useState(false);
-  const [savingWidgets, setSavingWidgets] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -132,24 +119,10 @@ export default function AdminHomePage() {
     }
   };
 
-  const loadWidgets = async () => {
-    if (!token.trim()) return;
-    try {
-      const response = await fetch(`${API_BASE}/home/admin/widgets`, { headers });
-      if (!response.ok) {
-        throw new Error((await response.text()) || `Widget fetch failed: ${response.status}`);
-      }
-      setWidgets((await response.json()) as HomeWidgetSettings);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Widget fetch error');
-    }
-  };
-
   useEffect(() => {
     if (!token.trim()) return;
     void loadQueue();
     void loadWorkshops();
-    void loadWidgets();
   }, [token, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const signIn = async () => {
@@ -246,32 +219,6 @@ export default function AdminHomePage() {
       setError(err instanceof Error ? err.message : 'Workshop save error');
     } finally {
       setSavingWorkshop(false);
-    }
-  };
-
-  const saveWidgets = async () => {
-    if (!token.trim()) return;
-    setSavingWidgets(true);
-    setError('');
-    setSuccess('');
-    try {
-      const response = await fetch(`${API_BASE}/home/admin/widgets`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-        body: JSON.stringify(widgets),
-      });
-      if (!response.ok) {
-        throw new Error((await response.text()) || 'Widget save failed');
-      }
-      setWidgets((await response.json()) as HomeWidgetSettings);
-      setSuccess('Homepage widgets updated.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Widget save error');
-    } finally {
-      setSavingWidgets(false);
     }
   };
 
@@ -398,64 +345,6 @@ export default function AdminHomePage() {
               </div>
             </div>
           ))}
-        </div>
-      </section>
-
-      <section style={cardStyle}>
-        <div style={sectionBarStyle}>
-          <div>
-            <h2 style={headingStyle}>Homepage Widgets</h2>
-            <div style={subtleTextStyle}>Weather, joke, aur news panels ko admin panel se control karo.</div>
-          </div>
-          <div style={pillStyle}>Home Config</div>
-        </div>
-        <div style={grid2Style}>
-          <input
-            value={widgets.heroTitle || ''}
-            onChange={(event) => setWidgets((current) => ({ ...current, heroTitle: event.target.value }))}
-            placeholder="Custom hero title"
-            style={inputStyle}
-          />
-          <input
-            value={widgets.jokePrefix || ''}
-            onChange={(event) => setWidgets((current) => ({ ...current, jokePrefix: event.target.value }))}
-            placeholder="Joke label"
-            style={inputStyle}
-          />
-        </div>
-        <textarea
-          value={widgets.heroSubtitle || ''}
-          onChange={(event) => setWidgets((current) => ({ ...current, heroSubtitle: event.target.value }))}
-          placeholder="Custom hero subtitle"
-          style={{ ...inputStyle, minHeight: 96, marginTop: 12 }}
-        />
-        <div style={{ ...grid2Style, marginTop: 12 }}>
-          {[
-            ['weatherEnabled', 'Weather card'],
-            ['jokeEnabled', 'Joke card'],
-            ['nationalNewsEnabled', 'National news'],
-            ['internationalNewsEnabled', 'International news'],
-            ['gpsWeatherEnabled', 'GPS weather refine'],
-          ].map(([key, label]) => (
-            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#344054', fontWeight: 600 }}>
-              <input
-                type="checkbox"
-                checked={Boolean(widgets[key as keyof HomeWidgetSettings])}
-                onChange={(event) =>
-                  setWidgets((current) => ({
-                    ...current,
-                    [key]: event.target.checked,
-                  }))
-                }
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-          <button onClick={() => void saveWidgets()} style={primaryButton} disabled={savingWidgets}>
-            {savingWidgets ? 'Saving...' : 'Save Homepage Widgets'}
-          </button>
         </div>
       </section>
 
