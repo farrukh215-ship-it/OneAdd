@@ -8,7 +8,7 @@ import { StatsRow } from '../components/home/StatsRow';
 import { StripBanner } from '../components/home/StripBanner';
 import { Footer } from '../components/layout/Footer';
 import { ListingGrid } from '../components/listings/ListingGrid';
-import { getCategories, getFeaturedListings, getHomeInsights, getListings } from '../lib/server-api';
+import { getCategories, getFeaturedListings, getListings } from '../lib/server-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +38,6 @@ export default async function HomePage({
   const activeCategory = params.category;
 
   const categories = await getCategories();
-  const insights = await getHomeInsights({ city });
 
   const featured = activeCategory
     ? await getCategoryListings(activeCategory, city)
@@ -71,7 +70,7 @@ export default async function HomePage({
       />
 
       <section className="page-wrap pb-2">
-        <HeroBanner insights={insights} />
+        <HeroBanner />
         <QuickActions city={city} />
         <StatsRow />
       </section>

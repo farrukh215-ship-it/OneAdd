@@ -12,7 +12,6 @@ import { SearchModule } from './search/search.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { InspectionsModule } from './inspections/inspections.module';
-import { HomeModule } from './home/home.module';
 
 @Module({
   imports: [
@@ -25,7 +24,6 @@ import { HomeModule } from './home/home.module';
     ListingsModule,
     CategoriesModule,
     SearchModule,
-    HomeModule,
     TelemetryModule,
     UploadsModule,
     InspectionsModule,
