@@ -53,9 +53,11 @@ services:
       redis:
         condition: service_started
     environment:
+      NODE_ENV: ${NODE_ENV}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      ENABLE_DEV_OTP: ${ENABLE_DEV_OTP}
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
       SMS_PROVIDER: ${SMS_PROVIDER}
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}

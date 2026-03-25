@@ -34,7 +34,7 @@ export default function PhoneAuthScreen() {
       return response.data;
     },
     onSuccess: (data) => {
-      if (data?.devOtp) {
+      if (__DEV__ && data?.devOtp) {
         Alert.alert('Dev OTP', `OTP: ${data.devOtp}`);
       }
       router.push({
@@ -60,7 +60,7 @@ export default function PhoneAuthScreen() {
       return response.data;
     },
     onSuccess: (data) => {
-      if (data?.devOtp) {
+      if (__DEV__ && data?.devOtp) {
         Alert.alert('Dev OTP', `OTP: ${data.devOtp}`);
       }
       router.push({ pathname: '/auth/otp', params: { phone: normalizedPhone, mode: 'forgot' } });

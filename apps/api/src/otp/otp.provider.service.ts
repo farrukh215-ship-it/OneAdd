@@ -7,7 +7,9 @@ export abstract class OtpProviderService {
 @Injectable()
 export class FirebaseOtpService extends OtpProviderService {
   async sendOtp(_phone: string): Promise<void> {
-    return;
+    throw new InternalServerErrorException(
+      'Firebase SMS provider is not configured in backend. Use Twilio Verify or firebaseIdToken flow.',
+    );
   }
 }
 

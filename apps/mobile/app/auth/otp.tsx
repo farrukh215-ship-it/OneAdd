@@ -77,7 +77,7 @@ export default function OtpScreen() {
       return response.data;
     },
     onSuccess: (data) => {
-      if (data?.devOtp) {
+      if (__DEV__ && data?.devOtp) {
         Alert.alert('Dev OTP', `OTP: ${data.devOtp}`);
       }
       setCountdown(30);

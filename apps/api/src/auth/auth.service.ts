@@ -23,6 +23,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 export class AuthService {
   private readonly redis: Redis;
   private readonly passwordSalt: string;
+  private readonly exposeDevOtp: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -36,6 +37,9 @@ export class AuthService {
       { maxRetriesPerRequest: 1 },
     );
     this.passwordSalt = process.env.PASSWORD_SALT ?? 'tgmg-default-salt-change-me';
+    this.exposeDevOtp =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ENABLE_DEV_OTP === 'true';
   }
 
   async sendOtp(phone: string) {
@@ -66,7 +70,7 @@ export class AuthService {
     return {
       success: true,
       message: 'OTP bheji gayi hai',
-      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
+      ...(this.exposeDevOtp ? { devOtp: otpCode } : {}),
     };
   }
 
@@ -95,7 +99,7 @@ export class AuthService {
     return {
       success: true,
       message: 'Password reset OTP bheji gayi hai',
-      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
+      ...(this.exposeDevOtp ? { devOtp: otpCode } : {}),
     };
   }
 
